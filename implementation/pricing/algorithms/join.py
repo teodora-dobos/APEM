@@ -15,7 +15,7 @@ class Join(PricingAlgorithm):
     """Implementation of Join Pricing.
     """
 
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices=None):
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices=None, fixed_prices=None):
         """Formulates and solves an IP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
            (Appendix F).
 
