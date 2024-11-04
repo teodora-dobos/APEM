@@ -9,6 +9,7 @@ from implementation.pricing.algorithms.ip import IP
 from implementation.pricing.algorithms.min_mwp import MinMWP
 from implementation.pricing.algorithms.join import Join
 from implementation.allocation.algorithms.dcopf import DCOPF
+from implementation.allocation.algorithms.zonal_NTC import Zonal_NTC
 from implementation.allocation.configuration import Configuration
 from data.parsing.parse_ieee_rts import ParseIEEERTS
 from data.parsing.parse_pjm import ParsePJM
@@ -18,6 +19,7 @@ from data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
+    Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE2-k', factor=0.8)
 
 
 class PricingAlgorithms(Enum):
@@ -51,7 +53,7 @@ def solve_allocation_problem(dataset, power_flow_model, configuration, u_fixed=N
 
     power_flow_model = power_flow_model.value
 
-    path = f'results/{dataset}_results/allocation_results'
+    path = f'results/{dataset}_results/{power_flow_model}/allocation_results'
 
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -62,13 +64,14 @@ def solve_allocation_problem(dataset, power_flow_model, configuration, u_fixed=N
                                   u_fixed=u_fixed)
 
 
-def solve_pricing_problem(dataset, allocation, pricing_algorithm, prices=None):
+def solve_pricing_problem(dataset, allocation, pricing_algorithm, power_flow_model, prices=None):
     if isinstance(dataset, Datasets):
         dataset = retrieve_data(dataset)
 
     pricing_algorithm = pricing_algorithm.value
+    power_flow_model = power_flow_model.value
 
-    path = f"results/{dataset}_results/{pricing_algorithm}_results"
+    path = f"results/{dataset}_results/{power_flow_model}/{pricing_algorithm}_results"
 
     if os.path.exists(path):
         shutil.rmtree(path)
@@ -82,11 +85,11 @@ def solve_pricing_problem(dataset, allocation, pricing_algorithm, prices=None):
     return pricing
 
 
-def analyse_results(dataset, allocation, pricing, file_pypsa_network=""):
+def analyse_results(dataset, allocation, pricing, power_flow_model, file_pypsa_network=""):
     if isinstance(dataset, Datasets):
         dataset = retrieve_data(dataset)
 
-    path = f"results/{dataset}_results/{pricing.used_algorithm}_results"
+    path = f"results/{dataset}_results/{power_flow_model.value}/{pricing.used_algorithm}_results"
 
     os.makedirs(path, exist_ok=True)
 
@@ -107,9 +110,14 @@ def solve_scenario(dataset, power_flow_model, pricing_algorithm):
 def solve_and_analyse_scenario(dataset, power_flow_model, pricing_algorithm, file_pypsa_network=""):
     scenario = retrieve_data(dataset)
     configuration = create_configuration()
-    allocation = solve_allocation_problem(scenario, power_flow_model, configuration)
-    pricing = solve_pricing_problem(scenario, allocation, pricing_algorithm)
-    return analyse_results(dataset, allocation, pricing, file_pypsa_network=file_pypsa_network)
+    if power_flow_model == PowerFlowModels.DCOPF:
+        allocation = solve_allocation_problem(scenario, power_flow_model, configuration)
+    else:
+        scenario, allocation = solve_allocation_problem(scenario, power_flow_model, configuration)
+
+    pricing = solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model)
+
+    return analyse_results(scenario, allocation, pricing, power_flow_model, file_pypsa_network=file_pypsa_network)
 
 
 def apply_all_algorithms(dataset, configuration, file_pypsa_network=""):
