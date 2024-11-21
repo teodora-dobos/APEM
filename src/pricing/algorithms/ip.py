@@ -2,27 +2,27 @@ import time
 import gurobipy as gp
 from gurobipy import GRB
 
-from implementation.allocation.allocation import Allocation
-from implementation.allocation.error import Error
-from implementation.data.parsing.scenario import Scenario
-from implementation.utils.extraction import *
-from implementation.pricing.analysis.pricing import Pricing, GLOCS
-from implementation.pricing.algorithms.pricing_algorithm import PricingAlgorithm
-from implementation.pricing.analysis.write_prices import write_prices_failure, write_prices
+from src.allocation.allocation import Allocation
+from src.allocation.error import Error
+from src.data.parsing.scenario import Scenario
+from src.utils.extraction import *
+from src.pricing.analysis.pricing import Pricing, LLOCS
+from src.pricing.algorithms.pricing_algorithm import PricingAlgorithm
+from src.pricing.analysis.write_prices import write_prices_failure, write_prices
 
 
-class ELMP(PricingAlgorithm):
-    """Implementation of Extended Locational Marginal Pricing.
-    """
+class IP(PricingAlgorithm):
+    """Implementation of Integer Programming Pricing.
+     """
 
     def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices=None, fixed_prices=None):
-        """Formulates and solves an ELMP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
-         (Appendix C). The method can also be used to compute the GLOCs for an allocation-prices pair.
+        """Formulates and solves an IP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
+        (Appendix D). The method can also be used to compute the LLOCs for an allocation-prices pair.
 
         :param allocation: allocation for which supporting prices are computed
         :param scenario: scenario for which prices are computed
         :param file_prices: name of the file in which results are written
-        :param fixed_prices: prices for which GLOCs should be computed
+        :param fixed_prices: prices for which LLOCs should be computed
         :return: Pricing object if prices could be computed or Error object otherwise
         """
         if allocation.status != 1:
@@ -34,7 +34,7 @@ class ELMP(PricingAlgorithm):
 
         start = time.time()
 
-        model = gp.Model('ELMP-Pricing')
+        model = gp.Model('IP-Pricing')
 
         model.setParam("OutputFlag", 0)
         model.setParam('TimeLimit', 60 * 60)
@@ -87,13 +87,6 @@ class ELMP(PricingAlgorithm):
                                         for t in periods],
                                        ub=GRB.INFINITY, name='epsilon_up_v_w_t')
 
-        chi_up_st = model.addVars(sellers, periods, ub=GRB.INFINITY, name='chi_up_s_t')
-        chi_down_st = model.addVars(sellers, periods, lb=-GRB.INFINITY, ub=0, name='chi_down_s_t')
-        chi_hat_st = model.addVars(sellers, periods, lb=-GRB.INFINITY, ub=0, name='chi_hat_s_t')
-
-        psi_down_st = model.addVars(sellers, periods, lb=-GRB.INFINITY, ub=0, name='psi_down_s_t')
-        psi_up_st = model.addVars(sellers, periods, ub=GRB.INFINITY, name='psi_up_s_t')
-
         r_t = model.addVars(periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='r_t')
 
         lambda_b = model.addVars(buyers, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_b')
@@ -105,9 +98,9 @@ class ELMP(PricingAlgorithm):
         model.update()
 
         model.setObjective(
-            gp.quicksum(lambda_b[b] for b in buyers)
-            + gp.quicksum(lambda_s[s] for s in sellers)
-            + gp.quicksum(lambda_v_w_t[v, w, t] for v in nodes for w in list(network.neighbors(v)) for t in periods),
+            gp.quicksum(lambda_b[b] for b in buyers) +
+            gp.quicksum(lambda_s[s] for s in sellers) +
+            gp.quicksum(lambda_v_w_t[v, w, t] for v in nodes for w in list(network.neighbors(v)) for t in periods),
             GRB.MINIMIZE
         )
         # 1
@@ -138,9 +131,10 @@ class ELMP(PricingAlgorithm):
         model.addConstrs(
             lambda_s[s]
             - gp.quicksum(
-                psi_up_st[s, t]
+                epsilon_down_st[s, t] * extract_from_sellers(df_sellers, 'min_prod', s, t) * u_st[s, t]
+                + epsilon_up_st[s, t] * extract_from_sellers(df_sellers, 'max_prod', s, t) * u_st[s, t]
                 + gp.quicksum(
-                    epsilon_up_stl[s, t, ls] * extract_from_sellers(df_sellers, 'size', s, t, ls)
+                    epsilon_up_stl[s, t, ls] * extract_from_sellers(df_sellers, 'size', s, t, ls) * u_st[s, t]
                     for ls in blocks_sellers
                 )
                 for t in periods
@@ -158,7 +152,11 @@ class ELMP(PricingAlgorithm):
                 extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
                 for t in periods
             )
-            >= 0
+            >=
+            -gp.quicksum(
+                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                for t in periods
+            )
             for s in sellers
         )
         # 3
@@ -239,76 +237,6 @@ class ELMP(PricingAlgorithm):
             for s in sellers
             for t in periods
         )
-        # 11 if there is more than 1 period
-        model.addConstrs(
-            -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, 1, ls) * epsilon_up_stl[s, 1, ls]
-                for ls in blocks_sellers
-            )
-            + psi_up_st[s, 1]
-            + psi_down_st[s, 1]
-            - extract_from_sellers(df_sellers, 'max_prod', s, 1) * epsilon_up_st[s, 1]
-            - extract_from_sellers(df_sellers, 'min_prod', s, 1) * epsilon_down_st[s, 1]
-            + chi_down_st[s, 2]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, 1)
-            for s in sellers if len(periods) > 1
-        )
-        # 11 if there is only one period
-        model.addConstrs(
-            -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, 1, ls) * epsilon_up_stl[s, 1, ls]
-                for ls in blocks_sellers
-            )
-            + psi_up_st[s, 1]
-            + psi_down_st[s, 1]
-            - extract_from_sellers(df_sellers, 'max_prod', s, 1) * epsilon_up_st[s, 1]
-            - extract_from_sellers(df_sellers, 'min_prod', s, 1) * epsilon_down_st[s, 1]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, 1)
-            for s in sellers if len(periods) == 1
-        )
-        # 12
-        model.addConstrs(
-            -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, t, ls) * epsilon_up_stl[s, t, ls]
-                for ls in blocks_sellers
-            )
-            + psi_up_st[s, t]
-            + psi_down_st[s, t]
-            - extract_from_sellers(df_sellers, 'max_prod', s, t) * epsilon_up_st[s, t]
-            - extract_from_sellers(df_sellers, 'min_prod', s, t) * epsilon_down_st[s, t]
-            - chi_up_st[s, t]
-            - chi_down_st[s, t]
-            + chi_down_st[s, t + 1]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, t)
-            for s in sellers
-            for t in periods if 1 < t < periods[-1]
-        )
-        # 13 if there is more than 1 period
-        model.addConstrs(
-            -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, periods[-1], ls) * epsilon_up_stl[s, periods[-1], ls]
-                for ls in blocks_sellers
-            )
-            + psi_up_st[s, periods[-1]]
-            + psi_down_st[s, periods[-1]]
-            - extract_from_sellers(df_sellers, 'max_prod', s, periods[-1]) * epsilon_up_st[s, periods[-1]]
-            - extract_from_sellers(df_sellers, 'min_prod', s, periods[-1]) * epsilon_down_st[s, periods[-1]]
-            - chi_up_st[s, periods[-1]]
-            - chi_down_st[s, periods[-1]]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, periods[-1])
-            for s in sellers if len(periods) > 1
-        )
-        # 14
-        model.addConstrs(
-            chi_hat_st[s, t]
-            + chi_down_st[s, t]
-            + gp.quicksum(
-                chi_up_st[s, i]
-                for i in range(t, min(periods[-1], t + extract_from_sellers(df_sellers, 'min_uptime', s, t) - 1) + 1)
-            )
-            == 0
-            for s in sellers for t in periods if t > 1
-        )
 
         model.optimize()
 
@@ -320,14 +248,14 @@ class ELMP(PricingAlgorithm):
         status = model.getAttr('Status')
 
         if status == 2:  # OPTIMAL
-            total_glocs = round(model.getObjective().getValue(), 2)
-            glocs_buyers = round(sum(lambda_b[b].X for b in buyers), 2)
-            glocs_sellers = round(sum(lambda_s[s].X for s in sellers), 2)
-            glocs_network = round(
+            total_llocs = round(model.getObjective().getValue(), 2)
+            llocs_buyers = round(sum(lambda_b[b].X for b in buyers), 2)
+            llocs_sellers = round(sum(lambda_s[s].X for s in sellers), 2)
+            llocs_network = round(
                 sum(lambda_v_w_t[v, w, t].X for v in nodes for w in network.neighbors(v) for t in periods), 2)
-            glocs_per_buyer = {b: round(lambda_b[b].X, 2) for b in buyers}
-            glocs_per_seller = {s: round(lambda_s[s].X, 2) for s in sellers}
-            glocs_per_line = {(v, w): round(sum(lambda_v_w_t[v, w, t].X for t in periods), 2)
+            llocs_per_buyer = {b: round(lambda_b[b].X, 2) for b in buyers}
+            llocs_per_seller = {s: round(lambda_s[s].X, 2) for s in sellers}
+            llocs_per_line = {(v, w): round(sum(lambda_v_w_t[v, w, t].X for t in periods), 2)
                               for v in nodes for w in list(network.neighbors(v))}
 
             p_vt = {(v, t): p_vt[v, t].X for v in nodes for t in periods}
@@ -335,8 +263,8 @@ class ELMP(PricingAlgorithm):
                          for v in nodes for w in list(network.neighbors(v)) for t in periods}
 
             pricing = Pricing(p_vt, gamma_vwt, str(self), runtime, num_vars, num_constrs,
-                              glocs=GLOCS(total_glocs, glocs_buyers, glocs_sellers, glocs_network,
-                                          glocs_per_buyer, glocs_per_seller, glocs_per_line))
+                              llocs=LLOCS(total_llocs, llocs_buyers, llocs_sellers, llocs_network,
+                                          llocs_per_buyer, llocs_per_seller, llocs_per_line))
 
             if file_prices is not None:
                 write_prices(file_prices, pricing, scenario)
@@ -351,4 +279,4 @@ class ELMP(PricingAlgorithm):
         return Error(status)
 
     def __str__(self):
-        return 'ELMP'
+        return 'IP'

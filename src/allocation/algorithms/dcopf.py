@@ -2,12 +2,12 @@ import gurobipy as gp
 from gurobipy import GRB
 from typing import Optional
 
-from implementation.allocation.allocation import Allocation
-from implementation.allocation.configuration import Configuration
-from implementation.allocation.power_flow_model import PowerFlowModel
-from implementation.allocation.error import Error
-from implementation.data.parsing.scenario import Scenario
-from implementation.utils.extraction import *
+from src.allocation.allocation import Allocation
+from src.allocation.configuration import Configuration
+from src.allocation.power_flow_model import PowerFlowModel
+from src.allocation.error import Error
+from src.data.parsing.scenario import Scenario
+from src.utils.extraction import *
 
 
 class DCOPF(PowerFlowModel):

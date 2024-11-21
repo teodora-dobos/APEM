@@ -5,11 +5,11 @@ import csv
 import networkx as nx
 from collections import defaultdict
 
-from implementation.data.parsing.common import def_value_list, def_value_simple_list
-from implementation.data.parsing.parse_data import ParseData
-from implementation.data.parsing.scenario import Scenario
+from src.data.parsing.common import def_value_list, def_value_simple_list
+from src.data.parsing.parse_data import ParseData
+from src.data.parsing.scenario import Scenario
 
-path = './implementation/data/raw_data/arpa_e-scenario-5'
+path = './src/data/raw_data/arpa_e-scenario-5'
 
 MAX_SUSCEPTANCE = 2
 MIN_SUSCEPTANCE = 0.01

@@ -3,11 +3,11 @@ import csv
 import networkx as nx
 from collections import defaultdict
 
-from implementation.data.parsing.common import def_value_list
-from implementation.data.parsing.parse_data import ParseData
-from implementation.data.parsing.scenario import Scenario
+from src.data.parsing.common import def_value_list
+from src.data.parsing.parse_data import ParseData
+from src.data.parsing.scenario import Scenario
 
-path = './implementation/data/raw_data/ieee_rts/'
+path = './src/data/raw_data/ieee_rts/'
 
 
 # keys are nodes, values are dicts {'sellers': [], 'buyers': []} representing the sellers and buyers located at nodes
