@@ -7,7 +7,7 @@ from implementation.data.parsing.common import def_value_list
 from implementation.data.parsing.parse_data import ParseData
 from implementation.data.parsing.scenario import Scenario
 
-path = './data/raw_data/pjm_2023_02_28/'
+path = './implementation/data/raw_data/pjm_2023_02_28/'
 
 
 # keys are nodes, values are dicts {'sellers': [], 'buyers': []} representing the sellers and buyers located at nodes

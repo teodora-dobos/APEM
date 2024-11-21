@@ -75,9 +75,9 @@ class Zonal_NTC(PowerFlowModel):
     def solve(self, scenario: Scenario, configuration: Configuration, output_file: Optional[str] = None,
               u_fixed: Optional[dict] = None):
         # load the network
-        n = pypsa.Network("data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
+        n = pypsa.Network("implementation/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
         if scenario.name == 'PyPSA_Eur_Large':
-            n = pypsa.Network("data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+            n = pypsa.Network("implementation/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
 
         zonal_scenario = self.create_zonal_configuration_NTC(base_scenario=scenario, network=n, name=scenario.name)
 

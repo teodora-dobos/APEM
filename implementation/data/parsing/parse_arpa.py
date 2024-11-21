@@ -9,7 +9,7 @@ from implementation.data.parsing.common import def_value_list, def_value_simple_
 from implementation.data.parsing.parse_data import ParseData
 from implementation.data.parsing.scenario import Scenario
 
-path = './data/raw_data/arpa_e-scenario-5'
+path = './implementation/data/raw_data/arpa_e-scenario-5'
 
 MAX_SUSCEPTANCE = 2
 MIN_SUSCEPTANCE = 0.01

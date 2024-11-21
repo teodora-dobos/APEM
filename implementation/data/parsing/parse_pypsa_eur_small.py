@@ -4,7 +4,7 @@ from collections import defaultdict
 from implementation.data.parsing.parse_data import ParseData
 from implementation.data.parsing.scenario import Scenario
 
-path = './data/raw_data/pypsa_eur_small/'
+path = './implementation/data/raw_data/pypsa_eur_small/'
 
 
 class ParsePyPSAEurSmall(ParseData):
