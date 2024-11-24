@@ -2,13 +2,13 @@ import time
 import gurobipy as gp
 from gurobipy import GRB
 
-from implementation.allocation.allocation import Allocation
-from implementation.allocation.error import Error
-from implementation.data.parsing.scenario import Scenario
-from implementation.utils.extraction import *
-from implementation.pricing.analysis.pricing import Pricing, MWPS
-from implementation.pricing.algorithms.pricing_algorithm import PricingAlgorithm
-from implementation.pricing.analysis.write_prices import write_prices_failure, write_prices
+from src.allocation.allocation import Allocation
+from src.allocation.error import Error
+from src.data.parsing.scenario import Scenario
+from src.utils.extraction import *
+from src.pricing.analysis.pricing import Pricing, MWPS
+from src.pricing.algorithms.pricing_algorithm import PricingAlgorithm
+from src.pricing.analysis.write_prices import write_prices_failure, write_prices
 
 
 class MinMWP(PricingAlgorithm):

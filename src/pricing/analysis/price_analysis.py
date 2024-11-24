@@ -1,10 +1,10 @@
 import pandas as pd
 
-from implementation.data.analysis.plot import plot_supply_demand
-from implementation.pricing.algorithms.elmp import ELMP
-from implementation.pricing.algorithms.ip import IP
-from implementation.pricing.algorithms.min_mwp import MinMWP
-from implementation.pricing.analysis.plot import plot_avg_prices, pypsa_heatmap
+from src.data.analysis.plot import plot_supply_demand
+from src.pricing.algorithms.elmp import ELMP
+from src.pricing.algorithms.ip import IP
+from src.pricing.algorithms.min_mwp import MinMWP
+from src.pricing.analysis.plot import plot_avg_prices, pypsa_heatmap
 
 
 class PriceAnalysis:
