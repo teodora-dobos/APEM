@@ -1,5 +1,6 @@
+import os
 from collections import defaultdict
-from typing import Tuple
+from typing import Tuple, List
 
 import pandas as pd
 
@@ -133,12 +134,12 @@ class DataConversion:
 
     def generate_min_uptime_bids(self):
         """
-        Generate TODO to encode the bids of the sellers that fulfill
-        the following criteria:
+        Generate block orders and step orders to encode the bids of the sellers that fulfill the following criteria:
             - minimum uptime = 0
             - minimum production level >= 0
             - no-load cost = 0
         Assume cost1 is the smallest marginal cost.
+        TODO
         """
         sellers = self.df_sellers['seller'].unique().tolist()
         bids = []
@@ -177,6 +178,39 @@ class DataConversion:
                                'MAR': 0}
                         bids.append(bid)
                         # create child block bid
+
+    def generate_patterns(self, min_uptime) -> List[List[int]]:
+        """
+        Generate all possible patterns that encode in which periods a seller with minimum uptime min_uptime is committed.
+        """
+        T = len(self.periods)
+        M = [1] + list(range(min_uptime, T + 1))
+
+        dp = [[] for _ in range(T + 1)]
+        dp[0] = [[]]
+
+        for i in range(1, T + 1):  # dp[i]: all compositions of the segment i using lengths from M
+            for m in M:
+                if i >= m:
+                    for combination in dp[i - m]:
+                        dp[i].append(combination + [m])
+
+        return dp[T]
+
+    def generate_write_patterns(self):
+        """
+        Generate and write all patterns in .txt files.
+        """
+        min_uptimes = range(2, 25)
+        path = './src/data/raw_data/euphemia/patterns'
+        os.makedirs(path, exist_ok=True)
+        for min_uptime in min_uptimes:
+            file_name = path + f'/{min_uptime}.txt'
+            patterns = self.generate_patterns(min_uptime)
+            with open(file_name, 'w') as f:
+                for p in patterns:
+                    row = ' '.join(map(str, p))
+                    f.write(row + '\n')
 
     def set_block_bids(self) -> None:
         pass

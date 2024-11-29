@@ -116,7 +116,8 @@ def solve_and_analyse_scenario(dataset, power_flow_model, pricing_algorithm, fil
     # data_conversion.compute_buyers_inelastic_bids()
     # data_conversion.compute_buyers_elastic_bids()
     # data_conversion.generate_min_uptime_bids()
-    data_conversion.generate_no_min_uptime_bids()
+    # data_conversion.generate_no_min_uptime_bids()
+    data_conversion.generate_write_patterns()
     exit()
 
     configuration = create_configuration()
