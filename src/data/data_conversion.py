@@ -22,23 +22,22 @@ class DataConversion:
 
     def compute_buyers_inelastic_bids(self) -> pd.DataFrame:
         """
-        Generate block bids to encode inelastic demand.
+        Generate block orders to encode price-inelastic demand.
+        Create a block order for each buyer and set the volume for period t to the price-inelastic demand for period t.
+        Set MAR to 1 and the limit price to a very large value which guarantees that the block will always be accepted.
         """
         info = defaultdict(dict)
 
         df_dict_records = self.df_buyers.to_dict(orient='records')
-        count = 1
         for bid in df_dict_records:
             info[bid['buyer']][bid['period']] = -bid['inelastic_dem']
-            info[bid['buyer']]['id'] = str(bid['buyer']) + str(count)
-            count += 1
+            info[bid['buyer']]['id'] = 'b' + str(bid['buyer'])
 
         df = pd.DataFrame.from_dict(info, orient='index').reset_index(drop=True)
         df = df.rename(columns={i: f'q{i}' for i in self.periods})
         df['block_type'] = 'normal'
         df['code_prm'] = pd.NA
         df['MAR'] = 1
-        # set a large limit price such that the blocks are always accepted
         df['p'] = 10 ** 6
 
         columns = ['id', 'block_type', 'code_prm', 'p'] + [f'q{i}' for i in self.periods] + ['MAR']
@@ -56,18 +55,22 @@ class DataConversion:
         buyers = self.df_buyers['buyer'].unique().tolist()
         for b in buyers:
             count = 1
-            for i in self.blocks_buyers:
-                buyer_info = info[info['buyer'] == b]
+            for t in self.periods:
+                buyer_info = info[(info['buyer'] == b) & (info['period'] == t)]
+                if len(buyer_info) == 0:
+                    continue
 
-                order = {'id': str(b) + str(count),
-                         't': buyer_info['period'].values[0],
-                         'p': buyer_info[f'val{i}'].values[0],
-                         'q': buyer_info[f'size{i}'].values[0]
-                         }
-                data.append(order)
-                count += 1
+                for i in self.blocks_buyers:
+                    order = {'id': 'b' + str(b) + 't' + str(t) + 'l' + str(i),
+                             't': t,
+                             'p': buyer_info[f'val{i}'].values[0],
+                             'q': -buyer_info[f'size{i}'].values[0]
+                             }
+                    data.append(order)
+                    count += 1
 
         df_step_orders = pd.DataFrame(data)
+        print(df_step_orders)
         return df_step_orders
 
     def generate_no_min_uptime_bids(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -78,33 +81,37 @@ class DataConversion:
             - minimum production level > 0
             - no-load cost = 0
         Assume cost1 is the smallest marginal cost.
+        Create a scalable complex order for each seller.
+        For all periods t, set MAP_t to the minimum production level in period t.
+        Create associated step orders based on the supply curves.
         """
-        sellers = self.df_sellers[(self.df_sellers['min_uptime'].isin([0, 1])) & (self.df_sellers['min_prod'] > 0)][
-            'seller'].unique().tolist()
+        sellers = self.df_sellers[(self.df_sellers['min_uptime'].isin([0, 1])) & (self.df_sellers['min_prod'] > 0) &
+                                  (self.df_sellers['no_load_cost'] == 0)]['seller'].unique().tolist()
         scalable_orders, scalable_step_orders, step_orders = [], [], []
         for s in sellers:
             suborders_ids = []
-            scalable_id = str(s) + 'X' + 'MAR'
+            scalable_id = 's' + str(s) + 'MAP'
 
             for t in self.periods:
-                id_step_min = str(s) + 'X' + f'{t}'
+                id_step_min_prod = 's' + str(s) + 'min_prod_t' + f'{t}'
                 seller_info = self.df_sellers[(self.df_sellers['seller'] == s) & (self.df_sellers['period'] == t)]
 
+                # check if s submitted bids for the current period
                 min_prod_t = seller_info['min_prod'].values[0] if not seller_info['min_prod'].empty else 0
                 if min_prod_t == 0:
                     continue
 
-                scalable_step_order_min = {'id': id_step_min,
+                scalable_step_order_min = {'id': id_step_min_prod,
                                            'scalable_order_id': scalable_id,
                                            't': t,
                                            'p': seller_info['cost1'].values[0],
                                            'q': min_prod_t
                                            }
-                suborders_ids.append(id_step_min)
+                suborders_ids.append(id_step_min_prod)
                 scalable_step_orders.append(scalable_step_order_min)
 
                 for block in self.blocks_sellers:
-                    id_step_block = str(s) + 'X' + f'{t}' + 'X' + f'{block}'
+                    id_step_block = 's' + str(s) + 't' + f'{t}' + 'l' + f'{block}'
                     q = seller_info[f'size{block}'].values[0]
 
                     if block == 1:
@@ -114,7 +121,7 @@ class DataConversion:
                         continue
 
                     scalable_step_order_block = {'id': id_step_block,
-                                                 'scalable_order_id': str(s) + 'X' + 'MAR',
+                                                 'scalable_order_id': scalable_id,
                                                  't': t,
                                                  'p': seller_info[f'cost{block}'].values[0],
                                                  'q': q
@@ -128,7 +135,7 @@ class DataConversion:
                               'fixed_term': 0,
                               'condition': pd.NA,
                               'load_gradient': pd.NA,
-                              **{f'MAR{t}': self.df_sellers[
+                              **{f'MAP{t}': self.df_sellers[
                                   (self.df_sellers['seller'] == s) & (self.df_sellers['period'] == t)][
                                   'min_prod'].values[0] if not
                               self.df_sellers[(self.df_sellers['seller'] == s) & (self.df_sellers['period'] == t)][
@@ -150,11 +157,11 @@ class DataConversion:
             - no-load cost = 0
         Assume cost1 is the smallest marginal cost.
         """
-        sellers = self.df_sellers[(~self.df_sellers['min_uptime'].isin([0, 1])) & (self.df_sellers['min_prod'] > 0)][
-            'seller'].unique().tolist()
-        min_uptime_values = self.df_sellers[~self.df_sellers['min_uptime'].isin([0, 1])]['min_uptime'].unique().tolist()
+        sellers = self.df_sellers[(self.df_sellers['min_uptime'] > 1) & (self.df_sellers['min_prod'] > 0) &
+                                  (self.df_sellers['no_load_cost'] == 0)]['seller'].unique().tolist()
+        min_uptime_values = self.df_sellers[self.df_sellers['min_uptime'] > 1]['min_uptime'].unique().tolist()
 
-        # retrieve patterns
+        # retrieve patterns that encode in which periods a seller is committed
         patterns = {}
         for val in min_uptime_values:
             file_path = f'./src/data/raw_data/euphemia/patterns/{val}.txt'
@@ -174,7 +181,7 @@ class DataConversion:
             sellers_general_info = self.df_sellers[self.df_sellers['seller'] == s]
             min_uptime = sellers_general_info['min_uptime'].values[0]
             min_cost = sellers_general_info['cost1'].values[0]
-            exclusive_id = f'{s}Xexclusive'
+            exclusive_id = f's{s}exclusive'
             count = 1
 
             for pattern in patterns[min_uptime]:
@@ -191,7 +198,7 @@ class DataConversion:
                     continue
 
                 bid_p = {
-                    'id': f'{s}Xpattern{count}',
+                    'id': f's{s}pattern{count}',
                     'block_type': 'exclusive',
                     'code_prm': exclusive_id,
                     'p': min_cost,
@@ -226,7 +233,7 @@ class DataConversion:
                     seller_info = self.df_sellers[(self.df_sellers['seller'] == s) & (self.df_sellers['period'] == t)]
 
                     for block in self.blocks_sellers:
-                        id_block_t = f'{s}Xpattern{count}Xperiod{t}X{block}'
+                        id_block_t = f's{s}pattern{count}t{t}l{block}'
                         q = seller_info[f'size{block}'].values[0]
 
                         if block == 1:
@@ -237,7 +244,7 @@ class DataConversion:
 
                         bid_p = {'id': id_block_t,
                                  'block_type': 'linked',
-                                 'code_prm': f'{s}Xpattern{count}',
+                                 'code_prm': f's{s}pattern{count}',
                                  'p': seller_info[f'cost{block}'].values[0],
                                  **{f'q{k}': q if k == t else 0 for k in self.periods},
                                  'MAR': 0
@@ -248,6 +255,7 @@ class DataConversion:
                 count += 1
 
         df_block_orders = pd.DataFrame(block_bids)
+        print(df_block_orders)
         return df_block_orders
 
     def generate_patterns(self, min_uptime: int) -> List[List[int]]:
