@@ -1,5 +1,3 @@
-import pandas as pd
-import networkx as nx
 from collections import defaultdict
 
 import networkx as nx
@@ -12,9 +10,7 @@ path = './src/data/raw_data/pypsa_eur_large/'
 
 
 class ParsePyPSAEurLarge(ParseData):
-
     def parse_data(self, day=None):
-
         df_sellers = pd.read_csv(path + 'sellers.csv')
         df_buyers = pd.read_csv(path + 'buyers.csv')
         network = nx.read_edgelist(path + 'network.csv', nodetype=int, delimiter=',')
