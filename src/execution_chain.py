@@ -19,7 +19,7 @@ from src.pricing.analysis.price_analysis import PriceAnalysis
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
-    Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE2-k', factor=0.8)
+    Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE2-k', factor=0.8) # the factor (between 0 and 1) describes the conservativeness of the NTC model
 
 
 class PricingAlgorithms(Enum):
