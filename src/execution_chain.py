@@ -2,24 +2,24 @@ import os.path
 import shutil
 from enum import Enum
 
-from src.data.parsing.parse_arpa import ParseARPA
-from src.data.parsing.parse_ieee_rts import ParseIEEERTS
-from src.data.parsing.parse_pjm import ParsePJM
-from src.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
-from src.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
-from src.pricing.analysis.price_analysis import PriceAnalysis
-from src.pricing.algorithms.elmp import ELMP
-from src.pricing.algorithms.ip import IP
-from src.pricing.algorithms.min_mwp import MinMWP
-from src.pricing.algorithms.join import Join
 from src.allocation.algorithms.dcopf import DCOPF
 from src.allocation.algorithms.zonal_NTC import Zonal_NTC
 from src.allocation.configuration import Configuration
+from src.data.parsing.parse_arpa import ParseARPA
+from src.data.parsing.parse_ieee_rts import ParseIEEERTS
+from src.data.parsing.parse_pjm import ParsePJM
+from src.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
+from src.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
+from src.pricing.algorithms.elmp import ELMP
+from src.pricing.algorithms.ip import IP
+from src.pricing.algorithms.join import Join
+from src.pricing.algorithms.min_mwp import MinMWP
+from src.pricing.analysis.price_analysis import PriceAnalysis
 
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
-    Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE2-k', factor=0.8)
+    Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE2-k', factor=0.8) # the factor (between 0 and 1) describes the conservativeness of the NTC model
 
 
 class PricingAlgorithms(Enum):

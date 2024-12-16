@@ -1,7 +1,8 @@
-import pandas as pd
 import csv
-import networkx as nx
 from collections import defaultdict
+
+import networkx as nx
+import pandas as pd
 
 from src.data.parsing.common import def_value_list
 from src.data.parsing.parse_data import ParseData

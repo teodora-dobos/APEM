@@ -1,4 +1,4 @@
-def node_zone_mapper(zonal_configuration, lat, lon):
+def node_zone_mapper(zonal_configuration: str, lat: float, lon: float) -> int:
     """
     Map a node to a specific zone based on its latitude and longitude coordinates.
     """

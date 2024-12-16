@@ -1,22 +1,25 @@
+from typing import Optional, Union
+
 import gurobipy as gp
 from gurobipy import GRB
-from typing import Optional
 
 from src.allocation.allocation import Allocation
 from src.allocation.configuration import Configuration
-from src.allocation.power_flow_model import PowerFlowModel
 from src.allocation.error import Error
+from src.allocation.power_flow_model import PowerFlowModel
 from src.data.parsing.scenario import Scenario
-from src.utils.extraction import *
+from src.utils.extraction import extract_from_buyers, extract_from_sellers
 
 
 class DCOPF(PowerFlowModel):
-    """Implementation of the Direct Current Optimal Power Flow Model.
+    """
+    Implementation of the Direct Current Optimal Power Flow Model.
     """
 
     def solve(self, scenario: Scenario, configuration: Configuration, output_file: Optional[str] = None,
-              u_fixed: Optional[dict] = None, type=None):
-        """Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
+              u_fixed: Optional[dict] = None) -> Union[Allocation, Error]:
+        """
+        Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix B).
 
         :param scenario: scenario for which DCOPF is computed
@@ -44,7 +47,6 @@ class DCOPF(PowerFlowModel):
         blocks_buyers = scenario.blocks_buyers
         blocks_sellers = scenario.blocks_sellers
         r_star = scenario.r_star
-
         nodes = network.nodes
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
@@ -238,8 +240,7 @@ class DCOPF(PowerFlowModel):
         MIP_gap = model.MIPGap
         status = model.getAttr('Status')
 
-        if status == 2:  # OPTIMAL, see
-            # https://www.gurobi.com/documentation/current/refman/optimization_status_codes.html
+        if status == GRB.OPTIMAL:
             welfare = model.getObjective().getValue()
 
             x_bt = {(b, t): x_bt[b, t].X for b in buyers for t in periods}

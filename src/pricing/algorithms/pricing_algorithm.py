@@ -6,8 +6,10 @@ from src.data.parsing.scenario import Scenario
 
 
 class PricingAlgorithm(ABC):
-    """Abstract class to be extended by all pricing algorithms.
     """
+    Abstract class to be extended by all pricing algorithms.
+    """
+
     @abstractmethod
     def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices: Optional[str] = None):
         pass

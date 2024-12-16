@@ -1,5 +1,5 @@
-# APEM
-![alt text](framework_overview.png)
+# APEM - Allocation and Pricing in Electricity Markets
+![alt text](framework_design/framework_overview.png)
 
 
 ## Installation

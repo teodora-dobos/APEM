@@ -1,5 +1,6 @@
 class Configuration:
-    """Includes the values of different parameters that can be set in the optimizer.
+    """
+    Includes the values of different parameters that can be set in the optimizer.
     """
 
     def __init__(self, MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify, strict_supply_demand_eq,

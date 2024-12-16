@@ -1,22 +1,27 @@
 import time
+from typing import Optional, Union
+
 import gurobipy as gp
 from gurobipy import GRB
 
 from src.allocation.allocation import Allocation
 from src.allocation.error import Error
 from src.data.parsing.scenario import Scenario
-from src.utils.extraction import *
-from src.pricing.analysis.pricing import Pricing, LLOCS
 from src.pricing.algorithms.pricing_algorithm import PricingAlgorithm
-from src.pricing.analysis.write_prices import write_prices_failure, write_prices
+from src.pricing.analysis.pricing import LLOCS, Pricing
+from src.pricing.analysis.write_prices import write_prices, write_prices_failure
+from src.utils.extraction import extract_from_buyers, extract_from_sellers
 
 
 class IP(PricingAlgorithm):
-    """Implementation of Integer Programming Pricing.
-     """
+    """
+    Implementation of Integer Programming Pricing.
+    """
 
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices=None, fixed_prices=None):
-        """Formulates and solves an IP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices: Optional[str] = None,
+                       fixed_prices: Optional[Pricing] = None) -> Union[Pricing, Error]:
+        """
+        Formulates and solves an IP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix D). The method can also be used to compute the LLOCs for an allocation-prices pair.
 
         :param allocation: allocation for which supporting prices are computed
@@ -247,7 +252,7 @@ class IP(PricingAlgorithm):
 
         status = model.getAttr('Status')
 
-        if status == 2:  # OPTIMAL
+        if status == GRB.OPTIMAL:
             total_llocs = round(model.getObjective().getValue(), 2)
             llocs_buyers = round(sum(lambda_b[b].X for b in buyers), 2)
             llocs_sellers = round(sum(lambda_s[s].X for s in sellers), 2)

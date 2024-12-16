@@ -1,9 +1,10 @@
-import json
-import pandas as pd
-import numpy as np
 import csv
-import networkx as nx
+import json
 from collections import defaultdict
+
+import networkx as nx
+import numpy as np
+import pandas as pd
 
 from src.data.parsing.common import def_value_list, def_value_simple_list
 from src.data.parsing.parse_data import ParseData

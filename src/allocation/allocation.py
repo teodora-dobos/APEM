@@ -1,5 +1,6 @@
 class BuyersAllocation:
-    """The results of an allocation that relate to the buyers.
+    """
+    The results of an allocation that relate to the buyers.
     """
 
     def __init__(self, x_bt, x_btl, df_buyers, blocks_buyers):
@@ -9,7 +10,8 @@ class BuyersAllocation:
         self.blocks_buyers = blocks_buyers
 
     def demand_acceptance_ratio(self) -> float:
-        """Compute demand acceptance ratio for all periods. It does not include the inelastic demand.
+        """
+        Compute demand acceptance ratio for all periods. It does not include the inelastic demand.
 
         :return: the fraction of elastic demand that is fulfilled in the allocation
         """
@@ -23,7 +25,8 @@ class BuyersAllocation:
 
 
 class SellersAllocation:
-    """The results of an allocation that relate to the sellers.
+    """
+    The results of an allocation that relate to the sellers.
     """
 
     def __init__(self, y_st, y_stl, u_st, phi_st, df_sellers):
@@ -34,7 +37,8 @@ class SellersAllocation:
         self.df_sellers = df_sellers
 
     def supply_acceptance_ratio(self) -> float:
-        """Compute supply acceptance ratio for all periods.
+        """
+        Compute supply acceptance ratio for all periods.
 
         :return: the fraction of available supply that is accepted in the allocation
         """
@@ -48,7 +52,8 @@ class SellersAllocation:
 
 
 class TransmissionNetworkAllocation:
-    """The results of an allocation that relate to the transmission network.
+    """
+    The results of an allocation that relate to the transmission network.
     """
 
     def __init__(self, f_vwt, alpha_vt, network, periods):
@@ -58,7 +63,8 @@ class TransmissionNetworkAllocation:
         self.periods = periods
 
     def congested_lines(self) -> dict:
-        """Compute congested lines.
+        """
+        Compute congested lines.
 
         :return: dictionary with the congested lines for each period
         """
@@ -76,7 +82,8 @@ class TransmissionNetworkAllocation:
 
 
 class Allocation:
-    """Data and information related to an allocation, including the values of the optimization variables and statistics
+    """
+    Data and information related to an allocation, including the values of the optimization variables and statistics
     from the optimizer.
     """
 
@@ -101,7 +108,8 @@ class Allocation:
         return 1
 
     def consumed_real_power_per_node_period(self, node: int, period: int) -> float:
-        """Compute total real power consumed in specified node and period.
+        """
+        Compute total real power consumed in specified node and period.
 
         :param node: Node for which the consumed real power is computed.
         :param period: Period for which the consumed real power in a node is computed.
@@ -111,7 +119,8 @@ class Allocation:
         return sum(self.BuyersAllocation.x_bt[b, period] for b in buyers)
 
     def excess_supply(self) -> float:
-        """Compute total excess supply.
+        """
+        Compute total excess supply.
 
         :return: The difference between the accepted supply and demand.
         """
@@ -130,7 +139,8 @@ class Allocation:
         pass
 
     def generated_real_power_per_node_period(self, node: int, period: int) -> float:
-        """Compute total real power generated in specified node and period.
+        """
+        Compute total real power generated in specified node and period.
 
         :param node: Node for which the generated real power is computed.
         :param period: Period for which the generated real power in a node is computed.

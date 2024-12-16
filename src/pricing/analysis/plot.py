@@ -1,6 +1,6 @@
-from matplotlib import pyplot as plt
-import pypsa
 import matplotlib as mpl
+import pypsa
+from matplotlib import pyplot as plt
 
 
 def plot_avg_prices(avg_prices, scenario, file_plot=""):

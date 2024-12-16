@@ -1,8 +1,8 @@
 import gurobipy as gp
 from gurobipy import GRB
 
-from code_snippets.demo.pricing.pricing_algorithm import PricingAlgorithm, PricingSuccess, PricingError
-from code_snippets.demo.data.extraction import *
+from code_snippets.demo.data.extraction import extract_from_buyers, extract_from_sellers
+from code_snippets.demo.pricing.pricing_algorithm import PricingAlgorithm, PricingError, PricingSuccess
 from code_snippets.demo.pricing.write_prices import write_prices
 
 
