@@ -62,13 +62,14 @@ class Zonal_NTC(PowerFlowModel):
             for w in base_scenario.network.nodes:
                 if node_to_zone[v] < node_to_zone[w] and (v, w) in base_scenario.network.edges():
                     lines[node_to_zone[v], node_to_zone[w]]['F_max'] += base_scenario.network[v][w]['F_max']
-                    lines[node_to_zone[v], node_to_zone[w]]['B'] = min(lines[node_to_zone[v], node_to_zone[w]]['B'], base_scenario.network[v][w]['B'])
+                    lines[node_to_zone[v], node_to_zone[w]]['B'] = min(lines[node_to_zone[v], node_to_zone[w]]['B'],
+                                                                       base_scenario.network[v][w]['B'])
 
         for z1, z2 in combinations(zones, 2):
             aggregated_network.add_edge(
-                z1, z2, 
-                B = lines[z1, z2]['B'],
-                F_max = lines[z1, z2]['F_max'] * self.factor
+                z1, z2,
+                B=lines[z1, z2]['B'],
+                F_max=lines[z1, z2]['F_max'] * self.factor
             )
 
         r_star = list(aggregated_network.nodes)[0]
