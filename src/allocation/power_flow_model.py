@@ -11,8 +11,8 @@ class PowerFlowModel(ABC):
     """
 
     @abstractmethod
-    def solve(self, scenario: Scenario, configuration: Configuration, file_welfare: Optional[str] = None,
-              u_fixed: Optional[dict] = None):
+    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+              stats_file: Optional[str] = None, u_fixed: Optional[dict] = None):
         pass
 
     @abstractmethod

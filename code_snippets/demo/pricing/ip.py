@@ -226,7 +226,7 @@ class IP(PricingAlgorithm):
             status = 6
 
         if status == 1:
-            if file_prices != "":
+            if file_prices:
                 write_prices(p_vt, gamma_vwt, file_prices, nodes, network, periods)
 
             p_vt = {(v, t): p_vt[v, t].X for v in nodes for t in periods}

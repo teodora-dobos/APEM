@@ -3,13 +3,13 @@ import pypsa
 from matplotlib import pyplot as plt
 
 
-def plot_avg_prices(avg_prices, scenario, file_plot=""):
+def plot_avg_prices(avg_prices, scenario, file_plot="") -> None:
     avg_prices.plot(xlim=(min(scenario.periods), max(scenario.periods)),
                     xlabel='period', ylabel='€/MWh')
     plt.savefig(file_plot, dpi=300)
 
 
-def pypsa_heatmap(self, file_pypsa_network, file_heatmap, avg_prices=None):
+def pypsa_heatmap(self, file_pypsa_network, file_heatmap, avg_prices=None) -> None:
     if avg_prices is None:
         avg_prices = self.avg_node_prices()
 

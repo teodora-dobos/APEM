@@ -1,9 +1,11 @@
 from typing import Optional, Union
 
 import gurobipy as gp
+import pandas as pd
 from gurobipy import GRB
 
 from src.allocation.allocation import Allocation
+from src.allocation.analysis.stats import compute_stats
 from src.allocation.configuration import Configuration
 from src.allocation.error import Error
 from src.allocation.power_flow_model import PowerFlowModel
@@ -16,15 +18,16 @@ class DCOPF(PowerFlowModel):
     Implementation of the Direct Current Optimal Power Flow Model.
     """
 
-    def solve(self, scenario: Scenario, configuration: Configuration, output_file: Optional[str] = None,
-              u_fixed: Optional[dict] = None) -> Union[Allocation, Error]:
+    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+              stats_file: Optional[str] = None, u_fixed: Optional[dict] = None) -> Union[Allocation, Error]:
         """
         Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix B).
 
         :param scenario: scenario for which DCOPF is computed
         :param configuration: values of some parameters to be set in the optimizer
-        :param output_file: name of the file in which results are written
+        :param results_file: name of the file in which results are written
+        :param stats_file: name of the file that contains the statistics
         :param u_fixed: values of the commitment decision variables to be fixed in the problem
         :return: Allocation object if the problem can be solved optimally or an Error object otherwise
         """
@@ -232,12 +235,6 @@ class DCOPF(PowerFlowModel):
 
         model.optimize()
 
-        runtime = model.Runtime
-        num_vars = model.NumVars
-        num_constrs = model.NumConstrs
-        num_bin_vars = model.NumBinVars
-        num_cont_vars = num_vars - num_bin_vars
-        MIP_gap = model.MIPGap
         status = model.getAttr('Status')
 
         if status == GRB.OPTIMAL:
@@ -252,89 +249,37 @@ class DCOPF(PowerFlowModel):
             alpha_vt = {(v, t): alpha_vt[v, t].X for v in nodes for t in periods}
             phi_st = {(s, t): phi_st[s, t].X for s in sellers for t in periods}
 
-            if output_file is not None:
-                f = open(output_file, 'w+')
+            if results_file:
+                results = []
+                for var in model.getVars():
+                    results.append({"variable": var.VarName, "value": var.X})
 
-                for t in periods:
-                    welfare_per = gp.quicksum(
-                        extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
-                        for b in buyers
-                        for lb in blocks_buyers
-                    ) - gp.quicksum(
-                        extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
-                        for s in sellers
-                        for ls in blocks_sellers
-                    ) - gp.quicksum(
-                        extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
-                        for s in sellers
-                    )
-                    f.write(f"WELFARE PERIOD {t}: {welfare_per}\n")
+                df = pd.DataFrame(results, columns=["variable", "value"])
+                df.to_csv(results_file, index=False)
 
-                f.write(f"TOTAL WELFARE: {welfare}\n")
+            allocation = Allocation(welfare, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, self,
+                                    model.Runtime, model.NumVars, model.NumConstrs, model.MIPGap,
+                                    model.NumVars - model.NumBinVars, model.NumBinVars, scenario)
+            if stats_file:
+                compute_stats(stats_file, scenario, configuration, allocation, model)
 
-                total_inelastic_demand = df_buyers['inelastic_dem'].sum()
-
-                elastic_bids = ['size' + str(lb) for lb in blocks_buyers]
-                elastic_demand = df_buyers[elastic_bids].sum(axis=1)
-                total_elastic_demand = elastic_demand.sum()
-
-                f.write(f"TOTAL INELASTIC DEMAND: {total_inelastic_demand}\n")
-                f.write(f"TOTAL ELASTIC DEMAND: {total_elastic_demand}\n")
-
-                supply_bids = ['size' + str(ls) for ls in blocks_sellers]
-                supply = df_sellers[supply_bids].sum(axis=1)
-                f.write(f"TOTAL SUPPLY: {supply.sum()}\n")
-
-                total_supply = sum(y_st[s, t] for s in sellers for t in periods)
-                total_demand = sum(x_bt[b, t] for b in buyers for t in periods)
-
-                fulfilled_elastic_demand = sum(
-                    x_btl[b, t, lb] for b in buyers for t in periods for lb in blocks_buyers)
-                f.write(f"FULFILLED ELASTIC DEMAND: {fulfilled_elastic_demand}\n")
-
-                f.write(f"SUPPLY = {total_supply}\n")
-                f.write(f"DEMAND = {total_demand}\n")
-
-                if not configuration.relaxation:
-                    f.write(f"Final MIP gap value: {model.MIPGap}\n")
-                f.write(f"Nodes: {len(nodes)}\n")
-                f.write(f"Branches: {int(len(f_vwt) / (2 * len(periods)))}\n")
-                f.write(f"Buyers: {len(buyers)}\n")
-                f.write(f"Sellers: {len(sellers)}\n")
-                f.write(f"Constraints: {num_constrs}\n")
-                f.write(f"Variables: {num_vars}\n")
-                f.write(f"Runtime in sec: {runtime}\n")
-
-                if configuration.relaxation:
-                    count_frac, count_binary = 0, 0
-                    for i in u_st.keys():
-                        if 0 < u_st[i] < 1:
-                            count_frac += 1
-                        else:
-                            count_binary += 1
-
-                    f.write(f"COUNT FRACTIONAL: {count_frac}\n")
-                    f.write(f"COUNT BINARY: {count_binary}\n")
-
-                for v in model.getVars():
-                    f.write(f"{v.VarName} = {v.X}\n")
-
-                f.write("\n")
-                f.close()
-
-            return Allocation(welfare, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, self,
-                              runtime, num_vars, num_constrs, MIP_gap, num_cont_vars, num_bin_vars, scenario)
+            return allocation
 
         else:
-            if output_file is not None:
-                f = open(output_file, 'w+')
-                f.write(f"{self} allocation error with code {status}")
-                f.close()
+            if results_file:
+                status_message = {
+                    GRB.INF_OR_UNBD: "Model is infeasible or unbounded",
+                    GRB.INFEASIBLE: "Model is infeasible",
+                    GRB.UNBOUNDED: "Model is unbounded",
+                    GRB.INTERRUPTED: "Optimization was interrupted",
+                }.get(model.Status, "Optimization failed with unknown status")
+
+                error_data = [{"status": model.Status, "message": status_message}]
+                df = pd.DataFrame(error_data, columns=["status", "message"])
+                df.to_csv(results_file, index=False)
 
             print(f'{self} allocation error with code {status}')
-
             error = Error(status)
-
             return error
 
     def __str__(self):

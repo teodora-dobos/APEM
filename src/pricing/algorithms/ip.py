@@ -31,7 +31,7 @@ class IP(PricingAlgorithm):
         :return: Pricing object if prices could be computed or Error object otherwise
         """
         if allocation.status != 1:
-            if file_prices is not None:
+            if file_prices:
                 write_prices_failure(file_prices, str(self), -1)
 
             print(f'{self} pricing error with code -1')
@@ -271,12 +271,12 @@ class IP(PricingAlgorithm):
                               llocs=LLOCS(total_llocs, llocs_buyers, llocs_sellers, llocs_network,
                                           llocs_per_buyer, llocs_per_seller, llocs_per_line))
 
-            if file_prices is not None:
+            if file_prices:
                 write_prices(file_prices, pricing, scenario)
 
             return pricing
 
-        if file_prices is not None:
+        if file_prices:
             write_prices_failure(file_prices, str(self), status)
 
         print(f'{self} pricing error with code {status}')

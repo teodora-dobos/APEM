@@ -30,7 +30,7 @@ class MinMWP(PricingAlgorithm):
         :return: Pricing object if prices could be computed or Error object otherwise
         """
         if allocation.status != 1:
-            if file_prices is not None:
+            if file_prices:
                 write_prices_failure(file_prices, str(self), -1)
 
             print(f'{self} pricing error with code -1')
@@ -184,12 +184,12 @@ class MinMWP(PricingAlgorithm):
                               mwps=MWPS(total_mwps, mwps_buyers, mwps_sellers, mwps_network,
                                         mwps_per_buyer, mwps_per_seller, mwps_per_line))
 
-            if file_prices is not None:
+            if file_prices:
                 write_prices(file_prices, pricing, scenario)
 
             return pricing
 
-        if file_prices is not None:
+        if file_prices:
             write_prices_failure(file_prices, str(self), status)
 
         print(f'{self} pricing error with code {status}')

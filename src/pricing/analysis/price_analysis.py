@@ -1,20 +1,24 @@
+from typing import Optional, Tuple
 import pandas as pd
 
+from src.allocation.allocation import Allocation
 from src.data.analysis.plot import plot_supply_demand
+from src.data.parsing.scenario import Scenario
 from src.pricing.algorithms.elmp import ELMP
 from src.pricing.algorithms.ip import IP
 from src.pricing.algorithms.min_mwp import MinMWP
 from src.pricing.analysis.plot import plot_avg_prices, pypsa_heatmap
+from src.pricing.analysis.pricing import Pricing, GLOCS, LLOCS, MWPS
 
 
 class PriceAnalysis:
 
-    def __init__(self, scenario, allocation, pricing):
+    def __init__(self, scenario: Scenario, allocation: Allocation, pricing: Pricing):
         self.scenario = scenario
         self.allocation = allocation
         self.pricing = pricing
 
-    def compute_glocs(self, file_glocs="", mode="w"):
+    def compute_glocs(self, file_glocs="", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if pricing.glocs is None:
@@ -25,7 +29,7 @@ class PriceAnalysis:
                 else:
                     return None
 
-            if file_glocs != "":
+            if file_glocs:
                 file = open(file_glocs, mode)
                 file.write(f"GLOCs buyers: {pricing.glocs.glocs_buyers}\n")
                 file.write(f"GLOCs sellers: {pricing.glocs.glocs_sellers}\n")
@@ -38,7 +42,7 @@ class PriceAnalysis:
 
         return None
 
-    def compute_llocs(self, file_llocs="", mode="w"):
+    def compute_llocs(self, file_llocs="", mode="w") -> Optional[LLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if pricing.llocs is None:
@@ -49,7 +53,7 @@ class PriceAnalysis:
                 else:
                     return None
 
-            if file_llocs != "":
+            if file_llocs:
                 file = open(file_llocs, mode)
                 file.write(f"LLOCs buyers: {pricing.llocs.llocs_buyers}\n")
                 file.write(f"LLOCs sellers: {pricing.llocs.llocs_sellers}\n")
@@ -62,7 +66,7 @@ class PriceAnalysis:
 
         return None
 
-    def compute_mwps(self, file_mwps="", mode="w"):
+    def compute_mwps(self, file_mwps="", mode="w") -> Optional[MWPS]:
         pricing = self.pricing
         if pricing.status == 1:
             if pricing.mwps is None:
@@ -73,7 +77,7 @@ class PriceAnalysis:
                 else:
                     return None
 
-            if file_mwps != "":
+            if file_mwps:
                 file = open(file_mwps, mode)
                 file.write(f"MWPs buyers: {pricing.mwps.mwps_buyers}\n")
                 file.write(f"MWPs sellers: {pricing.mwps.mwps_sellers}\n")
@@ -86,45 +90,44 @@ class PriceAnalysis:
 
         return None
 
-    def compute_objectives(self, file_objectives="", mode="w"):
+    def compute_objectives(self, file_objectives="", mode="w") -> Pricing:
         self.compute_glocs(file_glocs=file_objectives, mode=mode)
         self.compute_llocs(file_llocs=file_objectives, mode="a")
         self.compute_mwps(file_mwps=file_objectives, mode="a")
 
         return self.pricing
 
-    def performance_statistics(self, file_stats="", mode="w"):
+    def performance_statistics(self, file_stats="", mode="w") -> Tuple[float, float, float]:
         pricing = self.pricing
 
-        if file_stats != "":
+        if file_stats:
             f = open(file_stats, mode)
             f.write(f"Runtime in seconds: {pricing.runtime}\n")
             f.write(f"Number of Variables: {pricing.num_vars}\n")
-            f.write(f"Number of Constraints: {pricing.num_constrs}\n")
-            f.write(f"\n")
+            f.write(f"Number of Constraints: {pricing.num_constrs}\n\n")
             f.close()
 
         return pricing.runtime, pricing.num_vars, pricing.num_constrs
 
-    def avg_price(self, file_avg="", mode="w"):
+    def avg_price(self, file_avg="", mode="w") -> float:
         prices = self.pricing.node_prices.values()
         avg = sum(prices) / len(prices) if len(prices) > 0 else 0
 
-        if file_avg != "":
+        if file_avg:
             file = open(file_avg, mode)
             file.write(f"Average price: {avg}\n\n")
             file.close()
 
         return avg
 
-    def avg_prices_periods(self, file_plot="", file_avg="", mode="w"):
+    def avg_prices_periods(self, file_plot="", file_avg="", mode="w") -> dict:
         avg_prices = pd.DataFrame(columns=['period', 'avg_price'])
         for (_, t), p in self.pricing.node_prices.items():
             avg_prices.loc[len(avg_prices)] = {'period': t, 'avg_price': p}
 
         avg_prices = avg_prices.groupby(['period']).mean()
 
-        if file_plot != "":
+        if file_plot:
             plot_avg_prices(avg_prices, self.scenario, file_plot)
 
         avg_prices_dict = dict()
@@ -132,7 +135,7 @@ class PriceAnalysis:
         for period in avg_prices.index.values:
             avg_prices_dict[period] = avg_prices.at[period, 'avg_price']
 
-        if file_avg != "":
+        if file_avg:
             file = open(file_avg, mode)
             for period, price in avg_prices_dict.items():
                 file.write(f"Average price in period {period}: {price}\n")
@@ -141,7 +144,7 @@ class PriceAnalysis:
 
         return avg_prices_dict
 
-    def avg_node_prices(self, file_avg="", mode="w"):
+    def avg_node_prices(self, file_avg="", mode="w") -> dict:
         avg_prices = pd.DataFrame(columns=['node', 'avg_price'])
         for (v, _), p in self.pricing.node_prices.items():
             avg_prices.loc[len(avg_prices)] = {'node': str(v), 'avg_price': p}
@@ -153,7 +156,7 @@ class PriceAnalysis:
         for node in avg_prices.index.values:
             avg_prices_dict[node] = avg_prices.at[node, 'avg_price']
 
-        if file_avg != "":
+        if file_avg:
             file = open(file_avg, mode)
             for node, price in avg_prices_dict.items():
                 file.write(f"Average price at node {node}: {price}\n")
@@ -162,7 +165,7 @@ class PriceAnalysis:
 
         return avg_prices_dict
 
-    def compute_all_statistics(self, dir_stats, file_pypsa_network=""):
+    def compute_all_statistics(self, dir_stats, file_pypsa_network="") -> None:
         plot_supply_demand(dir_stats, self.scenario)
 
         file_stats = f"{dir_stats}/{self.pricing.used_algorithm}_stats.txt"
@@ -173,6 +176,6 @@ class PriceAnalysis:
                                 file_avg=file_stats, mode="a")
         avg_prices = self.avg_node_prices(file_avg=file_stats, mode="a")
 
-        if file_pypsa_network != "":
+        if file_pypsa_network:
             pypsa_heatmap(file_pypsa_network, f"{dir_stats}/{self.pricing.used_algorithm}_heatmap.png",
                           avg_prices)

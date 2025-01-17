@@ -60,8 +60,8 @@ def solve_allocation_problem(dataset, power_flow_model, configuration, u_fixed=N
 
     os.makedirs(path, exist_ok=True)
 
-    return power_flow_model.solve(dataset, configuration, output_file=path + f'/{power_flow_model}.txt',
-                                  u_fixed=u_fixed)
+    return power_flow_model.solve(dataset, configuration, results_file=path + f'/{power_flow_model}.csv',
+                                  stats_file=path + f'/{power_flow_model}_stats.txt', u_fixed=u_fixed)
 
 
 def solve_pricing_problem(dataset, allocation, pricing_algorithm, power_flow_model, prices=None):
@@ -79,7 +79,7 @@ def solve_pricing_problem(dataset, allocation, pricing_algorithm, power_flow_mod
     os.makedirs(path, exist_ok=True)
 
     pricing = pricing_algorithm.compute_prices(allocation, dataset,
-                                               file_prices=path + f"/{pricing_algorithm}_prices.txt",
+                                               file_prices=path + f"/{pricing_algorithm}_prices.csv",
                                                fixed_prices=prices)
 
     return pricing
