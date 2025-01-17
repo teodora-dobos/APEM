@@ -24,7 +24,7 @@ class Zonal_NTC(PowerFlowModel):
         self.zonal_configuration = zonal_configuration
         self.factor = factor
 
-    def create_zonal_scenario_NTC(self, base_scenario: Scenario, network: nx.Graph, name: str) -> Scenario:
+    def create_zonal_scenario_NTC(self, base_scenario: Scenario, network: pypsa.Network, name: str) -> Scenario:
         """
         Construct a zonal scenario based on a given nodal base scenario.
         """

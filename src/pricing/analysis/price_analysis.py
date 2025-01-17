@@ -21,7 +21,7 @@ class PriceAnalysis:
     def compute_glocs(self, file_glocs="", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
-            if pricing.glocs is None:
+            if not pricing.glocs:
                 elmp = ELMP()
                 elmp_results = elmp.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
                 if elmp_results.status == 1:
@@ -45,7 +45,7 @@ class PriceAnalysis:
     def compute_llocs(self, file_llocs="", mode="w") -> Optional[LLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
-            if pricing.llocs is None:
+            if not pricing.llocs:
                 ip = IP()
                 ip_results = ip.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
                 if ip_results.status == 1:
@@ -69,7 +69,7 @@ class PriceAnalysis:
     def compute_mwps(self, file_mwps="", mode="w") -> Optional[MWPS]:
         pricing = self.pricing
         if pricing.status == 1:
-            if pricing.mwps is None:
+            if not pricing.mwps:
                 min_mwp = MinMWP()
                 min_mwp_results = min_mwp.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
                 if min_mwp_results.status == 1:
@@ -130,8 +130,7 @@ class PriceAnalysis:
         if file_plot:
             plot_avg_prices(avg_prices, self.scenario, file_plot)
 
-        avg_prices_dict = dict()
-
+        avg_prices_dict = {}
         for period in avg_prices.index.values:
             avg_prices_dict[period] = avg_prices.at[period, 'avg_price']
 
@@ -151,8 +150,7 @@ class PriceAnalysis:
 
         avg_prices = avg_prices.groupby(['node']).mean()
 
-        avg_prices_dict = dict()
-
+        avg_prices_dict = {}
         for node in avg_prices.index.values:
             avg_prices_dict[node] = avg_prices.at[node, 'avg_price']
 
