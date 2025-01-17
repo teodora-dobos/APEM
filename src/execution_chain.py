@@ -79,7 +79,7 @@ def solve_pricing_problem(dataset, allocation, pricing_algorithm, power_flow_mod
     os.makedirs(path, exist_ok=True)
 
     pricing = pricing_algorithm.compute_prices(allocation, dataset,
-                                               file_prices=path + f"/{pricing_algorithm}_prices.txt",
+                                               file_prices=path + f"/{pricing_algorithm}_prices.csv",
                                                fixed_prices=prices)
 
     return pricing
