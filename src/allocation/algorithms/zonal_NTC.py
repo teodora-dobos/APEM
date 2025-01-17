@@ -84,8 +84,10 @@ class Zonal_NTC(PowerFlowModel):
         return Scenario(f'{name}', df_buyers, df_sellers, aggregated_network, nodes_agents,
                         base_scenario.periods, base_scenario.blocks_buyers, base_scenario.blocks_sellers, r_star)
 
-    def solve(self, scenario: Scenario, configuration: Configuration, output_file: Optional[str] = None,
-              u_fixed: Optional[dict] = None) -> Tuple[Scenario, Union[Allocation, Error]]:
+    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+              stats_file: Optional[str] = None, u_fixed: Optional[dict] = None) \
+            -> Tuple[Scenario, Union[Allocation, Error]]:
+
         # load the PyPSA network
         if scenario.name == 'PyPSA_Eur_Large':
             n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
@@ -97,7 +99,7 @@ class Zonal_NTC(PowerFlowModel):
 
         # solve a DCOPF problem for the constructed zonal network
         dcopf = DCOPF()
-        return zonal_scenario, dcopf.solve(zonal_scenario, configuration, output_file)
+        return zonal_scenario, dcopf.solve(zonal_scenario, configuration, results_file)
 
     def __str__(self):
         return 'Zonal_NTC'
