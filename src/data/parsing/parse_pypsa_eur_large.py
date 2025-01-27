@@ -10,7 +10,7 @@ path = './src/data/raw_data/pypsa_eur_large/'
 
 
 class ParsePyPSAEurLarge(ParseData):
-    def parse_data(self, day=None):
+    def parse_data(self):
         df_sellers = pd.read_csv(path + 'sellers.csv')
         df_buyers = pd.read_csv(path + 'buyers.csv')
         network = nx.read_edgelist(path + 'network.csv', nodetype=int, delimiter=',')
@@ -30,4 +30,4 @@ class ParsePyPSAEurLarge(ParseData):
         blocks_sellers = range(1, 1 + 1)
 
         return Scenario('PyPSA_Eur_Large', df_buyers, df_sellers, network, nodes_agents, periods, blocks_buyers,
-                        blocks_sellers, r_star)
+                        blocks_sellers, r_star, path + 'elec_s_334m_ec_lv1.5_.nc')

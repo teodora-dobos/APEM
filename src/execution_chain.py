@@ -37,8 +37,8 @@ class Datasets(Enum):
     ARPA = ParseARPA()
 
 
-def retrieve_data(dataset, day=None):
-    return dataset.value.parse_data(day)
+def retrieve_data(dataset):
+    return dataset.value.parse_data()
 
 
 def create_configuration(MIP_gap=1e-4, optimality_tol=1e-6, time_limit=60 * 60, work_limit=60 * 60, threads=0,

@@ -206,12 +206,11 @@ class DCOPF(PowerFlowModel):
             (f_vwt[v, w, t] - network[v][w]['B'] * (alpha_vt[v, t] - alpha_vt[w, t]) == 0
              for v in nodes
              for w in list(network.neighbors(v))
-             for t in periods),
-            name='supply_demand'
+             for t in periods)
         )
         # 15
         model.addConstrs(
-            gp.quicksum(
+            (gp.quicksum(
                 y_st[s, t]
                 for s in nodes_agents[v]['sellers']
             )
@@ -225,7 +224,8 @@ class DCOPF(PowerFlowModel):
             )
             == 0
             for t in periods
-            for v in nodes
+            for v in nodes),
+            name='supply_demand'
         )
         # 16
         model.addConstrs(
