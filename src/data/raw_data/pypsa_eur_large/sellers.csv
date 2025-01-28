@@ -1,4 +1,4 @@
-period,Generator,seller,carrier,node,min_prod,max_prod,size1,cost1,no_load_cost,min_uptime
+period,generator,seller,carrier,node,min_prod,max_prod,size1,cost1,no_load_cost,min_uptime
 1,3371 onwind,2,onwind,3371,0.0,0.0,0.0,0.02496186380296872,0.0,0
 2,3371 onwind,2,onwind,3371,0.0,0.0,0.0,0.02496186380296872,0.0,0
 3,3371 onwind,2,onwind,3371,0.0,0.0,0.0,0.02496186380296872,0.0,0
