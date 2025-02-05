@@ -14,7 +14,7 @@ def plot_avg_prices(avg_prices, scenario, file_plot="") -> None:
     plt.savefig(file_plot, dpi=300)
 
 
-def pypsa_heatmap(file_pypsa_network: str, file_heatmap:str, avg_prices:dict=None) -> None:   
+def plot_pypsa_heatmap(file_pypsa_network: str, file_heatmap:str, avg_prices:dict=None) -> None:   
     """Creates a heatmap with the (average) nodal prices for the PyPSA network.
 
     Args:
@@ -57,7 +57,7 @@ def pypsa_heatmap(file_pypsa_network: str, file_heatmap:str, avg_prices:dict=Non
     # Create figure and axis
     fig, ax = plt.subplots(figsize=(15, 15))
 
-     # Plot GADM map of Germany
+    # Plot GADM map of Germany
     map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_4.shp")
     map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
     

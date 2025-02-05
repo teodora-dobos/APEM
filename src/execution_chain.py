@@ -94,7 +94,7 @@ def analyse_results(dataset, allocation, pricing, power_flow_model, file_pypsa_n
     os.makedirs(path, exist_ok=True)
 
     analysis = PriceAnalysis(dataset, allocation, pricing)
-    analysis.compute_and_plot_all_statistics(path, file_pypsa_network=file_pypsa_network)
+    analysis.compute_all_stats_and_plot_data(path, file_pypsa_network=file_pypsa_network)
 
     return analysis
 

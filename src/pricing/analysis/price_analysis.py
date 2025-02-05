@@ -7,7 +7,7 @@ from src.data.parsing.scenario import Scenario
 from src.pricing.algorithms.elmp import ELMP
 from src.pricing.algorithms.ip import IP
 from src.pricing.algorithms.min_mwp import MinMWP
-from src.pricing.analysis.plot import plot_avg_prices, pypsa_heatmap
+from src.pricing.analysis.plot import plot_avg_prices, plot_pypsa_heatmap
 from src.pricing.analysis.pricing import Pricing, GLOCS, LLOCS, MWPS
 
 
@@ -172,7 +172,7 @@ class PriceAnalysis:
         return avg_prices_dict
 
 
-    def compute_and_plot_all_statistics(self, dir_stats:str, file_pypsa_network:str="") -> None:
+    def compute_all_stats_and_plot_data(self, dir_stats:str, file_pypsa_network:str="") -> None:
         plot_supply_demand(dir_stats, self.scenario)
 
         file_stats = f"{dir_stats}/{self.pricing.used_algorithm}_stats.txt"
@@ -184,5 +184,5 @@ class PriceAnalysis:
         avg_prices = self.avg_node_prices(file_avg=file_stats, mode="a")
 
         if file_pypsa_network:
-            pypsa_heatmap(file_pypsa_network, f"{dir_stats}/{self.pricing.used_algorithm}_heatmap.png",
+            plot_pypsa_heatmap(file_pypsa_network, f"{dir_stats}/{self.pricing.used_algorithm}_heatmap.png",
                           avg_prices)
