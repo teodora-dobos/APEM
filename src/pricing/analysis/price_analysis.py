@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 import pandas as pd
 
+from src.allocation.algorithms.zonal_NTC import Zonal_NTC
 from src.allocation.allocation import Allocation
 from src.data.analysis.plot import plot_supply_demand
 from src.data.parsing.scenario import Scenario
@@ -172,7 +173,7 @@ class PriceAnalysis:
         return avg_prices_dict
 
 
-    def compute_all_stats_and_plot_data(self, dir_stats:str, file_pypsa_network:str="") -> None:
+    def compute_all_stats_and_plot_data(self, dir_stats:str, power_flow_model, file_pypsa_network:str="") -> None:
         plot_supply_demand(dir_stats, self.scenario)
 
         file_stats = f"{dir_stats}/{self.pricing.used_algorithm}_stats.txt"
@@ -184,5 +185,6 @@ class PriceAnalysis:
         avg_prices = self.avg_node_prices(file_avg=file_stats, mode="a")
 
         if file_pypsa_network:
+            zonal_config = power_flow_model.value.zonal_configuration if isinstance(power_flow_model.value, Zonal_NTC) else ""
             plot_pypsa_heatmap(file_pypsa_network, f"{dir_stats}/{self.pricing.used_algorithm}_heatmap.png",
-                          avg_prices)
+                          avg_prices, zonal_config, self.scenario.name)
