@@ -79,15 +79,16 @@ class Scenario:
         f.close()
 
 
-    def plot_network(self, zonal_configuration:str="") -> None:
+    def plot_network(self, zonal_config:str="") -> None:
         """
         Plots the PyPSA network.
         
         Args:
-            zonal_configuration (str): If provided, nodes are colored according to their zonal assignments. Otherwise, they are colored black.
+            zonal_config (str, optional): if provided, nodes are colored according to their zonal assignments. Otherwise, they are colored black.
         """     
-        # Define and create results directory, if not exists
-        power_flow_model = "Zonal_NTC" if zonal_configuration else "DCOPF"
+        
+        # Define power flow model and create results directory, if not exists
+        power_flow_model = "Zonal_NTC" if zonal_config else "DCOPF"
         results_directory = os.path.join("results", f"{self.name}_results", power_flow_model)
         os.makedirs(results_directory, exist_ok=True)
             
@@ -95,22 +96,27 @@ class Scenario:
         n = pypsa.Network(self.network_file)
         
         # Override network with the corresponding nodal PyPSA network, if required
-        if zonal_configuration and self.name == 'PyPSA_Eur_Large':
+        if zonal_config and self.name == 'PyPSA_Eur_Large':
             n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
-        elif zonal_configuration and self.name == 'PyPSA_Eur_Small':
+        elif zonal_config and self.name == 'PyPSA_Eur_Small':
             n = pypsa.Network("src/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
         
-        # Filter lines and extract longitude (x) & latitude (y)
+        # Filter power lines with non-zero capacity 
         n.lines = n.lines[n.lines["s_nom"] > 0]
-        geometry = [Point(xy) for xy in zip(n.buses["x"], n.buses["y"])]
-        crs = "EPSG:4326"
-        geo_df = gpd.GeoDataFrame(n.buses, crs=crs, geometry=geometry)
+        
+        # Extract longitude (x) & latitude (y) for buses
+        CRS="EPSG:4326"
+        geo_df = gpd.GeoDataFrame(
+            n.buses, 
+            crs=CRS, 
+            geometry=[Point(xy) for xy in zip(n.buses["x"], n.buses["y"])]
+        )      
     
         # Assign colors based on zonal configuration
         geo_df["color"] = "black" # default color
-        if zonal_configuration:
+        if zonal_config:
             # Load csv file with node-to-zone mapping
-            df_zones = pd.read_csv(os.path.join(results_directory, zonal_configuration, "node_to_zone.csv"), dtype={"node": str, "zone": str})  
+            df_zones = pd.read_csv(os.path.join(results_directory, zonal_config, "node_to_zone.csv"), dtype={"node": str, "zone": str})  
             
             # Merge geo_df with df_zones on the 'node'
             geo_df = geo_df.merge(df_zones[["node", "zone"]], left_index=True, right_on="node", how="inner")
@@ -123,28 +129,29 @@ class Scenario:
             # Assign colors to buses based on zones
             geo_df["color"] = geo_df["zone"].map(zone_to_color_mapping)  
            
-        # Extract line geometries
-        line_geometries = [
-            LineString([(n.buses.loc[line["bus0"], "x"], n.buses.loc[line["bus0"], "y"] ),
-                        (n.buses.loc[line["bus1"], "x"], n.buses.loc[line["bus1"], "y"] )])
-            for _, line in n.lines.iterrows()
-        ]
-        line_df = gpd.GeoDataFrame(n.lines, crs=crs, geometry=line_geometries)
+        # Create GeoDataFrame for lines
+        line_df = gpd.GeoDataFrame(
+            n.lines, 
+            crs=CRS, 
+            geometry=[
+                LineString([(n.buses.loc[line["bus0"], "x"], n.buses.loc[line["bus0"], "y"] ),
+                            (n.buses.loc[line["bus1"], "x"], n.buses.loc[line["bus1"], "y"] )])
+                for _, line in n.lines.iterrows()
+            ]
+        )       
     
-        # Clear previous plot
+        # Clear previous plot and create figure
         plt.clf()
-        
-        # Create figure and axis
         fig, ax = plt.subplots(figsize=(15, 15))
         
-        # Plot GADM map of Germany
+        # Load and plot GADM map of Germany
         map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_4.shp")
         map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
         
         # Plot power lines
         line_df.plot(ax=ax, color="gray", linewidth=0.8, alpha=0.6)
 
-        # Plot bus nodes
+        # Plot bus nodes with longitude & latitude 
         geo_df.plot(
             ax=ax,
             markersize=50,
@@ -152,14 +159,14 @@ class Scenario:
             color=geo_df["color"]
         )
         
-        if zonal_configuration:
+        if zonal_config:
             # Add legend with zone colors to the plot
             sorted_zones = sorted(unique_zones, key=str)
             legend_handles = [mpatches.Patch(color=zone_to_color_mapping[zone], label=f"Zone {zone}") for zone in sorted_zones]
-            ax.legend(handles=legend_handles, loc="upper left", title="Zones")
+            ax.legend(handles=legend_handles, loc="upper left", title=f"Zones in {zonal_config}")
 
         # Save figure
-        file_name = f"{self.name}_{zonal_configuration}" if zonal_configuration else self.name
+        file_name = f"{self.name}_{zonal_config}" if zonal_config else self.name
         plt.savefig(f"{results_directory}/{file_name}_network.png", bbox_inches='tight', dpi=300)
     
     

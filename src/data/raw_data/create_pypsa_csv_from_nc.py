@@ -67,7 +67,7 @@ def main():
         print("INFO: Skipping statistics computation. To compute them, please provide the '--compute_stats' flag.")
 
     # Export nodes-agent relationships to a CSV file
-    nodes_agents = n.generators[["seller", "node"]].to_csv(os.path.join(BASE_PATH, "nodes_agents.csv"), index=False)
+    n.generators[["seller", "node"]].to_csv(os.path.join(BASE_PATH, "nodes_agents.csv"), index=False)
 
     # Rename, generate, and drop generator columns
     n.generators = n.generators.rename(columns={
