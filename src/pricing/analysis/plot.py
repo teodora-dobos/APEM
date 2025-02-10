@@ -16,15 +16,14 @@ def plot_avg_prices(avg_prices, scenario, file_plot="") -> None:
     plt.savefig(file_plot, dpi=300)
 
 
-def plot_pypsa_heatmap(file_pypsa_network: str, file_heatmap:str, avg_prices:dict=None, zonal_config:str="", dataset:str="") -> None:   
+def plot_pypsa_heatmap(file_heatmap:str, dataset:str, avg_prices:dict=None, zonal_config:str="") -> None:   
     """Creates a heatmap with the (average) nodal (or zonal) prices for the PyPSA network.
 
     Args:
-        file_pypsa_network (str): path to the PyPSA network to be visualized
         file_heatmap (str): path to store the resulting heatmap
+        dataset (str): the PyPSA dataset being used
         avg_prices (dict, optional): average nodal (or zonal) prices
         zonal_config (str, optional): whether Zonal_NTC was used
-        dataset (str, optional): the PyPSA dataset being used
     """
     
     # Define power flow model and create results directory, if not exists
@@ -40,7 +39,10 @@ def plot_pypsa_heatmap(file_pypsa_network: str, file_heatmap:str, avg_prices:dic
     avg_prices_copy = avg_prices.copy()   
     
     # Load PyPSA network
-    n = pypsa.Network(file_pypsa_network)
+    if dataset == 'PyPSA_Eur_Large':
+        n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+    elif dataset == 'PyPSA_Eur_Small':
+        n = pypsa.Network("src/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
     
     # Handle zonal mapping, if applicable
     if zonal_config:

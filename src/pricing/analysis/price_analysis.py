@@ -174,7 +174,7 @@ class PriceAnalysis:
         return avg_prices_dict
 
 
-    def compute_all_stats_and_plot_data(self, dir_stats:str, power_flow_model, file_pypsa_network:str="") -> None:
+    def compute_all_stats_and_plot_data(self, dir_stats:str, power_flow_model) -> None:
         plot_supply_demand(dir_stats, self.scenario)
         
         pf_model_value = power_flow_model.value
@@ -192,6 +192,6 @@ class PriceAnalysis:
                                 file_avg=file_stats, mode="a")
         avg_prices = self.avg_node_prices(file_avg=file_stats, mode="a")
 
-        if file_pypsa_network:
-            plot_pypsa_heatmap(file_pypsa_network, f"{path}/{self.pricing.used_algorithm}_heatmap.png",
-                          avg_prices, zonal_config, self.scenario.name)
+        if self.scenario.name in ["PyPSA_Eur_Large", "PyPSA_Eur_Small"]:
+            plot_pypsa_heatmap(f"{path}/{self.pricing.used_algorithm}_heatmap.png", self.scenario.name,
+                          avg_prices, zonal_config)

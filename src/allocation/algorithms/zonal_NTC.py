@@ -103,7 +103,7 @@ class Zonal_NTC(PowerFlowModel):
         # load the PyPSA network
         if scenario.name == 'PyPSA_Eur_Large':
             n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
-        else:
+        elif scenario.name == 'PyPSA_Eur_Small':
             n = pypsa.Network("src/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
 
         # create a zonal NTC scenario
