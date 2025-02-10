@@ -174,10 +174,9 @@ class PriceAnalysis:
         return avg_prices_dict
 
 
-    def compute_all_stats_and_plot_data(self, dir_stats:str, power_flow_model) -> None:
+    def compute_all_stats_and_plot_data(self, dir_stats:str, pf_model_value) -> None:
         plot_supply_demand(dir_stats, self.scenario)
         
-        pf_model_value = power_flow_model.value
         zonal_config = pf_model_value.zonal_configuration if isinstance(pf_model_value, Zonal_NTC) else ""
         zonal_path = zonal_config + "/" if zonal_config else ""
         
