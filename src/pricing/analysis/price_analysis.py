@@ -175,7 +175,8 @@ class PriceAnalysis:
 
 
     def compute_all_stats_and_plot_data(self, dir_stats:str, pf_model_value) -> None:
-        plot_supply_demand(dir_stats, self.scenario)
+        if self.scenario.name != "ARPA":
+            plot_supply_demand(dir_stats, self.scenario)
         
         zonal_config = pf_model_value.zonal_configuration if isinstance(pf_model_value, Zonal_NTC) else ""
         zonal_path = zonal_config + "/" if zonal_config else ""
@@ -187,8 +188,9 @@ class PriceAnalysis:
         self.compute_objectives(file_objectives=file_stats)
         self.performance_statistics(file_stats=file_stats, mode="a")
         self.avg_price(file_avg=file_stats, mode="a")
-        self.avg_prices_periods(file_plot=f"{path}/{self.pricing.used_algorithm}_prices_periods.png",
-                                file_avg=file_stats, mode="a")
+        if self.scenario.name != "ARPA":
+            self.avg_prices_periods(file_plot=f"{path}/{self.pricing.used_algorithm}_prices_periods.png",
+                                    file_avg=file_stats, mode="a")
         avg_prices = self.avg_node_prices(file_avg=file_stats, mode="a")
 
         if self.scenario.name in ["PyPSA_Eur_Large", "PyPSA_Eur_Small"]:

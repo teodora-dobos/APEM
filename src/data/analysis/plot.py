@@ -17,3 +17,4 @@ def plot_supply_demand(dir_plots, scenario):
     supply.plot(xlim=(min(scenario.periods), max(scenario.periods)), xlabel='period', ylabel='MWh',
                 color='orange')
     plt.savefig(f"{dir_plots}/{scenario.__str__()}_supply.png", dpi=300)
+    plt.close()

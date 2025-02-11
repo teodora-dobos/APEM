@@ -14,6 +14,7 @@ def plot_avg_prices(avg_prices, scenario, file_plot="") -> None:
     avg_prices.plot(xlim=(min(scenario.periods), max(scenario.periods)),
                     xlabel='period', ylabel='€/MWh')
     plt.savefig(file_plot, dpi=300)
+    plt.close()
 
 
 def plot_pypsa_heatmap(file_heatmap:str, dataset:str, avg_prices:dict=None, zonal_config:str="") -> None:   
@@ -96,11 +97,12 @@ def plot_pypsa_heatmap(file_heatmap:str, dataset:str, avg_prices:dict=None, zona
     fig, ax = plt.subplots(figsize=(15, 15))
 
     # Load and plot GADM map of Germany
-    map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_4.shp")
+    map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_1.shp")
     map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
+    map_germany.boundary.plot(ax=ax, color="lightgray", linewidth=1.0)  # show state borders
     
     # Plot power lines
-    line_df.plot(ax=ax, color="gray", linewidth=0.8, alpha=0.6)
+    line_df.plot(ax=ax, color="gray", linewidth=1.0, alpha=0.7)
     
     # Plot bus nodes with longitude & latitude and price-based color scale
     geo_df.plot(
@@ -154,3 +156,4 @@ def plot_pypsa_heatmap(file_heatmap:str, dataset:str, avg_prices:dict=None, zona
 
     # Save heatmap
     plt.savefig(file_heatmap, bbox_inches="tight", dpi=300)
+    plt.close(fig)

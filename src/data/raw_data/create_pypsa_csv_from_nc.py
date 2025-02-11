@@ -126,6 +126,7 @@ def main():
     ax.grid(False)
     plt.legend().get_frame().set_facecolor('white')
     plt.savefig(os.path.join(PLOT_PATH, f"{NETWORK_NAME}_p_max_pu.png"), dpi=300)
+    plt.close()
 
     # Calculate maximum production and size1 for generators and drop unused columns
     n.generators.insert(7, "max_prod", n.generators["p_max_pu"] * n.generators["p_nom"])
@@ -189,6 +190,7 @@ def main():
     n.plot(boundaries=[6, 15, 47, 55], bus_colors='darkorange', line_colors='darkgreen', color_geomap=True,
            bus_sizes=1e-2)
     plt.savefig(os.path.join(PLOT_PATH, f"{NETWORK_NAME}.png"), bbox_inches='tight', dpi=300)
+    plt.close()
 
 
 if __name__ == "__main__":

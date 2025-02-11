@@ -145,16 +145,17 @@ class Scenario:
         fig, ax = plt.subplots(figsize=(15, 15))
         
         # Load and plot GADM map of Germany
-        map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_4.shp")
+        map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_1.shp")
         map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
+        map_germany.boundary.plot(ax=ax, color="lightgray", linewidth=1.0)  # show state borders
         
         # Plot power lines
-        line_df.plot(ax=ax, color="gray", linewidth=0.8, alpha=0.6)
+        line_df.plot(ax=ax, color="gray", linewidth=1.0, alpha=0.7)
 
         # Plot bus nodes with longitude & latitude 
         geo_df.plot(
             ax=ax,
-            markersize=50,
+            markersize=100,
             marker="o",
             color=geo_df["color"]
         )
@@ -168,6 +169,7 @@ class Scenario:
         # Save figure
         file_name = f"{self.name}_{zonal_config}" if zonal_config else self.name
         plt.savefig(f"{results_directory}/{file_name}_network.png", bbox_inches='tight', dpi=300)
+        plt.close(fig)
     
     
     def get_geo_coordinates(self) -> dict:

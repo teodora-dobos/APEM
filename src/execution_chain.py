@@ -1,5 +1,4 @@
 import os.path
-import shutil
 from enum import Enum
 
 from src.allocation.algorithms.dcopf import DCOPF
@@ -72,10 +71,6 @@ def _solve_pricing_problem(dataset, allocation, pricing_algorithm, power_flow_mo
 
     zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, Zonal_NTC) else ""
     path = f"results/{dataset}_results/{power_flow_model}/{zonal_part}{pricing_algorithm}_results"
-
-    if os.path.exists(path):
-        shutil.rmtree(path)
-
     os.makedirs(path, exist_ok=True)
 
     pricing = pricing_algorithm.compute_prices(allocation, dataset,
