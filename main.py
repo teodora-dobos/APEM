@@ -4,4 +4,4 @@ from src.execution_chain import Datasets, PowerFlowModels, PricingAlgorithms, so
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
-solve_and_analyse_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP)
+solve_and_analyse_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP)
