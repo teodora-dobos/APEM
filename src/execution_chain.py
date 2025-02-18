@@ -144,27 +144,16 @@ def solve_and_analyse_scenario(dataset, power_flow_model, pricing_algorithm):
     Returns:
         PricingAnalysis object
     """
-    scenario = _retrieve_data(dataset)
-    if dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
-        scenario.analyse_scenario()  # analyse nodal scenario
+    price_analysis = solve_scenario(dataset, power_flow_model, pricing_algorithm)
+    if price_analysis.scenario in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
+        price_analysis.scenario.analyse_scenario()  # analyse nodal scenario
 
-    configuration = _create_configuration()
-    if power_flow_model == PowerFlowModels.DCOPF:
-        allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
-    else:
-        if dataset not in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
-            raise ValueError(
-                f"The dataset {dataset.name} cannot be used in combination with the power flow model {power_flow_model.value}. Zonal prices can only be computed for the PyPSA datasets.")
+        zonal_config = power_flow_model.value.zonal_configuration \
+            if power_flow_model == PowerFlowModels.Zonal_NTC else ""
+        price_analysis.scenario.plot_network(zonal_config)
 
-        scenario, allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
-
-    if dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
-        zonal_config = power_flow_model.value.zonal_configuration if power_flow_model == PowerFlowModels.Zonal_NTC else ""
-        scenario.plot_network(zonal_config)  # plot PyPSA network
-
-    pricing = _solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model)
-
-    return analyse_results(scenario, allocation, pricing, power_flow_model.value)
+    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
+                           power_flow_model.value)
 
 
 def apply_all_algorithms(dataset):
