@@ -141,7 +141,7 @@ def solve_and_analyse_scenario(dataset, power_flow_model, pricing_algorithm):
         PricingAnalysis object
     """
     price_analysis = solve_scenario(dataset, power_flow_model, pricing_algorithm)
-    if price_analysis.scenario in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
+    if dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
         price_analysis.scenario.analyse_scenario()  # analyse nodal scenario
 
         zonal_config = power_flow_model.value.zonal_configuration \
