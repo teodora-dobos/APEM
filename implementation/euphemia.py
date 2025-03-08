@@ -5,9 +5,11 @@ import shutil
 from typing import Optional
 import gurobipy as gp
 from gurobipy import GRB
-import re
 
-from implementation.data.parsing.scenario import ZonalScenario
+from implementation.data.parsing.zonal_scenario import ZonalScenario
+from implementation.model.setup_model import add_objective, add_market_constraints, add_network_constraints
+from implementation.pricing.price_determination_subproblem import solve_price_determination_subproblem
+from implementation.reinsertions.prb_reinsertion import PRB_reinsertion
 from implementation.utils.extraction import get
 
 
@@ -82,9 +84,9 @@ class Euphemia:
             - no PAB constraints
             - MIC
         """
-        self.add_objective()
-        self.add_market_constraints()
-        self.add_network_constraints()
+        add_objective(self)
+        add_market_constraints(self)
+        add_network_constraints(self)
 
         self.iteration = 1
         success = True
@@ -102,7 +104,7 @@ class Euphemia:
             print(f"Economic surplus: {self.get_objective()}")
 
             print("Solving price determination subproblem...")
-            self.solve_price_determination_subproblem()
+            solve_price_determination_subproblem(self)
 
             print("Computing PAB...")
             pab = self.get_block_bids(threshold=False)
@@ -183,174 +185,28 @@ class Euphemia:
             print("Could not find a solution.\n")
 
         print("\nPRB reinsertion...\n")
-        self.PRB_reinsertion()
+        PRB_reinsertion(self)
 
         print(f'Final economic surplus: {self.get_objective()}')
 
-    def add_objective(self) -> None:
-        # 1) step orders
-        step_orders_obj = gp.quicksum(
-            self.accept_step[i] * get(self.step_orders, 'q', i) * get(self.step_orders, 'p', i)
-            for i in list(self.step_orders['id']))
+    def check_infeasibility(self, model: gp.Model, reinsertion: Optional[bool] = False) -> bool:
+        """
+        Check if model is infeasible. If applicable, compute an Irreducible Inconsistent Subsystem (IIS).
+        """
+        try:
+            if model.status == GRB.INFEASIBLE:
+                print("Model is infeasible. Computing IIS...")
+                model.computeIIS()
+                iis_file = os.path.join(self.paths['debug'],
+                                        f"master_iip_{self.iteration}_reinsertion_{reinsertion}.ilp")
+                model.write(iis_file)
+                print(f"IIS file saved at: {iis_file}")
+                return True
+            else:
+                return False
+        except gp.GurobiError as e:
+            print(f'An error occurred while checking infeasibility: {e}')
 
-        # 3) block orders
-        block_orders_obj = gp.quicksum(
-            self.accept_block[i] * gp.quicksum(get(self.block_orders, f'q{t}', i) for t in self.periods) *
-            get(self.block_orders, 'p', i)
-            for i in list(self.block_orders['id']))
-
-        # 4) complex orders - consider step suborders
-        complex_orders_obj = gp.quicksum(
-            self.accept_complex_step[i] * get(self.complex_step_orders, 'q', i) * get(self.complex_step_orders, 'p', i)
-            for i in list(self.complex_step_orders['id']))
-
-        # 5) scalable complex orders
-        scalable_orders_obj = gp.quicksum(
-            self.accept_scalable_step[i] * get(self.scalable_step_orders, 'q', i) *
-            get(self.scalable_step_orders, 'p', i) for i in list(self.scalable_step_orders['id']))
-
-        # sign(type(sco))FixedTerm_sco B_ACCEPT_sco
-
-        # 7) tariff
-
-        # 8) max curtailment
-
-        self.model.setObjective(-step_orders_obj - block_orders_obj - complex_orders_obj - scalable_orders_obj,
-                                GRB.MAXIMIZE)
-
-    def add_market_constraints(self) -> None:
-        # supply - demand balance
-        self.model.addConstrs(
-            (gp.quicksum(self.accept_step[i] * get(self.step_orders, 'q', i)
-                         for i in list(self.step_orders['id']) if get(self.step_orders, 't', i) == t) +
-             gp.quicksum(self.accept_block[i] * get(self.block_orders, f'q{t}', i)
-                         for i in list(self.block_orders['id'])) +
-             gp.quicksum(self.accept_complex_step[i] * get(self.complex_step_orders, 'q', i)
-                         for i in list(self.complex_step_orders['id']) if get(self.complex_step_orders, 't', i) == t) +
-             gp.quicksum(self.accept_scalable_step[i] * get(self.scalable_step_orders, 'q', i)
-                         for i in list(self.scalable_step_orders['id']) if get(self.scalable_step_orders, 't', i) == t)
-             == 0
-             for t in self.periods), name='power_balance')
-
-        # block order acceptance
-        # accept_block[i] = 0 or accept_block[i] >= MAR
-        self.model.addConstrs(
-            self.accept_block[i] >= get(self.block_orders, 'MAR', i) * self.MAR_aux[i] for i in
-            list(self.block_orders['id']))
-
-        self.model.addConstrs(self.accept_block[i] <= self.M * self.MAR_aux[i] for i in list(self.block_orders['id']))
-
-        # exclusive groups
-        exclusive_groups = list(self.block_orders[self.block_orders['block_type'] == 'exclusive']['code_prm'])
-        exclusive_blocks = list(self.block_orders[self.block_orders['block_type'] == 'exclusive']['id'])
-
-        self.model.addConstrs(
-            gp.quicksum(
-                self.accept_block[i] for i in exclusive_blocks if get(self.block_orders, 'code_prm', i) == eg) <= 1
-            for eg in exclusive_groups)
-
-        # linked blocks
-        linked_blocks = list(self.block_orders[self.block_orders['block_type'] == 'linked']['id'])
-        block_to_parent = {i: int(get(self.block_orders, 'code_prm', i)) for i in linked_blocks}
-
-        self.model.addConstrs(self.accept_block[i] <= self.accept_block[block_to_parent[i]] for i in linked_blocks)
-
-        # flexible blocks
-        flexible_blocks = list(self.block_orders[self.block_orders['block_type'] == 'flexible']['id'])
-        self.model.addConstrs(gp.quicksum(self.flex_period[i, t] for t in self.periods) <= 1 for i in flexible_blocks)
-        self.model.addConstrs(self.accept_block[i] == gp.quicksum(self.flex_period[i, t] for t in self.periods)
-                              for i in flexible_blocks)
-
-        # complex orders
-        complex_step_orders = list(self.complex_step_orders['id'])
-
-        self.model.addConstrs(
-            self.accept_complex_step[i] <= self.accept_complex[get(self.complex_step_orders, 'complex_order_id', i)]
-            for i in complex_step_orders)
-
-        # scalable complex orders
-        scalable_step_orders = list(self.scalable_step_orders['id'])
-
-        self.model.addConstrs(
-            self.accept_scalable_step[i] <= self.accept_scalable[get(self.scalable_step_orders, 'scalable_order_id', i)]
-            for i in scalable_step_orders)
-
-        # load gradient condition
-        # complex orders
-        load_gradient_complex_ids = self.complex_orders.loc[self.complex_orders['load_gradient'].notna(), 'id'].tolist()
-
-        for i in load_gradient_complex_ids:
-            periods_orders = {}
-            inc_dec = get(self.complex_orders, 'load_gradient', i)
-            for t in self.periods:
-                # for a specific complex order sum over all associated step orders from the current period
-                orders_i_t = self.complex_step_orders.loc[
-                    (self.complex_step_orders['complex_order_id'] == i) & (
-                            self.complex_step_orders['t'] == t), 'id'].tolist()
-
-                periods_orders[t] = gp.quicksum(
-                    self.accept_complex_step[i] * abs(get(self.complex_step_orders, 'q', i)) for i in orders_i_t)
-
-            self.model.addConstrs(
-                periods_orders[t] - periods_orders[t - 1] <= inc_dec * self.accept_complex[i] for t in
-                self.periods[1:])
-            self.model.addConstrs(
-                periods_orders[t - 1] - periods_orders[t] <= inc_dec * self.accept_complex[i] for t in
-                self.periods[1:])
-
-        # scalable complex orders
-        load_gradient_scalable_ids = self.scalable_complex_orders.loc[
-            self.scalable_complex_orders['load_gradient'].notna(), 'id'].tolist()
-
-        for i in load_gradient_scalable_ids:
-            periods_orders = {}
-            inc_dec = get(self.scalable_complex_orders, 'load_gradient', i)
-            for t in self.periods:
-                orders_i_t = self.scalable_step_orders.loc[
-                    (self.scalable_step_orders['scalable_order_id'] == i) & (
-                            self.scalable_step_orders['t'] == t), 'id'].tolist()
-
-                periods_orders[t] = gp.quicksum(
-                    self.accept_scalable_step[i] * abs(get(self.scalable_step_orders, 'q', i)) for i in orders_i_t)
-
-            self.model.addConstrs(
-                periods_orders[t] - periods_orders[t - 1] <= inc_dec * self.accept_scalable[i] for t in
-                self.periods[1:])
-            self.model.addConstrs(
-                periods_orders[t - 1] - periods_orders[t] <= inc_dec * self.accept_scalable[i] for t in
-                self.periods[1:])
-
-            # MAP
-            self.model.addConstrs(
-                periods_orders[t] >= get(self.scalable_complex_orders, f'MAP{t}', i) * self.accept_scalable[i]
-                for t in self.periods)
-
-        # MAP for scalable complex orders that do not have the load gradient condition
-        for i in self.scalable_complex_orders['id'].tolist():
-            if i not in load_gradient_scalable_ids:
-                periods_orders = {}
-                for t in self.periods:
-                    orders_i_t = self.scalable_step_orders.loc[
-                        (self.scalable_step_orders['scalable_order_id'] == i) & (
-                                self.scalable_step_orders['t'] == t), 'id'].tolist()
-
-                    periods_orders[t] = gp.quicksum(
-                        self.accept_scalable_step[i] * abs(get(self.scalable_step_orders, 'q', i)) for i in orders_i_t)
-
-                self.model.addConstrs(
-                    periods_orders[t] >= get(self.scalable_complex_orders, f'MAP{t}', i) * self.accept_scalable[i]
-                    for t in self.periods)
-
-        self.model.write(os.path.join(self.paths['debug'], f"master_{self.iteration}.lp"))
-        self.model.setParam("OutputFlag", 0)
-
-    def add_network_constraints(self) -> None:
-        # ATC
-
-        # PTDF
-
-        # ramping
-        pass
 
     def solve_master_problem(self) -> None:
         """
@@ -367,24 +223,6 @@ class Euphemia:
         else:
             file.write(f"Status: {self.model.status}")
         file.close()
-
-    def solve_price_determination_subproblem(self, reinsertion: Optional[bool] = False) -> None:
-        """
-        Compute shadow prices.
-        """
-        fixed_model = self.model.fixed()
-        fixed_model.optimize()
-        prices = {}
-        for i in [i for i in fixed_model.getConstrs() if "power_balance" in i.ConstrName]:
-            match = re.search(r'\[(\d+)\]', i.ConstrName)
-            period = int(match.group(1))
-            prices[period] = -i.getAttr("Pi")
-
-        self.set_prices(prices, reinsertion=reinsertion)
-
-        with open(self.paths['prices'] + f'/iteration_{self.iteration}_reinsertion_{reinsertion}.txt', 'w') as file:
-            for key, value in prices.items():
-                file.write(f"{key}: {value}\n")
 
     def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
         """
@@ -593,49 +431,6 @@ class Euphemia:
         print("MIC scalable complex cut successfully added.")
         return True
 
-    def check_PRB(self, order: int) -> bool:
-        p = get(self.block_orders, 'p', order)
-        q = {t: get(self.block_orders, f'q{t}', order) for t in self.periods if
-             get(self.block_orders, f'q{t}', order) != 0}
-        sale = True if sum(q.values()) > 0 else False
-        avg_mcp = sum(self.prices[q_t] for q_t in q.keys()) / len(q)
-
-        if sale and p < avg_mcp or not sale and avg_mcp < p:
-            return True
-
-        return False
-
-    def PRB_reinsertion(self):
-        rejected_blocks = [i for i in self.block_orders['id'] if self.accept_block[i].X == 0]
-        print(f"Checking {len(rejected_blocks)} rejected blocks...")
-        obj = self.get_objective()
-        for i in rejected_blocks:
-            if self.check_PRB(i):
-                print(f'Block {i} is paradoxically rejected. Attempting to activate it...')
-                self.model.addConstr(self.accept_block[i] == 1, name=f'accept-{i}')
-                self.solve_master_problem()
-                infeasible = self.check_infeasibility(self.model, reinsertion=True)
-                ok = False
-                if not infeasible:
-                    new_obj = self.get_objective()
-                    if obj <= new_obj:
-                        self.solve_price_determination_subproblem(reinsertion=True)
-                        pab = self.get_block_bids(threshold=False, reinsertion=True)
-                        if len(pab) == 0:
-                            violated_complex_mic = self.get_MIC_complex_orders(reinsertion=True)
-                            if len(violated_complex_mic) == 0:
-                                violated_scalable_mic = self.get_MIC_scalable_orders(reinsertion=True)
-                                if len(violated_scalable_mic) == 0:
-                                    ok = True
-                if not ok:
-                    self.model.remove(self.model.getConstrByName(f'accept-{i}'))
-                    self.solve_master_problem()
-                    print(f'Could not activate PRB {i}.')
-                else:
-                    self.set_prices(self.prices_reinsertion)
-                    print(f'Activated block {i}.')
-        print('PRB reinsertion finished.')
-
     def check_in_the_money_complex(self, order_id: int) -> bool:
         """
         Check if a complex MIC/MP order is in-the-money.
@@ -651,24 +446,6 @@ class Euphemia:
     def volume_indeterminacy_subproblem(self):
         # later
         pass
-
-    def check_infeasibility(self, model: gp.Model, reinsertion: Optional[bool] = False) -> bool:
-        """
-        Check if model is infeasible. If applicable, compute an Irreducible Inconsistent Subsystem (IIS).
-        """
-        try:
-            if model.status == GRB.INFEASIBLE:
-                print("Model is infeasible. Computing IIS...")
-                model.computeIIS()
-                iis_file = os.path.join(self.paths['debug'],
-                                        f"master_iip_{self.iteration}_reinsertion_{reinsertion}.ilp")
-                model.write(iis_file)
-                print(f"IIS file saved at: {iis_file}")
-                return True
-            else:
-                return False
-        except gp.GurobiError as e:
-            print(f'An error occurred while checking infeasibility: {e}')
 
     def set_prices(self, prices: dict, reinsertion: Optional[bool] = False) -> None:
         if not reinsertion:

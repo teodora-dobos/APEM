@@ -1,8 +1,6 @@
-import os.path
-import shutil
 from enum import Enum
 
-from implementation.allocation.algorithms.euphemia import Euphemia
+from implementation.euphemia import Euphemia
 from implementation.data.parsing.parse_eu import ParseEU
 
 
@@ -22,6 +20,11 @@ def retrieve_data(dataset, day=None):
 
 def solve_and_analyse_scenario(dataset):
     scenario = retrieve_data(dataset)
+
+    file = open("euphemia_results/scenario", 'w+')
+    file.write(scenario.overview())
+    file.close()
+
     if dataset == Datasets.EU:
         euphemia = Euphemia(scenario)
         euphemia.solve()

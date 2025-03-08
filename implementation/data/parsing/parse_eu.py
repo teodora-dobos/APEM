@@ -3,7 +3,7 @@ from typing import Optional, List
 import pandas as pd
 
 from implementation.data.parsing.parse_data import ParseData
-from implementation.data.parsing.scenario import ZonalScenario
+from implementation.data.parsing.zonal_scenario import ZonalScenario
 
 
 def transform_step_orders(orders: pd.DataFrame, periods: List[int], sell: bool, order_id: Optional[int] = None,

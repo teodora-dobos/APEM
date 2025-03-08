@@ -1,27 +1,5 @@
 import pandas as pd
 
-
-class Scenario:
-    """
-    Buyers, sellers and network data.
-    """
-
-    def __init__(self, name, df_buyers, df_sellers, network, nodes_agents, periods, blocks_buyers, blocks_sellers,
-                 r_star):
-        self.name = name
-        self.df_buyers = df_buyers
-        self.df_sellers = df_sellers
-        self.network = network
-        self.nodes_agents = nodes_agents
-        self.periods = periods
-        self.blocks_buyers = blocks_buyers
-        self.blocks_sellers = blocks_sellers
-        self.r_star = r_star
-
-    def __str__(self):
-        return self.name
-
-
 class ZonalScenario:
     """
     Data expected in the Euphemia implementation.
@@ -41,3 +19,8 @@ class ZonalScenario:
 
     def __str__(self):
         return self.name
+
+    def overview(self) -> str:
+        return (f"{self.name}\n{self.periods}\n{self.step_orders}\n{self.block_orders}\n{self.complex_orders}\n"
+                f"{self.complex_step_orders}\n{self.scalable_complex_orders}\n{self.scalable_step_orders}\n")
+
