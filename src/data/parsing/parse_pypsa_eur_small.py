@@ -2,6 +2,7 @@ from collections import defaultdict
 
 import networkx as nx
 import pandas as pd
+import os
 
 from src.data.parsing.parse_data import ParseData
 from src.data.parsing.scenario import Scenario

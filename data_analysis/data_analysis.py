@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 #PowerFlowModels: DCOPF, Zonal_NTC
 #Pricing Algorithms: ELMP, IP, MinMWP, Join
 
-Testing_Data_Set = 'PyPSAEurLarge'  #Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
+Testing_Data_Set = 'PyPSAEurSmall'  #Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
 saving = 1 #for 1: All Outputs will be saved at data_analysis/results_data_analysis
 # Real_data = 0
 

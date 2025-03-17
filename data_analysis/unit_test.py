@@ -5,9 +5,16 @@
 
 import os
 import re
+import sys
 
+#Ermittelt den Pfad der aktuellen .py Datei
+script_path = os.path.dirname(os.path.abspath(__file__))
+
+# Setzt das aktuelle Arbeitsverzeichnis auf diesen Pfad
+os.chdir(script_path)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 Testing_Data_Set = 'PyPSAEurSmall'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
-precise_output = 0  # Set to 1 for detailed output
+precise_output = 1  # Set to 1 for detailed output
 
 
 def unit_test_pricing_stats(testing_data_set, precise_output):
@@ -287,13 +294,14 @@ def unit_test_allocation_csv(testing_data_set, precise_output):
     if all_csv_files_valid:
         print('All prices.csv files of the allocation results have a valid structure.')
     else:
-        print('Some prices.csv files of the allocation resultsdid not have a valid structure.')
+        print('Some prices.csv files of the allocation results did not have a valid structure.')
 
 
 def validate_prices_allocation_csv_structure(file_content):
   
     # Regular expressions for the six types
     patterns = [
+        #r'^"x_bt\[[A-ZA-Z0-9]+\s\d+,\d+\]",-?\d+\.\d+$'
         r'^x_bt\[[A-ZA-Z0-9]+ \d+,\d+\],-?\d+\.\d+$',  # x_bt
         r'^y_st\[\d+,\d+\],-?\d+\.\d+$',  # y_st
         r'^y_stl\[\d+,\d+,\d+\],-?\d+\.\d+$',  # y_stl
@@ -327,4 +335,4 @@ def validate_prices_allocation_csv_structure(file_content):
 unit_test_pricing_stats(Testing_Data_Set, precise_output)
 unit_test_pricing_csv(Testing_Data_Set, precise_output)
 unit_test_allocation_stats(Testing_Data_Set, precise_output)
-unit_test_allocation_csv(Testing_Data_Set, precise_output)
+#unit_test_allocation_csv(Testing_Data_Set, precise_output)

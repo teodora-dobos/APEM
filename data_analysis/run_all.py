@@ -6,18 +6,24 @@
 
 import sys
 import os
-# Add the parent directory to the system path to enable module imports
+
 # Ermittelt den Pfad der aktuellen .py Datei
 script_path = os.path.dirname(os.path.abspath(__file__))
 
-# Setzt das aktuelle Arbeitsverzeichnis auf diesen Pfad
-os.chdir(script_path)
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# Geht eine Ebene nach oben
+parent_path = os.path.dirname(script_path)
+
+# Setzt das Arbeitsverzeichnis auf den übergeordneten Ordner
+os.chdir(parent_path)
+
+# Fügt den übergeordneten Ordner zum Python-Pfad hinzu, damit Imports weiterhin funktionieren
+sys.path.append(parent_path)
+
 from src.execution_chain import * 
 import time
 
 # Define the dataset to be used. Options: IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
-Testing_Data_Set = 'PyPSAEurSmall'
+Testing_Data_Set = 'PyPSAEurLarge'
 
 
 def run_all_models(Testing_Data_Set):
@@ -29,16 +35,11 @@ def run_all_models(Testing_Data_Set):
     dataset = getattr(Datasets, Testing_Data_Set)
 
     # Define the scenarios to be tested for the selected dataset
-    #if Testing_Data_Set == 'PyPSAEurLarge':
     scenarios = [
         (PowerFlowModels.DCOPF, PricingAlgorithms.ELMP),
         (PowerFlowModels.DCOPF, PricingAlgorithms.IP),
         (PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP),
         (PowerFlowModels.DCOPF, PricingAlgorithms.Join),
-        # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.ELMP),
-        # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP),
-        # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.MinMWP),
-        # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.Join)
     ]
     
     total_time = 0  # Initialize total execution time
@@ -55,8 +56,10 @@ def run_all_models(Testing_Data_Set):
         print(f"Running Model with DataSet {dataset_name}, PowerFlowModel {model_name}, and PricingAlgorithm {algorithm_name}...")
         start_time = time.time()  # Record start time
         
-        # Execute the scenario with the given dataset, model, and algorithm
+        # Print das aktuelle Arbeitsverzeichnis zur Kontrolle
+        #print("Aktuelles Arbeitsverzeichnis:", os.getcwd())
 
+        # Execute the scenario with the given dataset, model, and algorithm
         solve_and_analyse_scenario(dataset, model, algorithm) 
         
         end_time = time.time()  # Record end time
@@ -72,6 +75,77 @@ def run_all_models(Testing_Data_Set):
 
 # Execute the function with the specified dataset
 run_all_models(Testing_Data_Set)
+
+
+
+# import sys
+# import os
+# # Add the parent directory to the system path to enable module imports
+# # Ermittelt den Pfad der aktuellen .py Datei
+# script_path = os.path.dirname(os.path.abspath(__file__))
+
+# # Setzt das aktuelle Arbeitsverzeichnis auf diesen Pfad
+# os.chdir(script_path)
+# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+# from src.execution_chain import * 
+# import time
+
+# # Define the dataset to be used. Options: IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
+# Testing_Data_Set = 'PyPSAEurSmall'
+
+
+# def run_all_models(Testing_Data_Set):
+    
+#     if not Testing_Data_Set:
+#         return
+    
+#     # Retrieve the dataset object based on the specified dataset name
+#     dataset = getattr(Datasets, Testing_Data_Set)
+
+#     # Define the scenarios to be tested for the selected dataset
+#     #if Testing_Data_Set == 'PyPSAEurLarge':
+#     scenarios = [
+#         (PowerFlowModels.DCOPF, PricingAlgorithms.ELMP),
+#         (PowerFlowModels.DCOPF, PricingAlgorithms.IP),
+#         (PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP),
+#         (PowerFlowModels.DCOPF, PricingAlgorithms.Join),
+#         # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.ELMP),
+#         # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP),
+#         # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.MinMWP),
+#         # (PowerFlowModels.Zonal_NTC, PricingAlgorithms.Join)
+#     ]
+    
+#     total_time = 0  # Initialize total execution time
+
+#     # Extract the dataset name, handling cases where it might not have a '__name__' attribute
+#     dataset_name = dataset.__name__ if hasattr(dataset, '__name__') else str(dataset).split('.')[-1]   
+
+#     # Iterate through each scenario
+#     for model, algorithm in scenarios:
+#         # Extract model and algorithm names for logging purposes
+#         model_name = model.__name__ if hasattr(model, '__name__') else str(model).split('.')[-1]
+#         algorithm_name = algorithm.__name__ if hasattr(algorithm, '__name__') else str(algorithm).split('.')[-1]
+
+#         print(f"Running Model with DataSet {dataset_name}, PowerFlowModel {model_name}, and PricingAlgorithm {algorithm_name}...")
+#         start_time = time.time()  # Record start time
+        
+#         # Execute the scenario with the given dataset, model, and algorithm
+#         print(os.getcwd())
+#         solve_and_analyse_scenario(dataset, model, algorithm) 
+        
+#         end_time = time.time()  # Record end time
+#         elapsed_time = end_time - start_time  # Calculate execution time
+#         total_time += elapsed_time  # Accumulate total execution time
+
+#         print(f"Completed in {elapsed_time:.2f} seconds.\n")
+
+#     # Convert total execution time into minutes and seconds
+#     minutes, seconds = divmod(int(total_time), 60)
+#     print(f"Total completed with DataSet {dataset_name} in {minutes:.2f} min {seconds:.2f} sec.\n")
+
+
+# # Execute the function with the specified dataset
+# run_all_models(Testing_Data_Set)
 
 
 
