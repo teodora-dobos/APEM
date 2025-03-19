@@ -19,16 +19,16 @@ show_plots = 1
 # Real_data = 0
 
 
+
 def save_results(Testing_Data_Set):
     # Get the directory of the script and move one level up
-    script_dir = os.path.dirname(os.path.abspath(__file__))  
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     parent_dir = os.path.dirname(script_dir)  # Move one level up
 
-
-    # Create CSV output directory
+    # Create Excel output directory
     output_dir = 'results_data_analysis'
     os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join('data_analysis', output_dir, f'Summary_{Testing_Data_Set}.csv')
+    output_file = os.path.join('data_analysis', output_dir, f'Summary_{Testing_Data_Set}.xlsx')
 
     # Set the working directory to the parent directory
     os.chdir(parent_dir)
@@ -45,9 +45,8 @@ def save_results(Testing_Data_Set):
         'Min_MWP': 'Min_MWP_results\\Min_MWP_stats.txt'
     }
 
-    
     # Collect results
-    data_dict = {}  # Dictionary to store labels and values
+    data_dict = {}
 
     for key, rel_path in result_files.items():
         file_path = os.path.join(base_path, rel_path)
@@ -57,43 +56,117 @@ def save_results(Testing_Data_Set):
             with open(file_path, 'r', encoding='utf-8') as file:
                 for line in file:
                     if ':' in line:
-                        parts = line.split(':', 1)  # Split only at the first colon
+                        parts = line.split(':', 1)
                         label = parts[0].strip()
                         value = parts[1].strip()
 
                         try:
-                            value = float(value)  # Convert to float if possible
+                            value = float(value)
                         except ValueError:
-                            pass  # Keep it as a string if conversion fails
+                            pass
 
-                        # Append value if label already exists, otherwise create a new list
                         if label in data_dict:
                             data_dict[label].append(value)
                         else:
-                            data_dict[label] = [value]  # Create a new list with the first value
+                            data_dict[label] = [value]
         else:
             print(f'Warning: File {file_path} does not exist and will be skipped.')
 
-    # Convert dictionary into a list of lists for Pandas DataFrame
     data = [[key] + values for key, values in data_dict.items()]
+    headers = ["Label"] + list(result_files.keys())
 
-    # **Adjust column headers**
-    headers = ["Label"] + list(result_files.keys())  # First column is static, others are dynamic
+    df1 = pd.DataFrame(data, columns=headers)
+    df1 = df1.applymap(lambda x: str(x).replace('.', ',') if isinstance(x, (float, int)) else x)
+    txt_file_path = f"results/{modified_string}_results/DCOPF/allocation_results/DCOPF_stats.txt"
+    # **Read the .txt file for the second sheet**
+    with open(txt_file_path, 'r', encoding='utf-8') as txt_file:
+        txt_content = txt_file.readlines()
 
-    # Create DataFrame with appropriate column names
-    df = pd.DataFrame(data, columns=headers)
+    df2 = pd.DataFrame(txt_content, columns=["Allocation Results:"])
 
-    # Replace decimal points with commas (only for numeric values)
-    df = df.map(lambda x: str(x).replace('.', ',') if isinstance(x, (float, int)) else x)
+    with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+        df1.to_excel(writer, sheet_name='Pricing Results', index=False)
+        df2.to_excel(writer, sheet_name='Allocation Results', index=False)
 
-    # Save CSV with semicolon as column separator
-
-    os.makedirs('data_analysis/results_data_analysis', exist_ok=True)
-    df.to_csv(output_file, index=False, encoding='utf-8', sep=';')
-
-    print(f'CSV file successfully saved at: {output_file}')
+    print(f'Excel file successfully saved at: {output_file}')
 
     return data
+
+# def save_results(Testing_Data_Set):
+#     # Get the directory of the script and move one level up
+#     script_dir = os.path.dirname(os.path.abspath(__file__))  
+#     parent_dir = os.path.dirname(script_dir)  # Move one level up
+
+
+#     # Create CSV output directory
+#     output_dir = 'results_data_analysis'
+#     os.makedirs(output_dir, exist_ok=True)
+#     output_file = os.path.join('data_analysis', output_dir, f'Summary_{Testing_Data_Set}.csv')
+
+#     # Set the working directory to the parent directory
+#     os.chdir(parent_dir)
+    
+#     # Define the base path for result files
+#     modified_string = re.sub(r'(?<!^)(?=[A-Z][a-z])', '_', Testing_Data_Set)  # Convert variable name to corresponding folder name
+#     base_path = f"results/{modified_string}_results/DCOPF/"
+
+#     # Define result files with corresponding paths
+#     result_files = {
+#         'ELMP': 'ELMP_results\\ELMP_stats.txt',
+#         'IP': 'IP_results\\IP_stats.txt',
+#         'Join': 'Join_results\\Join_stats.txt',
+#         'Min_MWP': 'Min_MWP_results\\Min_MWP_stats.txt'
+#     }
+
+    
+#     # Collect results
+#     data_dict = {}  # Dictionary to store labels and values
+
+#     for key, rel_path in result_files.items():
+#         file_path = os.path.join(base_path, rel_path)
+#         file_path = os.path.normpath(file_path)
+
+#         if os.path.exists(file_path):
+#             with open(file_path, 'r', encoding='utf-8') as file:
+#                 for line in file:
+#                     if ':' in line:
+#                         parts = line.split(':', 1)  # Split only at the first colon
+#                         label = parts[0].strip()
+#                         value = parts[1].strip()
+
+#                         try:
+#                             value = float(value)  # Convert to float if possible
+#                         except ValueError:
+#                             pass  # Keep it as a string if conversion fails
+
+#                         # Append value if label already exists, otherwise create a new list
+#                         if label in data_dict:
+#                             data_dict[label].append(value)
+#                         else:
+#                             data_dict[label] = [value]  # Create a new list with the first value
+#         else:
+#             print(f'Warning: File {file_path} does not exist and will be skipped.')
+
+#     # Convert dictionary into a list of lists for Pandas DataFrame
+#     data = [[key] + values for key, values in data_dict.items()]
+
+#     # **Adjust column headers**
+#     headers = ["Label"] + list(result_files.keys())  # First column is static, others are dynamic
+
+#     # Create DataFrame with appropriate column names
+#     df = pd.DataFrame(data, columns=headers)
+
+#     # Replace decimal points with commas (only for numeric values)
+#     df = df.map(lambda x: str(x).replace('.', ',') if isinstance(x, (float, int)) else x)
+
+#     # Save CSV with semicolon as column separator
+
+#     os.makedirs('data_analysis/results_data_analysis', exist_ok=True)
+#     df.to_csv(output_file, index=False, encoding='utf-8', sep=';')
+
+#     print(f'CSV file successfully saved at: {output_file}')
+
+#     return data
 
 
 
@@ -114,6 +187,12 @@ def plot_results(all_results, testing_data_set):
     # # csv_data = pd.read_csv(csv_file_path, delimiter=';')
 
     # hourly_costs_real_prices = csv_data['x__MWh']
+
+
+    
+
+
+
     # List of column names
     # Creating the column names
     average_price_keys = [f'Average price in period {x}' for x in list(range(1, 25))]# + list(range(8, 25))]
@@ -262,6 +341,45 @@ def plot_results(all_results, testing_data_set):
     
     if saving:
         plt.savefig(f'data_analysis/results_data_analysis/Boxplot_Average_Zone_{testing_data_set}.png')
+    if not show_plots:
+        plt.close()
+    else:
+        plt.show()
+
+    
+
+
+    # Load the Excel file and read the specific sheet
+    with pd.ExcelFile(f"data_analysis/results_data_analysis/Summary_{testing_data_set}.xlsx") as xls:
+        allocation_results_df = pd.read_excel(xls, sheet_name='Allocation Results')
+    
+    # Extract welfare values
+    welfare_values = []
+    for _, row in allocation_results_df.iterrows():
+        line = row[0]  # assuming the first column contains the data
+        if isinstance(line, str) and line.startswith("Welfare period"):
+            # Extract the numeric value after the colon and convert it to float
+            value = line.split(":")[1].strip()
+            welfare_values.append(float(value))
+
+    # Check if exactly 24 welfare values are found
+    if len(welfare_values) != 24:
+        print("Error: Expected 24 welfare period values, found:", len(welfare_values))
+        return
+
+    # Plot the welfare values
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, 25), welfare_values, marker='o', linestyle='-')
+    plt.title(f'Welfare Over 24 Periods for {testing_data_set}')
+    plt.xlabel('Period')
+    plt.ylabel('Welfare Value')
+    plt.xticks(range(1, 25))
+    plt.grid(True)
+    plt.tight_layout()  # Adjust the layout
+    plt.show()
+
+    if saving:
+        plt.savefig(f'data_analysis/results_data_analysis/Wellfare_{testing_data_set}.png')
     if not show_plots:
         plt.close()
     else:
