@@ -7,14 +7,16 @@ import os
 import re
 import sys
 
-#Ermittelt den Pfad der aktuellen .py Datei
+#Determines the path of the current .py file
 script_path = os.path.dirname(os.path.abspath(__file__))
 
-# Setzt das aktuelle Arbeitsverzeichnis auf diesen Pfad
+# Sets the current working directory to this path
 os.chdir(script_path)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-Testing_Data_Set = 'PyPSAEurSmall'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
-precise_output = 1  # Set to 1 for detailed output
+
+
+Testing_Data_Set = 'PyPSAEurLarge'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
+precise_output = 0  # Set to 1 for detailed output
 
 
 def unit_test_pricing_stats(testing_data_set, precise_output):
@@ -147,25 +149,30 @@ def unit_test_pricing_csv(testing_data_set, precise_output):
 
 
 def validate_prices_csv_structure(file_content):
-    # Regular expression to check the structure of the lines in the CSV
-    line_pattern = r'^DE0 -?\d+,-?\d+,-?\d+\.\d+'
-
-    # Split the CSV content into lines
-    lines = file_content.split('\n')
     
-    is_valid = True
+    # Regular expressions for the six types
+    patterns = [
+        r'^DE0 -?\d+,-?\d+,-?\d+\.\d+', #PyPSAEurSmall
+        r'^\d+,-?\d+,-?\d+\.\d+' #PyPSAEurLarge
+    ]
 
-    # Check each line in the CSV file
+    # Split into lines
+    lines = file_content.strip().split('\n')
+
+    is_valid = True
     for k in range(1, len(lines)):  # Start from 1 because the first line may be a header or empty
         line = lines[k].strip()
         # Skip empty lines
         if not line:
             continue
-        if not re.match(line_pattern, line):
+        # Check if the line matches any of the patterns
+        if not any(re.match(pattern, line) for pattern in patterns):
             is_valid = False
             break
 
     return is_valid
+    
+    
 
 
 def unit_test_allocation_stats(testing_data_set, precise_output):
@@ -301,14 +308,30 @@ def validate_prices_allocation_csv_structure(file_content):
   
     # Regular expressions for the six types
     patterns = [
-        #r'^"x_bt\[[A-ZA-Z0-9]+\s\d+,\d+\]",-?\d+\.\d+$'
+        #PyPSAEurSmall
         r'^x_bt\[[A-ZA-Z0-9]+ \d+,\d+\],-?\d+\.\d+$',  # x_bt
         r'^y_st\[\d+,\d+\],-?\d+\.\d+$',  # y_st
         r'^y_stl\[\d+,\d+,\d+\],-?\d+\.\d+$',  # y_stl
         r'^u_st\[\d+,\d+\],-?\d+\.\d+$',  # u_st
         r'^phi_st\[\d+,\d+\],-?\d+\.\d+$',  # phi_st
         r'^alpha_vt\[[A-Za-z0-9]+\s*\d*,\d+\],-?\d+\.\d+$',  # alpha_vt
-        r'^f_vwt\[[A-Za-z0-9]+ \d+,[A-Za-z0-9]+ \d+,\d+\],-?\d+\.\d+$'  # f_vwt
+        r'^f_vwt\[[A-Za-z0-9]+ \d+,[A-Za-z0-9]+ \d+,\d+\],-?\d+\.\d+$',  # f_vwt
+
+        #PyPSAEurLarge
+        r'^x_bt\[\d+,\d+\],-?\d+\.\d+$',  # x_bt
+        r'^y_st\[\d+,\d+\],-?\d+\.\d+$',  # y_st
+        r'^y_stl\[\d+,\d+,\d+\],-?\d+\.\d+$',  # y_stl
+        r'^u_st\[\d+,\d+\],-?\d+\.\d+$',  # u_st
+        r'^phi_st\[\d+,\d+\],-?\d+\.\d+$',  # phi_st
+        r'^alpha_vt\[\s*\d*,\d+\],-?\d+\.\d$',  # alpha_vt
+        r'^f_vwt\[\d+,\d+,\d+\],-?\d+\.\d+$',  # f_vwt
+        r'^x_bt\[\d+,\d+\],-?\d+\.\d+[a-z]-?\d\d$',  # x_bt
+        r'^y_st\[\d+,\d+\],-?\d+\.\d+[a-z]-?\d\d$',  # y_st
+        r'^y_stl\[\d+,\d+,\d+\],-?\d+\.\d+[a-z]-?\d\d$',  # y_stl
+        r'^u_st\[\d+,\d+\],-?\d+\.\d+[a-z]-?\d\d$',  # u_st
+        r'^phi_st\[\d+,\d+\],-?\d+\.\d+$',  # phi_st
+        r'^alpha_vt\[\s*\d*,\d+\],-?\d+\.\d[a-z]-?\d\d$',  # alpha_vt
+        r'^f_vwt\[\d+,\d+,\d+\],-?\d+\.\d+[a-z]-?\d\d$'  # f_vwt
     ]
 
     # Split into lines
@@ -317,6 +340,7 @@ def validate_prices_allocation_csv_structure(file_content):
     is_valid = True
     for k in range(1, len(lines)):  # Start from 1 because the first line may be a header or empty
         line = lines[k].strip()
+        line = line.replace('"', '')
         # Skip empty lines
         if not line:
             continue
@@ -335,4 +359,4 @@ def validate_prices_allocation_csv_structure(file_content):
 unit_test_pricing_stats(Testing_Data_Set, precise_output)
 unit_test_pricing_csv(Testing_Data_Set, precise_output)
 unit_test_allocation_stats(Testing_Data_Set, precise_output)
-#unit_test_allocation_csv(Testing_Data_Set, precise_output)
+unit_test_allocation_csv(Testing_Data_Set, precise_output)

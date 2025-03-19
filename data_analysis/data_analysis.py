@@ -13,8 +13,9 @@ import matplotlib.pyplot as plt
 #PowerFlowModels: DCOPF, Zonal_NTC
 #Pricing Algorithms: ELMP, IP, MinMWP, Join
 
-Testing_Data_Set = 'PyPSAEurSmall'  #Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
+Testing_Data_Set = 'PyPSAEurLarge'  #Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
 saving = 1 #for 1: All Outputs will be saved at data_analysis/results_data_analysis
+show_plots = 1
 # Real_data = 0
 
 
@@ -22,6 +23,12 @@ def save_results(Testing_Data_Set):
     # Get the directory of the script and move one level up
     script_dir = os.path.dirname(os.path.abspath(__file__))  
     parent_dir = os.path.dirname(script_dir)  # Move one level up
+
+
+    # Create CSV output directory
+    output_dir = 'results_data_analysis'
+    os.makedirs(output_dir, exist_ok=True)
+    output_file = os.path.join('data_analysis', output_dir, f'Summary_{Testing_Data_Set}.csv')
 
     # Set the working directory to the parent directory
     os.chdir(parent_dir)
@@ -38,11 +45,7 @@ def save_results(Testing_Data_Set):
         'Min_MWP': 'Min_MWP_results\\Min_MWP_stats.txt'
     }
 
-    # Create CSV output directory
-    output_dir = 'results_data_analysis'
-    os.makedirs(output_dir, exist_ok=True)
-    output_file = os.path.join('data_analysis', output_dir, f'Summary_{Testing_Data_Set}.csv')
-
+    
     # Collect results
     data_dict = {}  # Dictionary to store labels and values
 
@@ -113,11 +116,11 @@ def plot_results(all_results, testing_data_set):
     # hourly_costs_real_prices = csv_data['x__MWh']
     # List of column names
     # Creating the column names
-    average_price_keys = [f'Average price in period {x}' for x in list(range(1, 7)) + list(range(8, 25))]
-    output_folder = 'results_data_analysis'
+    average_price_keys = [f'Average price in period {x}' for x in list(range(1, 25))]# + list(range(8, 25))]
+    #output_folder = 'results_data_analysis'
     
     # Ensure the output folder exists
-    os.makedirs(output_folder, exist_ok=True)
+    #os.makedirs(output_folder, exist_ok=True)
     
     # Prepare plot data
     elmp, ip, join, min_mwp = [], [], [], []
@@ -148,13 +151,16 @@ def plot_results(all_results, testing_data_set):
     plt.legend()
     
     plt.grid(True)
-    plt.show()
+    
     
     # Save the plot as PNG
     if saving:
         os.makedirs('data_analysis/results_data_analysis', exist_ok=True)
         plt.savefig(f'data_analysis/results_data_analysis/Average_Costs_Hour_{testing_data_set}.png')
-    # plt.close()
+    if not show_plots:
+        plt.close()
+    else:
+        plt.show()
     
     # Boxplot creation
     data = [elmp, ip, join, min_mwp]  #, hourly_costs_real_prices]
@@ -167,31 +173,60 @@ def plot_results(all_results, testing_data_set):
     plt.ylabel('Values')
     plt.title(f'Boxplot of average Costs per zone; {testing_data_set}')
     plt.grid(True)
-    plt.show()
+   
     
     # Save the boxplot as PNG
     if saving:
         os.makedirs('data_analysis/results_data_analysis', exist_ok=True)
         plt.savefig(f'data_analysis/results_data_analysis/Boxplot_Average_Costs_{testing_data_set}.png')
         
-    # plt.close()
+    if not show_plots:
+        plt.close()
+    else:
+        plt.show()
     
-    # Create column names
-    average_price_keys = [f'Average price at node DE0 {x}' for x in list(range(1, 7)) + list(range(8, 40))]
+    num_zones = 0
+
+    if testing_data_set =='PyPSAEurSmall':
+        # Create column names
+        average_price_keys = [f'Average price at node DE0 {x}' for x in list(range(1, 40))],# + list(range(8, 40)),]
+        num_zones = 40
+        
+        # Prepare plot data
+        ELMP, IP, Join, Min_MWP = [], [], [], []
+        
+        for key in average_price_keys:
+            row = next((row for row in all_results if row[0] == key), None)
+            if row:
+                ELMP.append(float(row[1]))
+                IP.append(float(row[2]))
+                Join.append(float(row[3]))
+                Min_MWP.append(float(row[4]))
+            else:
+                raise ValueError(f'Row with {key} not found.')
+        
+       
+
+
+    elif testing_data_set =='PyPSAEurLarge':
+
+        average_price_keys = [row[0] for row in all_results if row[0].startswith('Average price at node')]
     
-    # Prepare plot data
-    ELMP, IP, Join, Min_MWP = [], [], [], []
-    
-    for key in average_price_keys:
-        row = next((row for row in all_results if row[0] == key), None)
-        if row:
-            ELMP.append(float(row[1]))
-            IP.append(float(row[2]))
-            Join.append(float(row[3]))
-            Min_MWP.append(float(row[4]))
-        else:
-            raise ValueError(f'Row with {key} not found.')
-    
+        # Prepare plot data
+        ELMP, IP, Join, Min_MWP = [], [], [], []
+        
+        for key in average_price_keys:
+            num_zones = num_zones + 1
+            row = next((row for row in all_results if row[0] == key), None)
+            if row:
+                ELMP.append(float(row[1]))
+                IP.append(float(row[2]))
+                Join.append(float(row[3]))
+                Min_MWP.append(float(row[4]))
+            else:
+                raise ValueError(f'Row with {key} not found.')
+       
+        
     # Create plots
     plt.figure()
     plt.plot(ELMP, '-o', label='ELMP')
@@ -200,16 +235,20 @@ def plot_results(all_results, testing_data_set):
     plt.plot(Min_MWP, '-o', label='Min MWP')
     plt.title(f'Average Costs per zone; {testing_data_set}')
     plt.xlabel('Zones')
-    plt.xticks(range(39))
+    plt.xticks(range(num_zones))
     plt.ylabel('Costs')
     plt.legend()
-    plt.show()
     plt.grid()
+
+
     if saving:
         os.makedirs('data_analysis/results_data_analysis', exist_ok=True)
         plt.savefig(f'data_analysis/results_data_analysis/Average_Zone_{testing_data_set}.png')
     
-    # plt.close()
+    if not show_plots:
+        plt.close()
+    else:
+        plt.show()
     
     # Create boxplot
     data = [ELMP, IP, Join, Min_MWP]
@@ -220,10 +259,13 @@ def plot_results(all_results, testing_data_set):
     plt.ylabel('Values')
     plt.title(f'Boxplot of average Costs per zone; {testing_data_set}')
     plt.grid()
-    plt.show()
+    
     if saving:
         plt.savefig(f'data_analysis/results_data_analysis/Boxplot_Average_Zone_{testing_data_set}.png')
-    # plt.close()
+    if not show_plots:
+        plt.close()
+    else:
+        plt.show()
 
 
 
