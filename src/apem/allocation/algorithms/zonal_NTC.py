@@ -6,13 +6,13 @@ import networkx as nx
 import pandas as pd
 import pypsa
 
-from src.allocation.algorithms.dcopf import DCOPF
-from src.allocation.allocation import Allocation
-from src.allocation.configuration import Configuration
-from src.allocation.error import Error
-from src.allocation.power_flow_model import PowerFlowModel
-from src.allocation.zonal_configuration import node_zone_mapper
-from src.data.parsing.scenario import Scenario
+from src.apem.allocation.algorithms.dcopf import DCOPF
+from src.apem.allocation.allocation import Allocation
+from src.apem.allocation.configuration import Configuration
+from src.apem.allocation.error import Error
+from src.apem.allocation.power_flow_model import PowerFlowModel
+from src.apem.allocation.zonal_configuration import node_zone_mapper
+from src.apem.data.parsing.scenario import Scenario
 
 
 class Zonal_NTC(PowerFlowModel):
@@ -107,9 +107,9 @@ class Zonal_NTC(PowerFlowModel):
 
         # load the PyPSA network
         if scenario.name == 'PyPSA_Eur_Large':
-            n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+            n = pypsa.Network("src/apem/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
         elif scenario.name == 'PyPSA_Eur_Small':
-            n = pypsa.Network("src/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
+            n = pypsa.Network("src/apem/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
 
         # create a zonal NTC scenario
         zonal_scenario = self.create_zonal_scenario_NTC(base_scenario=scenario, network=n)

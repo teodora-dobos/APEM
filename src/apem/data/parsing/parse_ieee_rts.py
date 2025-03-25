@@ -4,11 +4,11 @@ from collections import defaultdict
 import networkx as nx
 import pandas as pd
 
-from src.data.parsing.common import def_value_list
-from src.data.parsing.parse_data import ParseData
-from src.data.parsing.scenario import Scenario
+from src.apem.data.parsing.common import def_value_list
+from src.apem.data.parsing.parse_data import ParseData
+from src.apem.data.parsing.scenario import Scenario
 
-path = './src/data/raw_data/ieee_rts/'
+path = './src/apem/data/raw_data/ieee_rts/'
 
 
 # keys are nodes, values are dicts {'sellers': [], 'buyers': []} representing the sellers and buyers located at nodes

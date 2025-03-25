@@ -3,10 +3,10 @@ from collections import defaultdict
 import networkx as nx
 import pandas as pd
 
-from src.data.parsing.parse_data import ParseData
-from src.data.parsing.scenario import Scenario
+from src.apem.data.parsing.parse_data import ParseData
+from src.apem.data.parsing.scenario import Scenario
 
-path = './src/data/raw_data/pypsa_eur_large/'
+path = './src/apem/data/raw_data/pypsa_eur_large/'
 
 
 class ParsePyPSAEurLarge(ParseData):

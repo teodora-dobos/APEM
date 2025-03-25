@@ -1,9 +1,9 @@
 import gurobipy as gp
 
-from src.allocation.allocation import Allocation
-from src.allocation.configuration import Configuration
-from src.data.parsing.scenario import Scenario
-from src.utils.extraction import extract_from_buyers, extract_from_sellers
+from src.apem.allocation.allocation import Allocation
+from src.apem.allocation.configuration import Configuration
+from src.apem.data.parsing.scenario import Scenario
+from src.apem.utils.extraction import extract_from_buyers, extract_from_sellers
 
 
 def compute_stats(stats_file: str, scenario: Scenario, configuration: Configuration, allocation: Allocation,

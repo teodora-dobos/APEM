@@ -38,9 +38,9 @@ def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None,
 
     # Load PyPSA network
     if dataset == 'PyPSA_Eur_Large':
-        n = pypsa.Network("src/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+        n = pypsa.Network("apem/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
     elif dataset == 'PyPSA_Eur_Small':
-        n = pypsa.Network("src/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
+        n = pypsa.Network("src/apem/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
 
     # Handle zonal mapping, if applicable
     if zonal_config:
@@ -96,7 +96,7 @@ def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None,
     fig, ax = plt.subplots(figsize=(15, 15))
 
     # Load and plot GADM map of Germany
-    map_germany = gpd.read_file("src/data/raw_data/gadm41_DEU_shp/gadm41_DEU_1.shp")
+    map_germany = gpd.read_file("src/apem/data/raw_data/gadm41_DEU_shp/gadm41_DEU_1.shp")
     map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
     map_germany.boundary.plot(ax=ax, color="lightgray", linewidth=1.0)  # show state borders
 

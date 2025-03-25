@@ -4,7 +4,7 @@ from typing import Tuple, List
 
 import pandas as pd
 
-from src.data.parsing.scenario import Scenario
+from src.apem.data.parsing.scenario import Scenario
 
 
 class DataConversion:
@@ -164,7 +164,7 @@ class DataConversion:
         # retrieve patterns that encode in which periods a seller is committed
         patterns = {}
         for val in min_uptime_values:
-            file_path = f'./src/data/raw_data/euphemia/patterns/{val}.txt'
+            file_path = f'./src/apem/data/raw_data/euphemia/patterns/{val}.txt'
             patterns_val = []
 
             try:
@@ -281,7 +281,7 @@ class DataConversion:
         Generate and write all patterns in .txt files.
         """
         min_uptimes = range(2, 25)
-        path = './src/data/raw_data/euphemia/patterns'
+        path = './src/apem/data/raw_data/euphemia/patterns'
         os.makedirs(path, exist_ok=True)
         for min_uptime in min_uptimes:
             file_name = path + f'/{min_uptime}.txt'
