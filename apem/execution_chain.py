@@ -1,19 +1,19 @@
 import os.path
 from enum import Enum
 
-from src.apem.allocation.algorithms.dcopf import DCOPF
-from src.apem.allocation.algorithms.zonal_NTC import Zonal_NTC
-from src.apem.allocation.configuration import Configuration
-from src.apem.data.parsing.parse_arpa import ParseARPA
-from src.apem.data.parsing.parse_ieee_rts import ParseIEEERTS
-from src.apem.data.parsing.parse_pjm import ParsePJM
-from src.apem.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
-from src.apem.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
-from src.apem.pricing.algorithms.elmp import ELMP
-from src.apem.pricing.algorithms.ip import IP
-from src.apem.pricing.algorithms.join import Join
-from src.apem.pricing.algorithms.min_mwp import MinMWP
-from src.apem.pricing.analysis.price_analysis import PriceAnalysis
+from apem.allocation.algorithms.dcopf import DCOPF
+from apem.allocation.algorithms.zonal_NTC import Zonal_NTC
+from apem.allocation.configuration import Configuration
+from apem.data.parsing.parse_arpa import ParseARPA
+from apem.data.parsing.parse_ieee_rts import ParseIEEERTS
+from apem.data.parsing.parse_pjm import ParsePJM
+from apem.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
+from apem.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
+from apem.pricing.algorithms.elmp import ELMP
+from apem.pricing.algorithms.ip import IP
+from apem.pricing.algorithms.join import Join
+from apem.pricing.algorithms.min_mwp import MinMWP
+from apem.pricing.analysis.price_analysis import PriceAnalysis
 
 
 class PowerFlowModels(Enum):

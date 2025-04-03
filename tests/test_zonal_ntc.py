@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from src.apem.execution_chain import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
+from apem.execution_chain import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
 
 
 class Test_Zonal_NTC_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):

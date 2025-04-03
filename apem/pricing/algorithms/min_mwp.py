@@ -4,13 +4,13 @@ from typing import Optional, Union
 import gurobipy as gp
 from gurobipy import GRB
 
-from src.apem.allocation.allocation import Allocation
-from src.apem.allocation.error import Error
-from src.apem.data.parsing.scenario import Scenario
-from src.apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
-from src.apem.pricing.analysis.pricing import MWPS, Pricing
-from src.apem.pricing.analysis.write_prices import write_prices, write_prices_failure
-from src.apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.allocation.allocation import Allocation
+from apem.allocation.error import Error
+from apem.data.parsing.scenario import Scenario
+from apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
+from apem.pricing.analysis.pricing import MWPS, Pricing
+from apem.pricing.analysis.write_prices import write_prices, write_prices_failure
+from apem.utils.extraction import extract_from_buyers, extract_from_sellers
 
 
 class MinMWP(PricingAlgorithm):

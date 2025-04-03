@@ -6,11 +6,11 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
-from src.apem.data.parsing.common import def_value_list, def_value_simple_list
-from src.apem.data.parsing.parse_data import ParseData
-from src.apem.data.parsing.scenario import Scenario
+from apem.data.parsing.common import def_value_list, def_value_simple_list
+from apem.data.parsing.parse_data import ParseData
+from apem.data.parsing.scenario import Scenario
 
-path = './src/apem/data/raw_data/arpa_e-scenario-5'
+path = './apem/data/raw_data/arpa_e-scenario-5'
 
 MAX_SUSCEPTANCE = 2
 MIN_SUSCEPTANCE = 0.01

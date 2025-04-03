@@ -4,13 +4,13 @@ import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
 
-from src.apem.allocation.allocation import Allocation
-from src.apem.allocation.analysis.stats import compute_stats
-from src.apem.allocation.configuration import Configuration
-from src.apem.allocation.error import Error
-from src.apem.allocation.power_flow_model import PowerFlowModel
-from src.apem.data.parsing.scenario import Scenario
-from src.apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.allocation.allocation import Allocation
+from apem.allocation.analysis.stats import compute_stats
+from apem.allocation.configuration import Configuration
+from apem.allocation.error import Error
+from apem.allocation.power_flow_model import PowerFlowModel
+from apem.data.parsing.scenario import Scenario
+from apem.utils.extraction import extract_from_buyers, extract_from_sellers
 
 
 class DCOPF(PowerFlowModel):

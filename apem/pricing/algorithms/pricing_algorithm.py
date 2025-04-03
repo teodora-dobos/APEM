@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from src.apem.allocation.allocation import Allocation
-from src.apem.data.parsing.scenario import Scenario
+from apem.allocation.allocation import Allocation
+from apem.data.parsing.scenario import Scenario
 
 
 class PricingAlgorithm(ABC):

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from src.apem.allocation.configuration import Configuration
-from src.apem.data.parsing.scenario import Scenario
+from apem.allocation.configuration import Configuration
+from apem.data.parsing.scenario import Scenario
 
 
 class PowerFlowModel(ABC):
