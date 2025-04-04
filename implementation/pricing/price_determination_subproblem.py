@@ -9,6 +9,7 @@ class Price_Subproblem:
     def __init__(self, master_problem, solution_dict):
         self.master_problem = master_problem
         self.solution_dict_df = pd.DataFrame(solution_dict)
+        self.epsilon =master_problem.epsilon
 
         self.pricing_model = gp.Model('Price-Subproblem')
 
@@ -23,8 +24,9 @@ class Price_Subproblem:
         self.pricing_model.setObjective(gp.quicksum(((self.MCP[t] - (self.master_problem.price_upper_bound - self.master_problem.price_lower_bound) / 2) ** 2) for t in self.master_problem.periods), GRB.MINIMIZE)
 
 
-
         self.add_block_price_limits()
+        self.add_step_price_limits()
+
         self.pricing_model.optimize()
         if self.pricing_model.status == GRB.OPTIMAL:
             print("Found market clearing prices")
@@ -45,8 +47,49 @@ class Price_Subproblem:
         #     for key, value in prices.items():
         #         file.write(f"{key}: {value}\n")
 
+    def add_step_price_limits(self):
 
+        # Step order DataFrame with acceptance values
+        step_order_df = self.master_problem.step_orders.copy()
+        accept_step_order_columns = [col for col in self.solution_dict_df.columns if 'accept_step' in col]
+        accept_step_values = self.solution_dict_df[accept_step_order_columns].values.flatten()
+        step_order_df['acceptance'] = accept_step_values
 
+        for i in range(len(step_order_df)):
+            p = step_order_df['p'][i]
+            q = step_order_df['q'][i]
+            t = step_order_df['t'][i]
+            acceptance = step_order_df['acceptance'][i]
+
+            if q == 0:
+                continue
+
+            # INM → must have been accepted
+            if acceptance == 1.0:
+                if q > 0:
+                    # Sale: INM → p <= MCP
+                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"check_sale_INM_accept_{i}")
+                else:
+                    # Purchase: INM → p >= MCP
+                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"check_buy_INM_accept_{i}")
+
+            # OTM → must have been rejected
+            elif acceptance == 0.0:
+                if q > 0:
+                    # Sale: OTM → p >= MCP
+                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"check_sale_OTM_reject_{i}")
+                else:
+                    # Purchase: OTM → p <= MCP
+                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"check_buy_OTM_reject_{i}")
+
+            # ATM → must be exactly at the money
+            elif 0.0 < acceptance < 1.0:
+                self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"check_ATM_lower_{i}")
+                self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"check_ATM_upper_{i}")
+
+    """
+    Add constraints in order to avoid the paradocial acceptance of block orders (PABs)
+    """
     def add_block_price_limits(self):
         accept_block_columns = [col for col in self.solution_dict_df.columns if 'accept_block' in col]
         accept_block_values = self.solution_dict_df[accept_block_columns].values.flatten()
@@ -56,16 +99,24 @@ class Price_Subproblem:
 
         for i in range(len(block_order_df)):
             if block_order_df['acceptance'][i] == 1.0:  # Only accepted blocks relevant
-                # Extract price for current order
                 p_value = block_order_df['p'][i]
-                # Extract all periods for current order
                 q_columns = [col for col in block_order_df.columns if col.startswith('q')]
                 q_values = block_order_df.loc[i, q_columns].values
 
-                sales_order = any(q > 0 for q in q_values)
+                total_quantity = sum(abs(q) for q in q_values)
+                if total_quantity == 0:
+                    continue  # No relevance with q = 0 for all
 
-                for t in self.master_problem.periods:
-                    if not sales_order:
-                        self.pricing_model.addConstr(self.MCP[t] <= p_value, f"buy_order_constraint_{i}_t{t}")
-                    else:
-                        self.pricing_model.addConstr(self.MCP[t] >= p_value, f"sell_order_constraint_{i}_t{t}")
+                weighted_mcp = gp.quicksum(
+                    self.MCP[t] * q for t, q in zip(self.master_problem.periods, q_values)
+                ) / total_quantity
+
+                # Sales or purchase order
+                is_sale = any(q > 0 for q in q_values)
+
+                if is_sale:
+                    # Sales order: INM, if p < avg(MCP)
+                    self.pricing_model.addConstr(weighted_mcp >= p_value, f"sell_block_INM_{i}")
+                else:
+                    # Purchase order: INM, if p > avg(MCP)
+                    self.pricing_model.addConstr(weighted_mcp <= p_value, f"buy_block_INM_{i}")

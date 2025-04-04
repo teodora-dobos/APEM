@@ -52,6 +52,7 @@ class Euphemia:
         self.delta_MIC = 50
         self.max_iterations = 30
         self.iteration = 0
+        self.epsilon = 1e-5
         self.paths = {
             "alloc": "euphemia_results/allocation",
             "prices": "euphemia_results/prices",
