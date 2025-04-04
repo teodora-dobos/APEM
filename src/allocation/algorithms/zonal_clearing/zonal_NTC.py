@@ -6,12 +6,12 @@ import networkx as nx
 import pandas as pd
 import pypsa
 
-from src.allocation.algorithms.dcopf import DCOPF
+from src.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from src.allocation.allocation import Allocation
 from src.allocation.configuration import Configuration
 from src.allocation.error import Error
 from src.allocation.power_flow_model import PowerFlowModel
-from src.allocation.zonal_configuration import node_zone_mapper
+from src.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 from src.data.parsing.scenario import Scenario
 
 

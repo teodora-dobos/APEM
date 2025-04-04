@@ -2,7 +2,7 @@ from typing import Optional, Tuple
 import os
 import pandas as pd
 
-from src.allocation.algorithms.zonal_NTC import Zonal_NTC
+from src.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from src.allocation.allocation import Allocation
 from src.data.analysis.plot import plot_supply_demand
 from src.data.parsing.scenario import Scenario
