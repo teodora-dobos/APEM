@@ -15,15 +15,24 @@ class Price_Subproblem:
         # MCPs have to be in the range of upper and lower bounds for specific bidding zone
         self.MCP = self.pricing_model.addVars(self.master_problem.periods, name="MCP", lb=self.master_problem.price_lower_bound, ub=self.master_problem.price_upper_bound, vtype=GRB.CONTINUOUS)
 
-
     def solve_price_determination_subproblem(self, reinsertion: Optional[bool] = False) -> None:
         """
         Compute shadow prices.
         """
 
+        self.pricing_model.setObjective(gp.quicksum(((self.MCP[t] - (self.master_problem.price_upper_bound - self.master_problem.price_lower_bound) / 2) ** 2) for t in self.master_problem.periods), GRB.MINIMIZE)
+
+
+
         self.add_block_price_limits()
         self.pricing_model.optimize()
-        self.pricing_model.display()
+        if self.pricing_model.status == GRB.OPTIMAL:
+            print("Found market clearing prices")
+            for v in self.pricing_model.getVars():
+                print(f"{v.varName}: {v.x}")
+        if self.pricing_model.status == GRB.INFEASIBLE:
+            print("Price subproblem is infeasible")
+
 
         prices = {}
         # for i in [i for i in pricing_model.getConstrs() if "power_balance" in i.ConstrName]:
@@ -35,6 +44,8 @@ class Price_Subproblem:
         # with open('pricing_subproblem' + f'/test.txt', 'w') as file:
         #     for key, value in prices.items():
         #         file.write(f"{key}: {value}\n")
+
+
 
     def add_block_price_limits(self):
         accept_block_columns = [col for col in self.solution_dict_df.columns if 'accept_block' in col]

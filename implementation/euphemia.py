@@ -46,8 +46,8 @@ class Euphemia:
         self.M = 10 ** 6
         self.prices = {}
         self.prices_reinsertion = {}
-        self.price_lower_bound = -10
-        self.price_upper_bound = 100
+        self.price_lower_bound = -500
+        self.price_upper_bound = 4000
         self.delta_PAB = 50
         self.delta_MIC = 50
         self.max_iterations = 30
