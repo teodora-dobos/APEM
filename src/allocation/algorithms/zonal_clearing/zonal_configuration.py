@@ -1,8 +1,17 @@
 def node_zone_mapper(zonal_configuration: str, lat: float, lon: float) -> int:
     """
-    Map a node to a specific zone based on its latitude and longitude coordinates.
+    Maps a node to a specific zone based on its latitude and longitude coordinates.
     Note: The configurations 'zonal_DE2-k', 'zonal_DE2-s', 'zonal_DE3', 'zonal_DE4' / 'zonal_DE4-refined' were
     suggested by ACER for the BZR.
+
+    :param zonal_configuration: zonal configuration to be used
+    :type zonal_configuration: str
+    :param lat: latitude
+    :type lat: float
+    :param lon: longitude
+    :type lon: float
+    :return:
+    :rtype:
     """
     if zonal_configuration == 'national':  # National
         return 1
