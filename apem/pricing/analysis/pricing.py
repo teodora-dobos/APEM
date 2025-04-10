@@ -134,8 +134,8 @@ class Pricing:
     Pricing result.
     """
 
-    def __init__(self, node_prices, line_congestion_prices, used_algorithm, runtime, num_vars, num_constrs,
-                 glocs=None, llocs=None, mwps=None):
+    def __init__(self, node_prices, line_congestion_prices=None, used_algorithm=None, runtime=None, num_vars=None,
+                 num_constrs=None, glocs=None, llocs=None, mwps=None):
         self._node_prices = node_prices
         self._line_congestion_prices = line_congestion_prices
         self.used_algorithm = used_algorithm

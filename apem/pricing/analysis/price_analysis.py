@@ -20,7 +20,7 @@ class PriceAnalysis:
         self.allocation = allocation
         self.pricing = pricing
 
-    def compute_glocs(self, file_glocs="", mode="w") -> Optional[GLOCS]:
+    def compute_glocs(self, file_glocs: str = "", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if not pricing.glocs:
@@ -44,7 +44,7 @@ class PriceAnalysis:
 
         return None
 
-    def compute_llocs(self, file_llocs="", mode="w") -> Optional[LLOCS]:
+    def compute_llocs(self, file_llocs: str = "", mode="w") -> Optional[LLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if not pricing.llocs:
@@ -68,7 +68,7 @@ class PriceAnalysis:
 
         return None
 
-    def compute_mwps(self, file_mwps="", mode="w") -> Optional[MWPS]:
+    def compute_mwps(self, file_mwps: str = "", mode="w") -> Optional[MWPS]:
         pricing = self.pricing
         if pricing.status == 1:
             if not pricing.mwps:
@@ -92,14 +92,14 @@ class PriceAnalysis:
 
         return None
 
-    def compute_objectives(self, file_objectives="", mode="w") -> Pricing:
+    def compute_objectives(self, file_objectives: str = "", mode="w") -> Pricing:
         self.compute_glocs(file_glocs=file_objectives, mode=mode)
         self.compute_llocs(file_llocs=file_objectives, mode="a")
         self.compute_mwps(file_mwps=file_objectives, mode="a")
 
         return self.pricing
 
-    def performance_statistics(self, file_stats="", mode="w") -> Tuple[float, float, float]:
+    def performance_statistics(self, file_stats: str = "", mode="w") -> Tuple[float, float, float]:
         pricing = self.pricing
 
         if file_stats:
@@ -111,7 +111,7 @@ class PriceAnalysis:
 
         return pricing.runtime, pricing.num_vars, pricing.num_constrs
 
-    def avg_price(self, file_avg="", mode="w") -> float:
+    def avg_price(self, file_avg: str = "", mode="w") -> float:
         prices = self.pricing.node_prices.values()
         avg = sum(prices) / len(prices) if len(prices) > 0 else 0
 
@@ -122,7 +122,7 @@ class PriceAnalysis:
 
         return avg
 
-    def avg_prices_periods(self, file_plot="", file_avg="", mode="w") -> dict:
+    def avg_prices_periods(self, file_plot: str = "", file_avg: str = "", mode="w") -> dict:
         avg_prices = pd.DataFrame(columns=['period', 'avg_price'])
         for (_, t), p in self.pricing.node_prices.items():
             avg_prices.loc[len(avg_prices)] = {'period': t, 'avg_price': p}

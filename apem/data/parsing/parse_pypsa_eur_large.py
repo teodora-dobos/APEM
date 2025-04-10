@@ -20,6 +20,7 @@ class ParsePyPSAEurLarge(ParseData):
         nodes_agents = defaultdict(lambda: {'sellers': list(), 'buyers': list()})
         for node in df_buyers["node"].unique():
             nodes_agents[node]['buyers'].append(node)
+
         for node in node_map["node"].unique():
             for seller in node_map[node_map["node"] == node]["seller"]:
                 nodes_agents[node]['sellers'].append(seller)

@@ -6,8 +6,10 @@ import pypsa
 from matplotlib import pyplot as plt
 from shapely.geometry import Point, LineString
 
+from apem.data.parsing.scenario import Scenario
 
-def plot_avg_prices(avg_prices, scenario, file_plot="") -> None:
+
+def plot_avg_prices(avg_prices: pd.DataFrame, scenario: Scenario, file_plot: str = "") -> None:
     avg_prices.plot(xlim=(min(scenario.periods), max(scenario.periods)),
                     xlabel='period', ylabel='€/MWh')
     plt.savefig(file_plot, dpi=300)
