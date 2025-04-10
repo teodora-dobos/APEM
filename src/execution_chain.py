@@ -127,7 +127,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
 
 
 def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModels, pricing_algorithm: PricingAlgorithms,
-                   redispatch_algorithm: Optional[RedispatchAlgorithms] = RedispatchAlgorithms.MinCostRD):
+                   redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD):
     """Computes allocation and pricing for some scenario.
 
     Args:
@@ -167,7 +167,7 @@ def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModels, pricing
 
 def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowModels,
                                pricing_algorithm: PricingAlgorithms,
-                               redispatch_algorithm: Optional[RedispatchAlgorithms] = RedispatchAlgorithms.MinCostRD):
+                               redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD):
     """Computes allocation and pricing for some scenario and performs several analyses.
 
     Args:
