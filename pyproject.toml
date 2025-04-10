@@ -21,6 +21,6 @@
  license = {file = "LICENSE.txt"}
  keywords = ["day-ahead market", "zonal pricing", "nodal pricing", "electricity market"]
 
- [tool.setuptools.packages.find]
+ [tool.setuptools.packages.find]      # ensures that all directories and files under `apem` are included in the package distribution
  where = ["."]
- include = ["apem"]
+ include = ["apem*"]
