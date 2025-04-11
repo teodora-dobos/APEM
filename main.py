@@ -1,4 +1,4 @@
-from src.execution_chain import Datasets, PowerFlowModels, PricingAlgorithms, solve_and_analyse_scenario
+from apem.execution_chain import Datasets, PowerFlowModels, PricingAlgorithms, solve_and_analyse_scenario
 
 
-solve_and_analyse_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP)
+solve_and_analyse_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF, PricingAlgorithms.IP)

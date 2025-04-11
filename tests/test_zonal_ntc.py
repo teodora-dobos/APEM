@@ -1,7 +1,9 @@
 import unittest
 import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.execution_chain import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
+from apem.execution_chain import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
 
 
 class Test_Zonal_NTC_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):
