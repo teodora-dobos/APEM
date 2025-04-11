@@ -1,4 +1,4 @@
-import os.path
+import os
 from enum import Enum
 from typing import Optional, Union
 
@@ -52,14 +52,16 @@ class Datasets(Enum):
     ARPA = ParseARPA()
 
 
-def _retrieve_data(dataset):
+def _retrieve_data(dataset: Datasets) -> Scenario:
     return dataset.value.parse_data()
 
 
-def _create_configuration(MIP_gap=1e-4, optimality_tol=1e-6, time_limit=60 * 60, work_limit=60 * 60, threads=0,
-                          presparsify=-1, strict_supply_demand_eq=True, relaxation=False, output_flag=0):
-    return Configuration(MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify,
-                         strict_supply_demand_eq, relaxation, output_flag)
+def _create_configuration(MIP_gap: float = 1e-4, optimality_tol: float = 1e-6, time_limit: int = 60 * 60, 
+                          work_limit: int = 60 * 60, threads: int = 0, presparsify: int = -1, 
+                          strict_supply_demand_eq: bool = True, relaxation: bool = False, 
+                          output_flag: int = 0) -> Configuration:
+    return Configuration(MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify, strict_supply_demand_eq, 
+                         relaxation, output_flag)
 
 
 def _solve_allocation_problem(scenario: Scenario, power_flow_model: PowerFlowModels, configuration: Configuration,
