@@ -7,8 +7,9 @@ import pandas as pd
 from apem.data.parsing.common import def_value_list
 from apem.data.parsing.parse_data import ParseData
 from apem.data.parsing.scenario import Scenario
+from apem.utils.paths import RAW_DATA_DIR
 
-path = './apem/data/raw_data/ieee_rts/'
+path = RAW_DATA_DIR / "ieee_rts"
 
 
 # keys are nodes, values are dicts {'sellers': [], 'buyers': []} representing the sellers and buyers located at nodes
@@ -37,9 +38,9 @@ def read_ieee_sellers() -> pd.DataFrame:
 
     :return: sellers dataframe
     """
-    sellers_to_node = read_generating_unit_locations(path + 'gen_unit_loc.csv')
+    sellers_to_node = read_generating_unit_locations(path / 'gen_unit_loc.csv')
 
-    df_sellers = pd.read_csv(path + 'grigg_gen_data_modified.csv', sep = r'\s+',
+    df_sellers = pd.read_csv(path / 'grigg_gen_data_modified.csv', sep = r'\s+',
                              names=['seller', 'size1', 'cost1', 'size2', 'cost2', 'size3', 'cost3', 'size4', 'cost4'],
                              header=None)
 
@@ -93,12 +94,12 @@ def read_ieee_buyers() -> pd.DataFrame:
     """
     hourly_loads_percentages = read_hourly_loads(path + 'hourly_loads.csv')
 
-    base_loads = pd.read_csv(path + 'baseloads.csv', sep = r'\s+',
+    base_loads = pd.read_csv(path / 'baseloads.csv', sep = r'\s+',
                              names=['1', '2', '3', '%_sys_load', 'load_mw', 'load_mvar', 'peak_mw', 'peak_mvar'],
                              header=None)
     base_loads['buyer'] = [i for i in range(1, len(base_loads) + 1)]
 
-    df_buyers = pd.read_csv(path + 'dem_bids.csv', sep = r'\s+', header=None)
+    df_buyers = pd.read_csv(path / 'dem_bids.csv', sep = r'\s+', header=None)
     df_buyers.columns = ['node', 'min_power_output', 'size1', 'val1', 'size2', 'val2', 'size3', 'val3']
     df_buyers['buyer'] = [i for i in range(1, len(df_buyers) + 1)]
     df_buyers['node'] = df_buyers['node'] + 100
@@ -144,7 +145,7 @@ def read_ieee_branches() -> nx.Graph:
     :return: a graph with minimum/maximum capacity and susceptance specified for each branch
     """
     columns = ['ID', 'From', 'To', 'L', 'Perm', 'Dur', 'Tran.', 'R', 'X', 'B', 'Con', 'LTE', 'STE', 'Tr']
-    df_branches = pd.read_csv(path + 'branches_modified.csv', sep = r'\s+', names=columns, header=None)
+    df_branches = pd.read_csv(path / 'branches_modified.csv', sep = r'\s+', names=columns, header=None)
 
     mean_b = df_branches[df_branches['B'] > 0]['B'].mean()
     df_branches.loc[df_branches['B'] == 0, 'B'] = mean_b

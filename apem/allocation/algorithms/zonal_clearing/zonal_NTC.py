@@ -13,6 +13,7 @@ from apem.allocation.error import Error
 from apem.allocation.power_flow_model import PowerFlowModel
 from apem.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 from apem.data.parsing.scenario import Scenario
+from apem.utils.paths import RAW_DATA_DIR
 
 
 class Zonal_NTC(PowerFlowModel):
@@ -107,9 +108,9 @@ class Zonal_NTC(PowerFlowModel):
 
         # load the PyPSA network
         if scenario.name == 'PyPSA_Eur_Large':
-            n = pypsa.Network("apem/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_large" / "elec_s_334m_ec_lv1.5_.nc")
         elif scenario.name == 'PyPSA_Eur_Small':
-            n = pypsa.Network("apem/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
+            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_small" /"elec_s_40_ec_lv1.5_.nc")
 
         # create a zonal NTC scenario
         zonal_scenario = self.create_zonal_scenario_NTC(base_scenario=scenario, network=n)

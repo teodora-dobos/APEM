@@ -7,8 +7,9 @@ import pandas as pd
 from apem.data.parsing.common import def_value_list
 from apem.data.parsing.parse_data import ParseData
 from apem.data.parsing.scenario import Scenario
+from apem.utils.paths import RAW_DATA_DIR
 
-path = './apem/data/raw_data/pjm_2023_02_28/'
+path = RAW_DATA_DIR / "pjm_2023_02_28"
 
 
 # keys are nodes, values are dicts {'sellers': [], 'buyers': []} representing the sellers and buyers located at nodes
@@ -25,7 +26,7 @@ def assign_buyers_id(x):
 
 
 def read_pjm_sellers():
-    df_sellers = pd.read_csv(path + 'energy_market_offers_ordered.csv')
+    df_sellers = pd.read_csv(path / 'energy_market_offers_ordered.csv')
     size_list = ['mw' + str(i) for i in range(1, 21)]
     cost_list = ['bid' + str(i) for i in range(1, 21)]
     columns = ['bid_datetime_beginning_utc', 'unit_code', 'no_load_cost', 'min_runtime', 'max_ecomax',
@@ -89,7 +90,7 @@ def read_pjm_sellers():
 
 
 def read_pjm_buyers():
-    df_buyers = pd.read_csv(path + 'hrl_dmd_bids_ordered.csv')
+    df_buyers = pd.read_csv(path / 'hrl_dmd_bids_ordered.csv')
     df_buyers = df_buyers[['datetime_beginning_utc', 'hrly_da_demand_bid', 'area']]
 
     df_buyers = df_buyers.rename(columns={'datetime_beginning_utc': 'period', 'hrly_da_demand_bid': 'size1'})
@@ -98,7 +99,7 @@ def read_pjm_buyers():
     df_buyers['inelastic_dem'] = df_buyers.apply(lambda row: row.size1 * 0.1, axis=1)
 
     # read randomly generated valuations
-    file = open(path + 'valuations.csv', "r")
+    file = open(path / 'valuations.csv', "r")
     valuations = list(csv.reader(file, delimiter=","))[0]
     valuations = [float(v) for v in valuations]
     file.close()
