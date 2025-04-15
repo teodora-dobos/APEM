@@ -24,3 +24,13 @@
  [tool.setuptools.packages.find]      # ensures that all directories and files under `apem` are included in the package distribution
  where = ["."]
  include = ["apem*"]
+
+ [tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"apem" = [
+  "data/raw_data/gadm41_DEU_shp/*",
+  "data/raw_data/pypsa_eur_large/*",
+  "data/raw_data/pypsa_eur_small/*"
+]

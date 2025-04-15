@@ -1,0 +1,3 @@
+recursive-include apem/data/raw_data/gadm41_DEU_shp *
+recursive-include apem/data/raw_data/pypsa_eur_large *
+recursive-include apem/data/raw_data/pypsa_eur_small *

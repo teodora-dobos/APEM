@@ -5,6 +5,7 @@ from typing import Tuple, List
 import pandas as pd
 
 from apem.data.parsing.scenario import Scenario
+from apem.utils.paths import RAW_DATA_DIR, ensure_dir
 
 
 class DataConversion:
@@ -164,7 +165,7 @@ class DataConversion:
         # retrieve patterns that encode in which periods a seller is committed
         patterns = {}
         for val in min_uptime_values:
-            file_path = f'./apem/data/raw_data/euphemia/patterns/{val}.txt'
+            file_path = RAW_DATA_DIR / "euphemia" / "patterns" / f"{val}.txt"
             patterns_val = []
 
             try:
@@ -281,10 +282,10 @@ class DataConversion:
         Generate and write all patterns in .txt files.
         """
         min_uptimes = range(2, 25)
-        path = './apem/data/raw_data/euphemia/patterns'
-        os.makedirs(path, exist_ok=True)
+        path = RAW_DATA_DIR / "euphemia" / "patterns"
+        ensure_dir(path)
         for min_uptime in min_uptimes:
-            file_name = path + f'/{min_uptime}.txt'
+            file_name = path / f'{min_uptime}.txt'
             patterns = self.generate_patterns(min_uptime)
             with open(file_name, 'w') as f:
                 for p in patterns:

@@ -9,8 +9,9 @@ import pandas as pd
 from apem.data.parsing.common import def_value_list, def_value_simple_list
 from apem.data.parsing.parse_data import ParseData
 from apem.data.parsing.scenario import Scenario
+from apem.utils.paths import RAW_DATA_DIR
 
-path = './apem/data/raw_data/arpa_e-scenario-5'
+path = RAW_DATA_DIR / "arpa_e-scenario-5"
 
 MAX_SUSCEPTANCE = 2
 MIN_SUSCEPTANCE = 0.01
@@ -43,7 +44,7 @@ def read_arpa_sellers(path) -> pd.DataFrame:
     :param path: path where the ARPA scenario can be found
     :return: sellers dataframe
     """
-    with open(path + '/case.json', 'r') as f:
+    with open(path / 'case.json', 'r') as f:
         data = json.load(f)
 
         sellers = data['generators']
@@ -93,7 +94,7 @@ def read_arpa_sellers(path) -> pd.DataFrame:
         # get the minimum production levels
         min_prod_list = []
         index = 0
-        with open(path + '/raw_sellers.csv', 'r') as f_raw_sellers:
+        with open(path  / 'raw_sellers.csv', 'r') as f_raw_sellers:
             content = csv.reader(f_raw_sellers, delimiter=',', quotechar='|')
             for seller in content:
                 if index in index_sellers:
@@ -118,7 +119,7 @@ def read_arpa_buyers(path) -> pd.DataFrame:
     # set the price-inelastic demand
     SBASE = 100  # from case.raw, first line
     p0_dict, pl_dict = {}, {}
-    with open(path + '/raw_buyers.csv', 'r') as f_raw_buyers:
+    with open(path / 'raw_buyers.csv', 'r') as f_raw_buyers:
         content = csv.reader(f_raw_buyers, delimiter=',', quotechar='|')
         buyer_index = 1
         for buyer in content:
@@ -129,7 +130,7 @@ def read_arpa_buyers(path) -> pd.DataFrame:
             buyer_index += 1
 
     # construct buyers dataframe
-    with open(path + '/case.json', 'r') as f:
+    with open(path / 'case.json', 'r') as f:
         data = json.load(f)
         buyers = data['loads']
         df_buyers = pd.DataFrame(buyers)
@@ -194,7 +195,7 @@ def read_arpa_branches(path) -> nx.Graph:
     from_list, to_list, B_list, F_max_list = [], [], [], []
 
     # non-transformer branch raw_data
-    with open(path + '/raw_branches.csv', newline='') as csvfile:
+    with open(path / 'raw_branches.csv', newline='') as csvfile:
         content = csv.reader(csvfile, delimiter=',', quotechar='|')
         for branch in content:
             resistance = float(branch[3])
@@ -218,7 +219,7 @@ def read_arpa_branches(path) -> nx.Graph:
 
     # transformer branch raw_data
     # a transformer is defined in 4 lines
-    with open(path + '/raw_transformers.csv', newline='') as csvfile:
+    with open(path / 'raw_transformers.csv', newline='') as csvfile:
         content = csv.reader(csvfile, delimiter=',', quotechar='|')
         for ind, row in enumerate(content, 1):
             if (ind - 1) % 4 == 0:

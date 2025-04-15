@@ -9,6 +9,8 @@ import pypsa
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
+from apem.utils.paths import RAW_DATA_DIR
+
 
 class Scenario:
     """
@@ -95,9 +97,9 @@ class Scenario:
 
         # Override network with the corresponding nodal PyPSA network, if required
         if zonal_config and self.name == 'PyPSA_Eur_Large':
-            n = pypsa.Network("apem/data/raw_data/pypsa_eur_large/elec_s_334m_ec_lv1.5_.nc")
+            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_large" / "elec_s_334m_ec_lv1.5_.nc")
         elif zonal_config and self.name == 'PyPSA_Eur_Small':
-            n = pypsa.Network("apem/data/raw_data/pypsa_eur_small/elec_s_40_ec_lv1.5_.nc")
+            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_small" / "elec_s_40_ec_lv1.5_.nc")
 
         # Filter power lines with non-zero capacity 
         n.lines = n.lines[n.lines["s_nom"] > 0]
@@ -152,7 +154,7 @@ class Scenario:
         fig, ax = plt.subplots(figsize=(15, 15))
 
         # Load and plot GADM map of Germany
-        map_germany = gpd.read_file("apem/data/raw_data/gadm41_DEU_shp/gadm41_DEU_1.shp")
+        map_germany = gpd.read_file(RAW_DATA_DIR / "gadm41_DEU_shp" / "gadm41_DEU_1.shp")
         map_germany.plot(ax=ax, color="lightgray", alpha=0.5)
         map_germany.boundary.plot(ax=ax, color="lightgray", linewidth=1.0)  # show state borders
 
