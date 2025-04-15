@@ -73,38 +73,37 @@ class Price_Subproblem:
                 if q > 0:
                     # Sale: INM → p <= MCP
                     self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"sell_step_INM_accept_{i}")
-                    self.cuts[f"sell_step_INM_accept_{i}"] = gurobi_acceptance_var < 1
-                    print(self.cuts)
+                    self.cuts[f"sell_step_INM_accept_{i}"] = gurobi_acceptance_var <= 1 - self.epsilon
                 else:
                     # Purchase: INM → p >= MCP
                     self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"buy_step_INM_accept_{i}")
-                    self.cuts[f"buy_step_INM_accept_{i}"] = gurobi_acceptance_var < 1
+                    self.cuts[f"buy_step_INM_accept_{i}"] = gurobi_acceptance_var <= 1 - self.epsilon
 
             # OTM → must have been rejected
             elif acceptance == 0.0:
                 if q > 0:
                     # Sale: OTM → p >= MCP
                     self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"sell_step_OTM_reject_{i}")
-                    self.cuts[f"sell_step_OTM_reject_{i}"] = gurobi_acceptance_var > 0
+                    self.cuts[f"sell_step_OTM_reject_{i}"] = gurobi_acceptance_var >= 0 + self.epsilon
                 else:
                     # Purchase: OTM → p <= MCP
                     self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"buy_step_OTM_reject_{i}")
-                    self.cuts[f"buy_step_OTM_reject_{i}"] = gurobi_acceptance_var > 0
+                    self.cuts[f"buy_step_OTM_reject_{i}"] = gurobi_acceptance_var >= 0 + self.epsilon
 
             # ATM → must be exactly at the money
             elif 0.0 < acceptance < 1.0:
-                self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"check_ATM_lower_{i}")
-                self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"check_ATM_upper_{i}")
+                self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"step_ATM_lower_{i}")
+                self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"step_ATM_upper_{i}")
                 if q > 0:
                     # negative surplus -> accept less
-                    self.cuts[f"check_ATM_lower_{i}"] = gurobi_acceptance_var < acceptance
+                    self.cuts[f"step_ATM_lower_{i}"] = gurobi_acceptance_var <= acceptance - self.epsilon
                     # positive surplus -> accept more
-                    self.cuts[f"check_ATM_upper_{i}"] = gurobi_acceptance_var > acceptance
+                    self.cuts[f"step_ATM_upper_{i}"] = gurobi_acceptance_var >= acceptance + self.epsilon
                 else:
                     # positive surplus -> accept more
-                    self.cuts[f"check_ATM_lower_{i}"] = gurobi_acceptance_var > acceptance
+                    self.cuts[f"step_ATM_lower_{i}"] = gurobi_acceptance_var >= acceptance + self.epsilon
                     # negative surplus -> accept less
-                    self.cuts[f"check_ATM_upper_{i}"] = gurobi_acceptance_var < acceptance
+                    self.cuts[f"step_ATM_upper_{i}"] = gurobi_acceptance_var <= acceptance - self.epsilon
 
 
     """
@@ -134,9 +133,18 @@ class Price_Subproblem:
                 # Sales or purchase order
                 is_sale = any(q > 0 for q in q_values)
 
+                gurobi_acceptance_var = None
+                # save gurobi accept variable object in order to use it for cuts
+                for index, value in self.master_problem.accept_block.items():
+                    if value.VarName == f"accept_block[{i + 1}]":
+                        gurobi_acceptance_var = value
+                        break
+
                 if is_sale:
                     # Sales order: INM, if p < avg(MCP)
-                    self.pricing_model.addConstr(weighted_mcp >= p_value, f"sell_block_INM_{i}")
+                    self.pricing_model.addConstr(weighted_mcp >= p_value, f"sell_block_INM_{i+1}")
+                    self.cuts[f"sell_block_INM_{i+1}"] = gurobi_acceptance_var <= 0.5
                 else:
                     # Purchase order: INM, if p > avg(MCP)
-                    self.pricing_model.addConstr(weighted_mcp <= p_value, f"buy_block_INM_{i}")
+                    self.pricing_model.addConstr(weighted_mcp <= p_value, f"buy_block_INM_{i+1}")
+                    self.cuts[f"buy_block_INM_{i+1}"] = gurobi_acceptance_var <= 0.5

@@ -43,8 +43,31 @@ class Euphemia:
                                                   lb=0, ub=1, name='accept_mic_scalable')
         self.accept_scalable_step = self.model.addVars(list(self.scalable_step_orders['id']), vtype=GRB.CONTINUOUS,
                                                        lb=0, ub=1, name='accept_scalable_step')
-        #Needed to avoid race conditions
-        self.model.setParam("Threads", 1)
+
+        # Make additional cuts in MIPSOL callback possible
+        self.model.Params.LazyConstraints = 1
+
+        # Needed to avoid race conditions
+        #self.model.setParam("Threads", 1)
+        # Variable to save branching decisions
+        self.fixed_accepts = []
+        # Make model branch
+        # self.model.setParam("Presolve", 0)  # kein klassisches Presolve
+        # self.model.setParam("Cuts", 0)  # keine automatischen Schnitte (Cuts)
+        # self.model.setParam("Heuristics", 0)  # keine Heuristiklösungen
+        # self.model.setParam("AggFill", 0)  # keine Aggregation
+        # self.model.setParam("Aggregate", 0)  # keine Spaltenaggregation
+        # self.model.setParam("Symmetry", 0)  # keine Symmetrieerkennung
+        # self.model.setParam("PrePasses", 0)  # keine extra Presolve-Passes
+        # self.model.setParam("Method", 1)  # Simplex (nicht Barrier) für LP
+        # self.model.setParam("VarBranch", 0)  # Standard-Branching
+        # self.model.setParam("NodefileStart", 0.5)  # Speichert Knoten ggf. auf Festplatte
+        # self.model.setParam("Threads", 1)
+        # self.model.setParam("RINS", 0)
+        # self.model.setParam("Disconnected", 0)
+        # self.model.Params.OutputFlag = 1
+        # self.model.setParam("MIPFocus", 3)
+
 
         self.M = 10 ** 6
         self.prices = {}
@@ -199,15 +222,26 @@ class Euphemia:
         self.model.optimize(callback=self.master_problem_callback)
 
 
-    def master_problem_callback(self, model, where) -> None:
+    def master_problem_callback(self, callbackModel, where) -> None:
+        # if where == GRB.Callback.MIPNODE:
+        #     print("MIPNODE callback")
+        #     fixed = []
+        #     for v in callbackModel.getVars():
+        #         lb = callbackModel.cbGet(GRB.Callback.MIPNODE_VARLB, v)
+        #         ub = callbackModel.cbGet(GRB.Callback.MIPNODE_VARUB, v)
+        #         if abs(lb - ub) < 1e-6:
+        #             fixed.append((v, lb))
+        #         print(lb)
+        #     self.fixed_accepts = fixed
+
         # when a MIP solution was found
         if where == GRB.Callback.MIPSOL:
             # get current solution
-            objective_value = model.cbGet(GRB.Callback.MIPSOL_OBJ)
-            vars = model.getVars()
-            solution = model.cbGetSolution(vars)
+            objective_value = callbackModel.cbGet(GRB.Callback.MIPSOL_OBJ)
+            vars = callbackModel.getVars()
+            solution = callbackModel.cbGetSolution(vars)
             if solution is not None:
-                print("Found integer solution:", solution)
+                print("Found integer solution")
                 print("Objective value:", objective_value)
 
                 # match variables with value in current solution
@@ -220,8 +254,15 @@ class Euphemia:
                 # if price subproblem feasible check if new incumbent
                 if price_subproblem.pricing_model.status == GRB.OPTIMAL:
                     print("Found market clearing prices")
-                    for v in price_subproblem.pricing_model.getVars():
-                        print(f"{v.varName}: {v.x}")
+
+                    file_path = f"{self.paths['alloc']}/results.txt"
+                    with open(file_path, 'w') as file:
+                        for v in price_subproblem.pricing_model.getVars():
+                            print(f"{v.varName}: {v.x}")
+                        file.writelines("Continuos variables:\n")
+                        for var in callbackModel.getVars():
+                            if var.VType == GRB.CONTINUOUS:
+                                file.write(f"{var.VarName}: {callbackModel.cbGetSolution(var)}\n")
 
                 # if price subproblem infeasible add cut to master problem
                 if price_subproblem.pricing_model.status == GRB.INFEASIBLE:
@@ -229,11 +270,44 @@ class Euphemia:
                     price_subproblem.pricing_model.computeIIS()
 
                     problematic_constraints = []
+                    problematic_bounds = []
 
                     for constr in price_subproblem.pricing_model.getConstrs():
                         if constr.IISConstr:
                             print(f"Infeasible constraint: {constr}")
                             problematic_constraints.append(constr)
+                            callbackModel.cbLazy(price_subproblem.cuts[constr.ConstrName])
+                    for var in price_subproblem.pricing_model.getVars():
+                        if var.IISLB:
+                            print(f"Variable {var.VarName}: untere Schranke verletzt (LB = {var.LB})")
+                        if var.IISUB:
+                            print(f"Variable {var.VarName}: obere Schranke verletzt (UB = {var.UB})")
+
+                    #self.addNoGoodCut(callbackModel, solution_dict)
+
+
+
+
+
+    def addNoGoodCut(self, callbackModel, solution_dict) -> None:
+        # create cut that makes current solution invalid
+        terms = []
+        # match variable from current solution with gurobi variable from model
+        for gurobi_acceptance_var in callbackModel.getVars():
+            if gurobi_acceptance_var.VType == GRB.BINARY:
+                solution_value = solution_dict.get(gurobi_acceptance_var.VarName)
+                if solution_value is None:
+                    print(f"{gurobi_acceptance_var.VarName} not found in solution dict")
+                    continue
+                #print(f"{gurobi_acceptance_var.VarName} -> {solution_value}")
+                if solution_value[0] > 0.5:
+                    terms.append(1 - gurobi_acceptance_var)
+                else:
+                    terms.append(gurobi_acceptance_var)
+        expr = gp.quicksum(terms)
+        callbackModel.cbLazy(expr >= 1)
+        print(f"Added cut: {expr} >= 1")
+
 
 
     def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
