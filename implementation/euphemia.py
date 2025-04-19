@@ -52,21 +52,21 @@ class Euphemia:
         # Variable to save branching decisions
         self.fixed_accepts = []
         # Make model branch
-        # self.model.setParam("Presolve", 0)  # kein klassisches Presolve
-        # self.model.setParam("Cuts", 0)  # keine automatischen Schnitte (Cuts)
-        # self.model.setParam("Heuristics", 0)  # keine Heuristiklösungen
-        # self.model.setParam("AggFill", 0)  # keine Aggregation
-        # self.model.setParam("Aggregate", 0)  # keine Spaltenaggregation
-        # self.model.setParam("Symmetry", 0)  # keine Symmetrieerkennung
-        # self.model.setParam("PrePasses", 0)  # keine extra Presolve-Passes
-        # self.model.setParam("Method", 1)  # Simplex (nicht Barrier) für LP
-        # self.model.setParam("VarBranch", 0)  # Standard-Branching
-        # self.model.setParam("NodefileStart", 0.5)  # Speichert Knoten ggf. auf Festplatte
-        # self.model.setParam("Threads", 1)
-        # self.model.setParam("RINS", 0)
-        # self.model.setParam("Disconnected", 0)
-        # self.model.Params.OutputFlag = 1
-        # self.model.setParam("MIPFocus", 3)
+        self.model.setParam("Presolve", 0)  # kein klassisches Presolve
+        self.model.setParam("Cuts", 0)  # keine automatischen Schnitte (Cuts)
+        self.model.setParam("Heuristics", 0)  # keine Heuristiklösungen
+        self.model.setParam("AggFill", 0)  # keine Aggregation
+        self.model.setParam("Aggregate", 0)  # keine Spaltenaggregation
+        self.model.setParam("Symmetry", 0)  # keine Symmetrieerkennung
+        self.model.setParam("PrePasses", 0)  # keine extra Presolve-Passes
+        self.model.setParam("Method", 1)  # Simplex (nicht Barrier) für LP
+        self.model.setParam("VarBranch", 0)  # Standard-Branching
+        self.model.setParam("NodefileStart", 0.5)  # Speichert Knoten ggf. auf Festplatte
+        self.model.setParam("Threads", 1)
+        self.model.setParam("RINS", 0)
+        self.model.setParam("Disconnected", 0)
+        self.model.Params.OutputFlag = 1
+        self.model.setParam("MIPFocus", 3)
 
 
         self.M = 10 ** 6

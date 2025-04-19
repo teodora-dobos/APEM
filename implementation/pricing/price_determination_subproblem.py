@@ -133,23 +133,26 @@ class Price_Subproblem:
                     self.MCP[t] * q for t, q in zip(self.master_problem.periods, q_values)
                 ) / total_quantity
 
-                # if block_order_df['block_type'][i] == 'flexible':
-                #     order_id = i + 1  # oder wie dein Index in flex_period aufgebaut ist
-                #
-                #     # list with flex_period variables for current order
-                #     flex_vars = [
-                #         (t, var) for (oid, t), var in self.master_problem.flex_period.items()
-                #         if oid == order_id
-                #     ]
-                #
-                #     # Hole Lösung (Werte) dieser Variablen
-                #     flex_vals = {
-                #         t: self.pricing_model.cbGetSolution(var)
-                #         for (t, var) in flex_vars
-                #     }
-                #
-                #     # Finde Periode mit Wert 1
-                #     active_period = next((t for t, val in flex_vals.items() if val > 0.5), None)
+                # set right weighted_mcp in case of flexible block order
+                if block_order_df['block_type'][i] == 'flexible':
+
+                    # list with flex_period variables for current order
+                    flex_vars = [
+                        (t, var) for (oid, t), var in self.master_problem.flex_period.items()
+                        if oid == i + 1
+                    ]
+
+                    # Dictionary with values for each time period
+                    flex_vals = {
+                        t: self.master_problem.model.cbGetSolution(var)
+                        for (t, var) in flex_vars
+                    }
+
+                    # Find time period with value 1
+                    active_period = next((t for t, val in flex_vals.items() if val > 0.5), None)
+
+                    # overwrite weighted MCP with correct value considering flex_period variable
+                    weighted_mcp = self.MCP[active_period] * q_values[0]
 
                 # Sales or purchase order
                 is_sale = any(q > 0 for q in q_values)
