@@ -36,11 +36,11 @@ class Euphemia:
             list(self.block_orders[self.block_orders['block_type'] == 'flexible']['id']), self.periods,
             vtype=GRB.BINARY, name='flex_period')
         self.accept_complex = self.model.addVars(list(self.complex_orders['id']), vtype=GRB.BINARY, lb=0, ub=1,
-                                                 name='accept_mic_complex')
+                                                 name='accept_complex')
         self.accept_complex_step = self.model.addVars(list(self.complex_step_orders['id']), vtype=GRB.CONTINUOUS,
                                                       lb=0, ub=1, name='accept_complex_step')
         self.accept_scalable = self.model.addVars(list(self.scalable_complex_orders['id']), vtype=GRB.BINARY,
-                                                  lb=0, ub=1, name='accept_mic_scalable')
+                                                  lb=0, ub=1, name='accept_scalable_complex')
         self.accept_scalable_step = self.model.addVars(list(self.scalable_step_orders['id']), vtype=GRB.CONTINUOUS,
                                                        lb=0, ub=1, name='accept_scalable_step')
 
@@ -276,6 +276,7 @@ class Euphemia:
                             print(f"Infeasible constraint: {constr}")
                             problematic_constraints.append(constr)
                             if constr.ConstrName in price_subproblem.cuts:
+                                print(f"Adding cut: {price_subproblem.cuts[constr.ConstrName]}")
                                 callbackModel.cbLazy(price_subproblem.cuts[constr.ConstrName])
                     for var in price_subproblem.pricing_model.getVars():
                         if var.IISLB:

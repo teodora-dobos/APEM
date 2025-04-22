@@ -111,7 +111,7 @@ def add_market_constraints(self) -> None:
                         self.complex_step_orders['t'] == t), 'id'].tolist()
 
             periods_orders[t] = gp.quicksum(
-                self.accept_complex_step[i] * abs(get(self.complex_step_orders, 'q', i)) for i in orders_i_t)
+                self.accept_complex_step[j] * abs(get(self.complex_step_orders, 'q', j)) for j in orders_i_t)
 
         self.model.addConstrs(
             periods_orders[t] - periods_orders[t - 1] <= inc_dec * self.accept_complex[i] for t in
@@ -133,7 +133,7 @@ def add_market_constraints(self) -> None:
                         self.scalable_step_orders['t'] == t), 'id'].tolist()
 
             periods_orders[t] = gp.quicksum(
-                self.accept_scalable_step[i] * abs(get(self.scalable_step_orders, 'q', i)) for i in orders_i_t)
+                self.accept_scalable_step[j] * abs(get(self.scalable_step_orders, 'q', j)) for j in orders_i_t)
 
         self.model.addConstrs(
             periods_orders[t] - periods_orders[t - 1] <= inc_dec * self.accept_scalable[i] for t in

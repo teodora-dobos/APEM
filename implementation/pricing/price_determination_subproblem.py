@@ -18,15 +18,13 @@ class Price_Subproblem:
         self.MCP = self.pricing_model.addVars(self.master_problem.periods, name="MCP", lb=self.master_problem.price_lower_bound, ub=self.master_problem.price_upper_bound, vtype=GRB.CONTINUOUS)
 
     def solve_price_determination_subproblem(self, reinsertion: Optional[bool] = False) -> None:
-        """
-        Compute shadow prices.
-        """
 
         self.pricing_model.setObjective(gp.quicksum(((self.MCP[t] - (self.master_problem.price_upper_bound - self.master_problem.price_lower_bound) / 2) ** 2) for t in self.master_problem.periods), GRB.MINIMIZE)
 
 
-        self.add_block_price_limits()
-        self.add_step_price_limits()
+        self.add_block_order_constraints()
+        self.add_step_order_constraints()
+        self.add_MIC_MP_constraints()
 
         self.pricing_model.write(f"{self.master_problem.paths['debug']}/pricing_model.lp")
 
@@ -45,7 +43,11 @@ class Price_Subproblem:
         #     for key, value in prices.items():
         #         file.write(f"{key}: {value}\n")
 
-    def add_step_price_limits(self):
+
+    """
+    Add constraints in order to avoid the paradoxical acceptance and rejection of period step orders
+    """
+    def add_step_order_constraints(self):
 
         # Step order DataFrame with acceptance values
         step_order_df = self.master_problem.step_orders.copy()
@@ -58,14 +60,6 @@ class Price_Subproblem:
             q = step_order_df['q'][i]
             t = step_order_df['t'][i]
             acceptance = step_order_df['acceptance'][i]
-
-
-            gurobi_acceptance_var = None
-            # save gurobi accept variable object in order to use it for cuts
-            for index, value in self.master_problem.accept_step.items():
-                if value.VarName == f"accept_step[{i+1}]":
-                    gurobi_acceptance_var = value
-                    break
 
 
             if q == 0:
@@ -112,7 +106,7 @@ class Price_Subproblem:
     """
     Add constraints in order to avoid the paradoxical acceptance of block orders (PABs)
     """
-    def add_block_price_limits(self):
+    def add_block_order_constraints(self):
         accept_block_columns = [col for col in self.solution_dict_df.columns if 'accept_block' in col]
         accept_block_values = self.solution_dict_df[accept_block_columns].values.flatten()
 
@@ -157,12 +151,8 @@ class Price_Subproblem:
                 # Sales or purchase order
                 is_sale = any(q > 0 for q in q_values)
 
-                gurobi_acceptance_var = None
                 # save gurobi accept variable object in order to use it for cuts
-                for index, value in self.master_problem.accept_block.items():
-                    if value.VarName == f"accept_block[{i + 1}]":
-                        gurobi_acceptance_var = value
-                        break
+                gurobi_acceptance_var = self.master_problem.accept_block[i + 1]
 
                 if is_sale:
                     # Sales order: INM, if p < avg(MCP)
@@ -172,3 +162,37 @@ class Price_Subproblem:
                     # Purchase order: INM, if p > avg(MCP)
                     self.pricing_model.addConstr(weighted_mcp <= p_value, f"buy_block_INM_{i+1}")
                     self.cuts[f"buy_block_INM_{i+1}"] = gurobi_acceptance_var == 0.0
+
+    def add_MIC_MP_constraints(self):
+        accept_complex_columns = [col for col in self.solution_dict_df.columns if 'accept_complex[' in col]
+        accept_complex_step_columns = [col for col in self.solution_dict_df.columns if 'accept_complex_step[' in col]
+        accept_complex_values = self.solution_dict_df[accept_complex_columns].values.flatten()
+        accept_complex_step_values = self.solution_dict_df[accept_complex_step_columns].values.flatten()
+
+        complex_order_df = self.master_problem.complex_orders.copy()
+        complex_step_order_df = self.master_problem.complex_step_orders.copy()
+        complex_order_df['acceptance'] = accept_complex_values
+        complex_step_order_df['acceptance'] = accept_complex_step_values
+
+        for _, order in complex_order_df.iterrows():
+            # only accepted complex orders relevant
+            if order['acceptance'] > self.epsilon:
+                order_id = order['id']
+
+                variable_expected_value = 0
+                actual_income_value = gp.LinExpr()
+                # calculate minimal expected income / payment
+                for _, step_order in complex_step_order_df.iterrows():
+                    if step_order['complex_order_id'] == order_id:
+                        variable_expected_value += step_order['acceptance'] * order['variable_term']
+                        actual_income_value += step_order['acceptance'] * abs(step_order['q']) * self.MCP[step_order['t']]
+                minimum_value = order['fixed_term'] + variable_expected_value
+
+                gurobi_acceptance_var = self.master_problem.accept_complex[order_id]
+
+                self.pricing_model.addConstr(actual_income_value >= minimum_value, f"MIC_MP_condition_CO_{order_id}")
+                self.cuts[f"MIC_MP_condition_CO_{order_id}"] = gurobi_acceptance_var == 0.0
+
+
+
+
