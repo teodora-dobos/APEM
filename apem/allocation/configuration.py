@@ -4,7 +4,7 @@ class Configuration:
     The configuration parameters are applied to both the allocation and pricing problems.
     """
     def __init__(self, MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify, strict_supply_demand_eq,
-                 relaxation, output_flag):
+                 relaxation, output_flag, verbosity):
         self.MIP_gap = MIP_gap
         self.optimality_tol = optimality_tol
         self.time_limit = time_limit
@@ -14,6 +14,7 @@ class Configuration:
         self.strict_supply_demand_eq = strict_supply_demand_eq
         self.relaxation = relaxation
         self.output_flag = output_flag
+        self.verbosity = verbosity
         
     def apply_to_model(self, model):
         """
@@ -25,4 +26,4 @@ class Configuration:
         model.setParam('WorkLimit', self.work_limit)
         model.setParam('Threads', self.threads)
         model.setParam('Presparsify', self.presparsify)
-        model.setParam('OutputFlag', self.output_flag)
+        model.setParam('OutputFlag', self.output_flag)        

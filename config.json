@@ -1,0 +1,55 @@
+{
+    "_available_datasets": [
+        "IEEE_RTS",
+        "PJM",
+        "PyPSAEurSmall",
+        "PyPSAEurLarge",
+        "ARPA"
+    ],
+    "_available_power_flow_models": [
+        "DCOPF",
+        "Zonal_NTC"
+    ],
+    "_available_pricing_algorithms": [
+        "ELMP",
+        "IP",
+        "MinMWP",
+        "Join"
+    ],
+    "_available_redispatch_algorithms": [
+        "MinCostRD",
+        "MinVolRD"
+    ],
+    "_available_zonal_configurations": [
+        "national",
+        "zonal_DE2-k",
+        "zonal_DE2-s",
+        "zonal_DE3",
+        "zonal_DE4",
+        "zonal_DE4-refined"
+    ],
+    "verbosity": true,
+    "scenario": {
+        "dataset": "PyPSAEurLarge",
+        "power_flow_model": {
+            "type": "Zonal_NTC"
+        },
+        "pricing_algorithm": "IP",
+        "redispatch_algorithm": "MinCostRD"
+    },
+    "solver_configuration": {
+        "MIP_gap": 1e-4,
+        "optimality_tol": 1e-6,
+        "time_limit": 3600,
+        "work_limit": 3600,
+        "threads": 0,
+        "presparsify": -1,
+        "strict_supply_demand_eq": true,
+        "relaxation": false,
+        "output_flag": 0
+    },
+    "zonal_configuration": {
+        "type": "zonal_DE4-refined",
+        "factor": 0.8
+    }
+} 
