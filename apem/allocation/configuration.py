@@ -4,7 +4,7 @@ class Configuration:
     """
 
     def __init__(self, MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify, strict_supply_demand_eq,
-                 relaxation, output_flag):
+                 relaxation, output_flag, verbosity):
         self.MIP_gap = MIP_gap
         self.optimality_tol = optimality_tol
         self.time_limit = time_limit
@@ -14,3 +14,4 @@ class Configuration:
         self.strict_supply_demand_eq = strict_supply_demand_eq
         self.relaxation = relaxation
         self.output_flag = output_flag
+        self.verbosity = verbosity
