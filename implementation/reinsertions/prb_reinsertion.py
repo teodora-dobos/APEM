@@ -1,6 +1,8 @@
 from fontTools.merge.util import recalculate
+from pyomo.core.kernel.variable import variable
 
 from implementation.utils.extraction import get
+from implementation.utils.calculations import calculate_flexible_order_active_period
 
 
 def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
@@ -8,40 +10,36 @@ def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
 
     counter = 0
     rejected_orders, paradoxically_rejected_orders = calculate_paradoxically_rejected_orders(self, is_prmic_not_prb)
+    print(f'Rejected orders: {rejected_orders}')
 
-    print(f'Rejected orders: {len(rejected_orders)}')
 
-    if is_prmic_not_prb:
-        for id in rejected_orders['complex']:
-            if check_PRCO(self, id):
-                paradoxically_rejected_orders['complex'].append(id)
-        for id in rejected_orders['scalable_complex']:
-            if check_PRSCO(self, id):
-                paradoxically_rejected_orders['scalable_complex'].append(id)
-    else:
-        for id in rejected_orders['block']:
-            if check_PRB(self, id):
-                paradoxically_rejected_orders['block'].append(id)
-
+    # Search as long a there are paradoxically rejected orders
     while (len(paradoxically_rejected_orders['block']) + len(paradoxically_rejected_orders['complex']) + len(paradoxically_rejected_orders['scalable_complex']) > 0
            or counter >= 20):
         recalculate_list = False
         print(f"Checking {paradoxically_rejected_orders} paradoxically rejected orders...")
+        # Try to activate all paradoxically rejected orders
         for order_type, ids in paradoxically_rejected_orders.items():
             break_outer_loop = False
             for id in ids:
                 print(f'{order_type} order {id} is paradoxically rejected. Attempting to activate it...')
-                # New model with block activated and (S)CO fixed
+                # New model for current reinsertion run
                 reinsertion_run = Euphemia(self.scenario)
                 reinsertion_run.reinsertion_run = True
+                reinsertion_run.current_best_objective = self.current_best_objective
+
+                # PRB reinsertion: Fix selection of (Scalable) Complex Orders
                 if not is_prmic_not_prb:
                     for _, order in self.complex_orders.iterrows():
                         reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] == self.current_alloc_solution[f'accept_complex[{order["id"]}]'][0])
-                    #TODO SCOs
+                    for _, order in self.scalable_complex_orders.iterrows():
+                        reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] ==
+                                                        self.current_alloc_solution[f'accept_scalable[{order["id"]}]'][
+                                                            0])
 
-                reinsertion_run.current_best_objective = self.current_best_objective
+                # Activate paradoxically rejected order
                 if (order_type == 'block'):
-                    reinsertion_run.model.addConstr(reinsertion_run.accept_block[id] == 1, name=f'accept-{id}')
+                    reinsertion_run.model.addConstr(reinsertion_run.accept_block[id] >= self.epsilon, name=f'accept-{id}')
                 elif (order_type == 'complex'):
                     reinsertion_run.model.addConstr(reinsertion_run.accept_complex[id] == 1, name=f'accept-{id}')
                 elif (order_type == 'scalable_complex'):
@@ -50,8 +48,10 @@ def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
                 reinsertion_run.solve()
 
                 if reinsertion_run.found_solution:
+                    # Solution found but surplus smaller
                     if self.current_best_objective >= reinsertion_run.current_best_objective:
                         print(f'Could not activate {order_type} {id}.')
+                    # Solution found, order can be reinserted
                     else:
                         print(f'Activated {order_type} {id}.')
                         print(f'Activation of {order_type} {id} improved surplus from {self.current_best_objective} to {reinsertion_run.current_best_objective}')
@@ -64,13 +64,14 @@ def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
                         break_outer_loop = True
                         break
                 else:
-                    print(f'Could not activate PRB {id}.')
+                    print(f'Could not activate {order_type} {id}.')
             if break_outer_loop:
                 break
 
+        # Recalculate list with paradoxically rejected orders after reinsertion was successful
         if recalculate_list:
-            paradoxically_rejected_orders = [block_id for block_id in rejected_orders if check_PRB(self, block_id)]
-        # No recalculation -> All PABs checked
+            _, paradoxically_rejected_orders = calculate_paradoxically_rejected_orders(self, is_prmic_not_prb)
+        # No recalculation -> All PR orders checked
         else:
             break
 
@@ -79,12 +80,20 @@ def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
 def calculate_paradoxically_rejected_orders(self, is_prmic_not_prb: bool):
     rejected_orders = {'block': [], 'complex': [], 'scalable_complex': []}
     paradoxically_rejected_orders = {'block': [], 'complex': [], 'scalable_complex': []}
+    # Calculate rejected orders
     if not is_prmic_not_prb:
+        # Rejected blocks
         for _, order in self.block_orders.iterrows():
             id = order['id']
             if self.current_alloc_solution[f'accept_block[{id}]'][0] == 0:
                 rejected_orders['block'].append(order['id'])
+
+        # PRBs
+        for id in rejected_orders['block']:
+            if check_PRB(self, id):
+                paradoxically_rejected_orders['block'].append(id)
     else:
+        # Rejected (scalable) complex orders
         for _, order in self.complex_orders.iterrows():
             id = order['id']
             if self.current_alloc_solution[f'accept_complex[{id}]'][0] == 0:
@@ -94,8 +103,42 @@ def calculate_paradoxically_rejected_orders(self, is_prmic_not_prb: bool):
             if self.current_alloc_solution[f'accept_scalable_complex[{id}]'][0] == 0:
                 rejected_orders['scalable_complex'].append(order['id'])
 
+        # PRMICs
+        for id in rejected_orders['complex']:
+            if check_PRCO_PRSCO(self, id, isComplex=True):
+                paradoxically_rejected_orders['complex'].append(id)
+        for id in rejected_orders['scalable_complex']:
+            if check_PRCO_PRSCO(self, id, isComplex=False):
+                paradoxically_rejected_orders['scalable_complex'].append(id)
+
     return rejected_orders, paradoxically_rejected_orders
 
+
+def check_PRCO_PRSCO(self, id: int, isComplex: bool) -> bool:
+    orders = self.complex_orders if isComplex else self.scalable_complex_orders
+    step_orders = self.complex_step_orders if isComplex else self.scalable_step_orders
+    variable_term = get(orders, 'variable_term', id) if isComplex else None
+    variable_expected_value = 0
+    actual_value= 0
+    condition = get(orders, 'condition', id)
+
+    if condition == 'load gradient':
+        return False
+
+    for _, step_order in step_orders.iterrows():
+        step_acceptance = self.current_alloc_solution[f'accept_complex_step[{step_order["id"]}]' if isComplex else f'accept_scalable_step[{step_order["id"]}]'][0]
+        if step_order['complex_order_id' if isComplex else 'scalable_order_id'] == id:
+            variable_term = step_order['p'] if not isComplex else variable_term
+
+            variable_expected_value += step_acceptance * variable_term * abs(step_order['q'])
+            actual_value += step_acceptance * abs(step_order['q']) * self.prices[step_order['t']]
+
+    expected_value = get(orders, 'fixed_term', id) + variable_expected_value
+
+    if condition == 'MIC':
+        return actual_value >= expected_value
+    else:
+        return actual_value <= expected_value
 
 def check_PRB(self, order: int) -> bool:
     p = get(self.block_orders, 'p', order)
@@ -103,7 +146,12 @@ def check_PRB(self, order: int) -> bool:
     sale = True if sum(q.values()) > 0 else False
     avg_mcp = sum(self.prices[t] * q_t for t, q_t in q.items()) / sum(q.values())
 
+    #TODO check if correct for reinsertion
+    if get(self.block_orders, f'block_type', order) == 'flexible':
+        active_period = calculate_flexible_order_active_period(master_problem=self, block_id=order)
+        avg_mcp = self.prices[active_period] * q[active_period]
+
     if sale and p < avg_mcp or not sale and avg_mcp < p:
         return True
-
+    #TODO special block types
     return False
