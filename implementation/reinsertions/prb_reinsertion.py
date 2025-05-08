@@ -33,8 +33,8 @@ def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
                     for _, order in self.complex_orders.iterrows():
                         reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] == self.current_alloc_solution[f'accept_complex[{order["id"]}]'][0])
                     for _, order in self.scalable_complex_orders.iterrows():
-                        reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] ==
-                                                        self.current_alloc_solution[f'accept_scalable[{order["id"]}]'][
+                        reinsertion_run.model.addConstr(reinsertion_run.accept_scalable[order['id']] ==
+                                                        self.current_alloc_solution[f'accept_scalable_complex[{order["id"]}]'][
                                                             0])
 
                 # Activate paradoxically rejected order
@@ -147,9 +147,10 @@ def check_PRB(self, order: int) -> bool:
     avg_mcp = sum(self.prices[t] * q_t for t, q_t in q.items()) / sum(q.values())
 
     #TODO check if correct for reinsertion
-    if get(self.block_orders, f'block_type', order) == 'flexible':
-        active_period = calculate_flexible_order_active_period(master_problem=self, block_id=order)
-        avg_mcp = self.prices[active_period] * q[active_period]
+    # if get(self.block_orders, f'block_type', order) == 'flexible':
+    #     active_period = calculate_flexible_order_active_period(master_problem=self, block_id=order)
+    #     print(active_period)
+    #     avg_mcp = self.prices[active_period] * q[active_period]
 
     if sale and p < avg_mcp or not sale and avg_mcp < p:
         return True

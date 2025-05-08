@@ -51,14 +51,15 @@ class Euphemia:
                                                           name='accept_piecewise_linear')
         self.current_alloc_solution = {}
         self.found_solution = False
-        self.current_best_objective = 0
+        self.current_best_objective = -1
         self.violated_constraints = {}
         self.reinsertion_run = False
 
-        #self.model.setParam(GRB.Param.SolutionLimit, 1)
+        self.model.Params.LazyConstraints = 1
 
         # Needed to avoid race conditions
         #self.model.setParam("Threads", 1)
+
 
         # Make model branch
         # self.model.setParam("Presolve", 0)  # kein klassisches Presolve
@@ -127,88 +128,12 @@ class Euphemia:
         self.max_iterations = self.max_iterations if not self.reinsertion_run else 100
         self.iteration = 1
 
-        while self.iteration <= self.max_iterations and self.current_best_objective >= self.objective_lower_bound:
-            self.model.write(os.path.join(self.paths['debug'], f"master_problem.lp"))
-            print("Solving master problem...")
-            self.solve_master_problem()
-            print(f"Master problem status: {self.model.Status}")
-            if self.model.Status == GRB.Status.INFEASIBLE:
-                break
-
-            print("Solving price determination subproblem...")
-            price_subproblem = Price_Subproblem(master_problem=self)
-            price_subproblem.solve_price_determination_subproblem()
-
-            if price_subproblem.pricing_model.status == GRB.OPTIMAL:
-                print("Found market clearing prices")
-
-                file_path = f"{self.paths['prices']}/results.txt"
-                with open(file_path, 'w') as file:
-                    for v in price_subproblem.pricing_model.getVars():
-                        print(f"{v.varName}: {v.X}")
-
-                self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in price_subproblem.pricing_model.getVars()}, reinsertion=False)
-                self.found_solution = True
-                break
-
-            # if price subproblem infeasible add cut to master problem
-            if price_subproblem.pricing_model.status == GRB.INFEASIBLE:
-                print("Price subproblem is infeasible")
-                price_subproblem.pricing_model.computeIIS()
-
-                activate_indicators = []
-                for constr in price_subproblem.pricing_model.getConstrs():
-                    if constr.IISConstr:
-                        print(f"Infeasible constraint: {constr}")
-                        if constr.ConstrName in price_subproblem.cuts:
-                            cut_list = price_subproblem.cuts[constr.ConstrName]
-
-                            if len(cut_list) >= 2:
-                                print(f"Adding cuts (OR) {cut_list}")
-                                delta1 = self.model.addVar(vtype=GRB.BINARY,
-                                                           name=f"{constr.ConstrName}_delta1_iteration{self.iteration}")
-                                delta2 = self.model.addVar(vtype=GRB.BINARY,
-                                                           name=f"{constr.ConstrName}_delta2_iteration{self.iteration}")
-                                activate_indicator = self.model.addVar(vtype=GRB.BINARY,
-                                                           name=f"{constr.ConstrName}_activate_indicator_iteration{self.iteration}")
-
-                                self.model.addGenConstrIndicator(delta1, True, cut_list[0],
-                                                                 name=f"{constr.ConstrName}_indicatorConstr1_iteration{self.iteration}")
-                                self.model.addGenConstrIndicator(delta2, True, cut_list[1],
-                                                                 name=f"{constr.ConstrName}_indicatorConstr2_iteration{self.iteration}")
-                                self.model.addGenConstrIndicator(activate_indicator, True, delta1 + delta2 >= 1,
-                                                     name=f"{constr.ConstrName}_delta_OR_iteration{self.iteration}")
-
-
-                                activate_indicators.append(activate_indicator)
-
-                                if constr.ConstrName in self.violated_constraints:
-                                    self.violated_constraints[constr.ConstrName] += 1
-                                else:
-                                    self.violated_constraints[constr.ConstrName] = 0
-
-                            elif len(cut_list) == 1:
-                                print(f"Adding cut {cut_list[0]}")
-                                activate_indicator = self.model.addVar(vtype=GRB.BINARY,
-                                                                       name=f"{constr.ConstrName}_activate_indicator_iteration{self.iteration}")
-                                self.model.addGenConstrIndicator(activate_indicator, True, cut_list[0], name=f"{constr.ConstrName}_iteration{self.iteration}")
-                                activate_indicators.append(activate_indicator)
-                            else:
-                                print("Longer OR cuts not supported yet")
-
-                if len(activate_indicators) > 0:
-                    self.model.addConstr(gp.quicksum(activate_indicators) >= 1, f'no_good_cut_iteration{self.iteration}')
-
-                for var in price_subproblem.pricing_model.getVars():
-                    if var.IISLB:
-                        print(f"Variable {var.VarName}: lower bound violated (LB = {var.LB})")
-                    if var.IISUB:
-                        print(f"Variable {var.VarName}: upper bound violated (UB = {var.UB})")
-
-            self.iteration += 1
-
-            self.model.update()
-            #self.model.reset()
+        print("Solving master problem...")
+        self.solve_master_problem()
+        self.model.write(os.path.join(self.paths['debug'], f"master_problem.lp"))
+        print(f"Master problem status: {self.model.Status}")
+        if self.model.Status == GRB.Status.INFEASIBLE:
+            print("Master problem is infeasible")
 
         print(f'Final state of master problem after {self.iteration} iterations: {self.found_solution}')
         if self.found_solution:
@@ -216,8 +141,8 @@ class Euphemia:
             print(f'Final economic surplus{" of reinsertion run" if self.reinsertion_run else ""}: {self.current_best_objective}')
 
             if not self.reinsertion_run:
-                PRMIC_PRB_reinsertion(self, is_prmic_not_prb=True)
                 PRMIC_PRB_reinsertion(self, is_prmic_not_prb=False)
+                PRMIC_PRB_reinsertion(self, is_prmic_not_prb=True)
 
     def check_infeasibility(self, model: gp.Model, reinsertion: Optional[bool] = False) -> bool:
         """
@@ -257,7 +182,10 @@ class Euphemia:
             if solution is not None:
                 print("Found integer solution")
                 print("Objective value:", objective_value)
-                self.current_best_objective = objective_value
+
+                # Important for reinsertions in order stop solving at current best solution
+                if objective_value <= self.current_best_objective:
+                    callbackModel.terminate()
 
                 # match variables with value in current solution
                 self.current_alloc_solution = {v.VarName: [val] for v, val in zip(vars, solution)}
@@ -268,17 +196,51 @@ class Euphemia:
                     for var in callbackModel.getVars():
                         file.write(f"{var.VarName}: {callbackModel.cbGetSolution(var)}\n")
 
-                self.model.terminate()
+                print("Solving price determination subproblem...")
+                price_subproblem = Price_Subproblem(master_problem=self)
+                price_subproblem.solve_price_determination_subproblem()
 
-                print('Stopping master problem')
+                if price_subproblem.pricing_model.Status == GRB.OPTIMAL:
+                    print("Found market clearing prices")
 
-    def addNoGoodCut(self, callbackModel, solution_dict) -> None:
+                    file_path = f"{self.paths['prices']}/results.txt"
+                    with open(file_path, 'w') as file:
+                        for v in price_subproblem.pricing_model.getVars():
+                            print(f"{v.varName}: {v.X}")
+
+                    self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in
+                                     price_subproblem.pricing_model.getVars()}, reinsertion=False)
+
+                    self.current_best_objective = objective_value
+                    self.found_solution = True
+
+                # if price subproblem infeasible add cut to master problem
+                if price_subproblem.pricing_model.Status == GRB.INFEASIBLE:
+                    print("Price subproblem is infeasible")
+                    price_subproblem.pricing_model.computeIIS()
+                    for constr in price_subproblem.pricing_model.getConstrs():
+                        if constr.IISConstr:
+                            print(f"Infeasible constraint: {constr}")
+                            constr_name = constr.ConstrName
+                            if constr_name in self.violated_constraints.keys():
+                                self.violated_constraints[constr_name] += 1
+                            else:
+                                self.violated_constraints[constr_name] = 1
+
+                            if constr_name in price_subproblem.cuts.keys() and self.violated_constraints[constr_name] >= 5:
+                                cut = price_subproblem.cuts[constr_name]
+                                print(f"Adding cut: {cut[0]}")
+                                callbackModel.cbLazy(cut[0])
+
+                    self.addNoGoodCut(callbackModel=callbackModel)
+
+    def addNoGoodCut(self, callbackModel) -> None:
         # create cut that makes current solution invalid
         terms = []
         # match variable from current solution with gurobi variable from model
         for gurobi_acceptance_var in callbackModel.getVars():
             if gurobi_acceptance_var.VType == GRB.BINARY:
-                solution_value = solution_dict.get(gurobi_acceptance_var.VarName)
+                solution_value = self.current_alloc_solution.get(gurobi_acceptance_var.VarName)
                 if solution_value is None:
                     print(f"{gurobi_acceptance_var.VarName} not found in solution dict")
                     continue
