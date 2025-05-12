@@ -10,7 +10,7 @@ from apem.data.parsing.scenario import Scenario
 from apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.pricing.analysis.pricing import GLOCS, Pricing
 from apem.pricing.analysis.write_prices import write_prices, write_prices_failure
-from apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.utils.extraction import preprocess_as_dict
 
 
 class ELMP(PricingAlgorithm):
@@ -55,6 +55,27 @@ class ELMP(PricingAlgorithm):
         nodes = network.nodes
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
+        
+        # precompute dictionaries for fast access
+        buyer_val_dict, buyer_size_dict = {}, {}
+        seller_cost_dict, seller_size_dict = {}, {}
+        
+        buyer_inelastic_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'inelastic_dem')
+        buyer_max_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'max_dem')
+        buyer_node_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'node')
+        seller_no_load_cost_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'no_load_cost')
+        seller_min_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'min_prod')
+        seller_max_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'max_prod')
+        seller_min_uptime_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'min_uptime')
+        seller_node_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'node')
+        
+        for block in blocks_buyers:
+            buyer_val_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'val', block)
+            buyer_size_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'size', block)
+            
+        for block in blocks_sellers:
+            seller_cost_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'cost', block)
+            seller_size_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'size', block)    
 
         x_bt = allocation.BuyersAllocation.x_bt
         y_st = allocation.SellersAllocation.y_st
@@ -119,21 +140,21 @@ class ELMP(PricingAlgorithm):
         model.addConstrs(
             lambda_b[b]
             - gp.quicksum(
-                epsilon_bt[b, t] * extract_from_buyers(df_buyers, 'inelastic_dem', b, t)
-                + epsilon_up_bt[b, t] * extract_from_buyers(df_buyers, 'max_dem', b, t)
+                epsilon_bt[b, t] * buyer_inelastic_dem_dict[b, t]
+                + epsilon_up_bt[b, t] * buyer_max_dem_dict[b, t]
                 + gp.quicksum(
-                    epsilon_up_btl[b, t, lb] * extract_from_buyers(df_buyers, 'size', b, t, lb)
+                    epsilon_up_btl[b, t, lb] * buyer_size_dict[lb][b, t]
                     for lb in blocks_buyers
                 )
                 for t in periods
             )
             + gp.quicksum(
-                extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
+                buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
             - gp.quicksum(
-                p_vt[extract_from_buyers(df_buyers, 'node', b, t), t] * x_bt[b, t]
+                p_vt[buyer_node_dict[b, t], t] * x_bt[b, t]
                 for t in periods
             )
             >= 0
@@ -145,22 +166,22 @@ class ELMP(PricingAlgorithm):
             - gp.quicksum(
                 psi_up_st[s, t]
                 + gp.quicksum(
-                    epsilon_up_stl[s, t, ls] * extract_from_sellers(df_sellers, 'size', s, t, ls)
+                    epsilon_up_stl[s, t, ls] * seller_size_dict[ls][s, t]
                     for ls in blocks_sellers
                 )
                 for t in periods
             )
             + gp.quicksum(
-                p_vt[extract_from_sellers(df_sellers, 'node', s, t), t] * y_st[s, t]
+                p_vt[seller_node_dict[s, t], t] * y_st[s, t]
                 for t in periods
             )
             - gp.quicksum(
-                extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
+                seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
                 for t in periods
                 for ls in blocks_sellers
             )
             - gp.quicksum(
-                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
             >= 0
@@ -216,14 +237,14 @@ class ELMP(PricingAlgorithm):
         # 7
         model.addConstrs(
             epsilon_up_btl[b, t, lb] + epsilon_down_btl[b, t, lb] - epsilon_bt[b, t]
-            == extract_from_buyers(df_buyers, 'val', b, t, lb)
+            == buyer_val_dict[lb][b, t]
             for b in buyers
             for t in periods
             for lb in blocks_buyers
         )
         # 8
         model.addConstrs(
-            epsilon_bt[b, t] + epsilon_up_bt[b, t] + p_vt[extract_from_buyers(df_buyers, 'node', b, t), t]
+            epsilon_bt[b, t] + epsilon_up_bt[b, t] + p_vt[buyer_node_dict[b, t], t]
             == 0
             for b in buyers
             for t in periods
@@ -231,7 +252,7 @@ class ELMP(PricingAlgorithm):
         # 9
         model.addConstrs(
             epsilon_up_stl[s, t, ls] + epsilon_down_stl[s, t, ls] - epsilon_st[s, t]
-            == -extract_from_sellers(df_sellers, 'cost', s, t, ls)
+            == -seller_cost_dict[ls][s, t]
             for s in sellers
             for t in periods
             for ls in blocks_sellers
@@ -239,7 +260,7 @@ class ELMP(PricingAlgorithm):
         # 10
         model.addConstrs(
             epsilon_st[s, t] + epsilon_down_st[s, t] + epsilon_up_st[s, t]
-            - p_vt[extract_from_sellers(df_sellers, 'node', s, t), t]
+            - p_vt[seller_node_dict[s, t], t]
             == 0
             for s in sellers
             for t in periods
@@ -247,60 +268,60 @@ class ELMP(PricingAlgorithm):
         # 11 if there is more than 1 period
         model.addConstrs(
             -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, 1, ls) * epsilon_up_stl[s, 1, ls]
+                seller_size_dict[ls][s, 1] * epsilon_up_stl[s, 1, ls]
                 for ls in blocks_sellers
             )
             + psi_up_st[s, 1]
             + psi_down_st[s, 1]
-            - extract_from_sellers(df_sellers, 'max_prod', s, 1) * epsilon_up_st[s, 1]
-            - extract_from_sellers(df_sellers, 'min_prod', s, 1) * epsilon_down_st[s, 1]
+            - seller_max_prod_dict[s, 1] * epsilon_up_st[s, 1]
+            - seller_min_prod_dict[s, 1] * epsilon_down_st[s, 1]
             + chi_down_st[s, 2]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, 1)
+            == -seller_no_load_cost_dict[s, 1]
             for s in sellers if len(periods) > 1
         )
         # 11 if there is only one period
         model.addConstrs(
             -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, 1, ls) * epsilon_up_stl[s, 1, ls]
+                seller_size_dict[ls][s, 1] * epsilon_up_stl[s, 1, ls]
                 for ls in blocks_sellers
             )
             + psi_up_st[s, 1]
             + psi_down_st[s, 1]
-            - extract_from_sellers(df_sellers, 'max_prod', s, 1) * epsilon_up_st[s, 1]
-            - extract_from_sellers(df_sellers, 'min_prod', s, 1) * epsilon_down_st[s, 1]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, 1)
+            - seller_max_prod_dict[s, 1] * epsilon_up_st[s, 1]
+            - seller_min_prod_dict[s, 1] * epsilon_down_st[s, 1]
+            == -seller_no_load_cost_dict[s, 1]
             for s in sellers if len(periods) == 1
         )
         # 12
         model.addConstrs(
             -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, t, ls) * epsilon_up_stl[s, t, ls]
+                seller_size_dict[ls][s, t] * epsilon_up_stl[s, t, ls]
                 for ls in blocks_sellers
             )
             + psi_up_st[s, t]
             + psi_down_st[s, t]
-            - extract_from_sellers(df_sellers, 'max_prod', s, t) * epsilon_up_st[s, t]
-            - extract_from_sellers(df_sellers, 'min_prod', s, t) * epsilon_down_st[s, t]
+            - seller_max_prod_dict[s, t] * epsilon_up_st[s, t]
+            - seller_min_prod_dict[s, t] * epsilon_down_st[s, t]
             - chi_up_st[s, t]
             - chi_down_st[s, t]
             + chi_down_st[s, t + 1]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, t)
+            == -seller_no_load_cost_dict[s, t]
             for s in sellers
             for t in periods if 1 < t < periods[-1]
         )
         # 13 if there is more than 1 period
         model.addConstrs(
             -gp.quicksum(
-                extract_from_sellers(df_sellers, 'size', s, periods[-1], ls) * epsilon_up_stl[s, periods[-1], ls]
+                seller_size_dict[ls][s, periods[-1]] * epsilon_up_stl[s, periods[-1], ls]
                 for ls in blocks_sellers
             )
             + psi_up_st[s, periods[-1]]
             + psi_down_st[s, periods[-1]]
-            - extract_from_sellers(df_sellers, 'max_prod', s, periods[-1]) * epsilon_up_st[s, periods[-1]]
-            - extract_from_sellers(df_sellers, 'min_prod', s, periods[-1]) * epsilon_down_st[s, periods[-1]]
+            - seller_max_prod_dict[s, periods[-1]] * epsilon_up_st[s, periods[-1]]
+            - seller_min_prod_dict[s, periods[-1]] * epsilon_down_st[s, periods[-1]]
             - chi_up_st[s, periods[-1]]
             - chi_down_st[s, periods[-1]]
-            == -extract_from_sellers(df_sellers, 'no_load_cost', s, periods[-1])
+            == -seller_no_load_cost_dict[s, periods[-1]]
             for s in sellers if len(periods) > 1
         )
         # 14
@@ -309,7 +330,7 @@ class ELMP(PricingAlgorithm):
             + chi_down_st[s, t]
             + gp.quicksum(
                 chi_up_st[s, i]
-                for i in range(t, min(periods[-1], t + extract_from_sellers(df_sellers, 'min_uptime', s, t) - 1) + 1)
+                for i in range(t, min(periods[-1], t + seller_min_uptime_dict[s, t] - 1) + 1)
             )
             == 0
             for s in sellers for t in periods if t > 1

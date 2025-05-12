@@ -10,7 +10,7 @@ from apem.data.parsing.scenario import Scenario
 from apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.pricing.analysis.pricing import Pricing
 from apem.pricing.analysis.write_prices import write_prices, write_prices_failure
-from apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.utils.extraction import preprocess_as_dict
 
 
 class Join(PricingAlgorithm):
@@ -55,6 +55,26 @@ class Join(PricingAlgorithm):
         nodes = network.nodes
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
+        
+        # precompute dictionaries for fast access
+        buyer_val_dict, buyer_size_dict = {}, {}
+        seller_cost_dict, seller_size_dict = {}, {}
+        
+        buyer_inelastic_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'inelastic_dem')
+        buyer_max_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'max_dem')
+        buyer_node_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'node')
+        seller_no_load_cost_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'no_load_cost')
+        seller_min_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'min_prod')
+        seller_max_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'max_prod')
+        seller_node_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'node')
+        
+        for block in blocks_buyers:
+            buyer_val_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'val', block)
+            buyer_size_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'size', block)
+            
+        for block in blocks_sellers:
+            seller_cost_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'cost', block)
+            seller_size_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'size', block)    
 
         x_bt = allocation.BuyersAllocation.x_bt
         y_st = allocation.SellersAllocation.y_st
@@ -108,21 +128,21 @@ class Join(PricingAlgorithm):
         model.addConstrs(
             lambda_b[b]
             - gp.quicksum(
-                epsilon_bt[b, t] * extract_from_buyers(df_buyers, 'inelastic_dem', b, t)
-                + epsilon_up_bt[b, t] * extract_from_buyers(df_buyers, 'max_dem', b, t)
+                epsilon_bt[b, t] * buyer_inelastic_dem_dict[b, t]
+                + epsilon_up_bt[b, t] * buyer_max_dem_dict[b, t]
                 + gp.quicksum(
-                    epsilon_up_btl[b, t, lb] * extract_from_buyers(df_buyers, 'size', b, t, lb)
+                    epsilon_up_btl[b, t, lb] * buyer_size_dict[lb][b, t]
                     for lb in blocks_buyers
                 )
                 for t in periods
             )
             + gp.quicksum(
-                extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
+                buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
             - gp.quicksum(
-                p_vt[extract_from_buyers(df_buyers, 'node', b, t), t] * x_bt[b, t]
+                p_vt[buyer_node_dict[b, t], t] * x_bt[b, t]
                 for t in periods
             )
             >= 0
@@ -131,12 +151,12 @@ class Join(PricingAlgorithm):
         # 2
         model.addConstrs(
             gp.quicksum(
-                extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
+                buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
             - gp.quicksum(
-                p_vt[extract_from_buyers(df_buyers, 'node', b, t), t] * x_btl[b, t, lb]
+                p_vt[buyer_node_dict[b, t], t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
@@ -148,31 +168,31 @@ class Join(PricingAlgorithm):
         model.addConstrs(
             lambda_s[s]
             - gp.quicksum(
-                epsilon_down_st[s, t] * extract_from_sellers(df_sellers, 'min_prod', s, t) * u_st[s, t]
-                + epsilon_up_st[s, t] * extract_from_sellers(df_sellers, 'max_prod', s, t) * u_st[s, t]
+                epsilon_down_st[s, t] * seller_min_prod_dict[s, t] * u_st[s, t]
+                + epsilon_up_st[s, t] * seller_max_prod_dict[s, t] * u_st[s, t]
                 + gp.quicksum(
-                    epsilon_up_stl[s, t, ls] * extract_from_sellers(df_sellers, 'size', s, t, ls) * u_st[s, t]
+                    epsilon_up_stl[s, t, ls] * seller_size_dict[ls][s, t] * u_st[s, t]
                     for ls in blocks_sellers
                 )
                 for t in periods
             )
             + gp.quicksum(
-                p_vt[extract_from_sellers(df_sellers, 'node', s, t), t] * y_st[s, t]
+                p_vt[seller_node_dict[s, t], t] * y_st[s, t]
                 for t in periods
             )
             - gp.quicksum(
-                extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
+                seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
                 for t in periods
                 for ls in blocks_sellers
             )
             -
             gp.quicksum(
-                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
             >=
             -gp.quicksum(
-                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
             for s in sellers
@@ -180,16 +200,16 @@ class Join(PricingAlgorithm):
         # 4
         model.addConstrs(
             gp.quicksum(
-                p_vt[extract_from_sellers(df_sellers, 'node', s, t), t] * y_st[s, t]
+                p_vt[seller_node_dict[s, t], t] * y_st[s, t]
                 for t in periods
             )
             - gp.quicksum(
-                extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
+                seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
                 for t in periods
                 for ls in blocks_sellers
             )
             - gp.quicksum(
-                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
             + lambda_s[s]
@@ -246,14 +266,14 @@ class Join(PricingAlgorithm):
         # 9
         model.addConstrs(
             epsilon_up_btl[b, t, lb] + epsilon_down_btl[b, t, lb] - epsilon_bt[b, t]
-            == extract_from_buyers(df_buyers, 'val', b, t, lb)
+            == buyer_val_dict[lb][b, t]
             for b in buyers
             for t in periods
             for lb in blocks_buyers
         )
         # 10
         model.addConstrs(
-            epsilon_bt[b, t] + epsilon_up_bt[b, t] + p_vt[extract_from_buyers(df_buyers, 'node', b, t), t]
+            epsilon_bt[b, t] + epsilon_up_bt[b, t] + p_vt[buyer_node_dict[b, t], t]
             == 0
             for b in buyers
             for t in periods
@@ -261,7 +281,7 @@ class Join(PricingAlgorithm):
         # 11
         model.addConstrs(
             epsilon_up_stl[s, t, ls] + epsilon_down_stl[s, t, ls] - epsilon_st[s, t]
-            == -extract_from_sellers(df_sellers, 'cost', s, t, ls)
+            == -seller_cost_dict[ls][s, t]
             for s in sellers
             for t in periods
             for ls in blocks_sellers
@@ -269,7 +289,7 @@ class Join(PricingAlgorithm):
         # 12
         model.addConstrs(
             epsilon_st[s, t] + epsilon_down_st[s, t] + epsilon_up_st[s, t]
-            - p_vt[extract_from_sellers(df_sellers, 'node', s, t), t]
+            - p_vt[seller_node_dict[s, t], t]
             == 0
             for s in sellers
             for t in periods
