@@ -1,4 +1,0 @@
-Seller s = 9 has MWPs = 721.5
-Seller s = 10 has MWPs = 601.25
-Seller s = 11 has MWPs = 481.0
-Total MWPs = 1803.75
