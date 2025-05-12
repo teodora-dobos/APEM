@@ -1,7 +1,8 @@
 from enum import Enum
 
-from implementation.euphemia import Euphemia
-from implementation.data.parsing.parse_eu import ParseEU
+from euphemia.euphemia import Euphemia
+from euphemia.data.parsing.parse_eu import ParseEU
+from euphemia.utils.paths import EUPHEMIA_ROOT
 
 
 class Datasets(Enum):
@@ -21,7 +22,7 @@ def retrieve_data(dataset, day=None):
 def solve_and_analyse_scenario(dataset):
     scenario = retrieve_data(dataset)
 
-    file = open("euphemia_results/scenario", 'w+')
+    file = open(EUPHEMIA_ROOT / "euphemia_results/scenario", 'w+')
     file.write(scenario.overview())
     file.close()
 

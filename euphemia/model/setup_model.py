@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 import os
 
-from implementation.utils.extraction import get
+from euphemia.utils.extraction import get
 
 
 def add_objective(self) -> None:

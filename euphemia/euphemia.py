@@ -7,11 +7,11 @@ import gurobipy as gp
 from gurobipy import GRB
 import re
 
-from implementation.data.parsing.zonal_scenario import ZonalScenario
-from implementation.model.setup_model import add_objective, add_market_constraints, add_network_constraints
-from implementation.pricing.price_determination_subproblem import Price_Subproblem
-from implementation.reinsertions.prb_reinsertion import PRMIC_PRB_reinsertion
-from implementation.utils.extraction import get
+from euphemia.data.parsing.zonal_scenario import ZonalScenario
+from euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
+from euphemia.pricing.price_determination_subproblem import Price_Subproblem
+from euphemia.reinsertions.prb_reinsertion import PRMIC_PRB_reinsertion
+from euphemia.utils.extraction import get
 
 
 class Euphemia:

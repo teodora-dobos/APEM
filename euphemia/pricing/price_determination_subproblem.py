@@ -5,7 +5,7 @@ from gurobipy import GRB
 import pandas as pd
 import random
 
-from implementation.utils.calculations import calculate_flexible_order_active_period
+from euphemia.utils.calculations import calculate_flexible_order_active_period
 
 
 class Price_Subproblem:
@@ -163,11 +163,13 @@ class Price_Subproblem:
 
                 # Sales or purchase order
                 is_sale = any(q > 0 for q in q_values)
+                is_linked_parent = any(other_order['block_type'] == 'linked' and block_order['id'] == other_order['code_prm'] for _, other_order in block_order_df.iterrows())
 
                 # save gurobi accept variable object in order to use it for cuts
                 gurobi_acceptance_var = self.master_problem.accept_block[block_id]
 
-                if block_order['block_type'] != 'linked':
+                # For linked parent blocks special rules apply
+                if not is_linked_parent:
                     if is_sale:
                         # Sales order: INM, if p < avg(MCP)
                         self.pricing_model.addConstr(weighted_mcp >= p, f"sell_block_INM_{block_id}")
@@ -176,30 +178,38 @@ class Price_Subproblem:
                         # Purchase order: INM, if p > avg(MCP)
                         self.pricing_model.addConstr(weighted_mcp <= p, f"buy_block_INM_{block_id}")
                         self.cuts[f"buy_block_INM_{block_id}"] = gurobi_acceptance_var == 0.0
+
+                    # Linked leaf blocks are not allowed to generate negative surplus
+                    if block_order['block_type'] == 'linked':
+                        self.add_linked_leafs_positive_surplus(child_order=block_order)
+
+                # Currently only one parent supported: Positive surplus per family can be obtained by parent
                 else:
                     self.add_linked_block_order_constraints(block_order_df=block_order_df, parent_order=block_order)
 
     def add_linked_block_order_constraints(self, block_order_df, parent_order):
-        child_id = int(parent_order['code_prm'])
+        children_df = block_order_df[(block_order_df['code_prm'] == 'linked') & (block_order_df['block_type'] == 'linked')]
         parent_id = int(parent_order['id'])
-        child_dict = block_order_df.loc[block_order_df['id'] == child_id].iloc[0].to_dict()
 
         # Family surplus must not be negative
         self.pricing_model.addConstr(gp.quicksum(
-            (child_dict['acceptance'] * child_dict[f'q{t}'] + parent_order['acceptance'] * parent_order[f'q{t}']) * (
-                    child_dict['p'] - self.MCP[t]) for t in self.master_problem.periods) >= 0,
-                                     f'linked_block_positive_family_parent_{parent_id}_child_{child_id}')
-        self.cuts[f'linked_block_positive_family_parent_{parent_id}_child_{child_id}'] = self.master_problem.accept_block[
+            parent_order['acceptance'] * parent_order[f'q{t}'] * (
+                    parent_order['p'] - self.MCP[t]) + gp.quicksum(child['acceptance'] * child[f'q{t}'] * (
+                    child['p'] - self.MCP[t]) for _, child in children_df.iterrows()) for t in self.master_problem.periods) >= 0,
+                                     f'linked_block_positive_family_parent_{parent_id}')
+        self.cuts[f'linked_block_positive_family_parent_{parent_id}'] = self.master_problem.accept_block[
                                                                     parent_id] == 0.0
 
-        # Leaf blocks are not allowed to generate negative surplus
-        if block_order_df['block_type'][child_id - 1] != 'linked':
-            self.pricing_model.addConstr(
-                gp.quicksum(child_dict['acceptance'] * (child_dict['p'] - self.MCP[t]) * child_dict[f'q{t}'] for t in
-                         self.master_problem.periods) >= 0,
-                f'linked_block_positive_leaf_{child_id}')
-            self.cuts[f'linked_block_positive_leaf_{child_id}'] = self.master_problem.accept_block[
-                                                                      parent_id] == 0.0
+    def add_linked_leafs_positive_surplus(self, child_order):
+        parent_id = int(child_order['code_prm'])
+        child_id = int(child_order['id'])
+
+        self.pricing_model.addConstr(
+            gp.quicksum(child_order['acceptance'] * (child_order['p'] - self.MCP[t]) * child_order[f'q{t}'] for t in
+                        self.master_problem.periods) >= 0,
+            f'linked_block_positive_leaf_{child_id}')
+        self.cuts[f'linked_block_positive_leaf_{child_id}'] = self.master_problem.accept_block[
+                                                                  parent_id] == 0.0
 
     def add_MIC_MP_constraints(self):
         # MIC / MP for complex orders

@@ -2,8 +2,11 @@ from typing import Optional, List
 
 import pandas as pd
 
-from implementation.data.parsing.parse_data import ParseData
-from implementation.data.parsing.zonal_scenario import ZonalScenario
+from euphemia.data.parsing.parse_data import ParseData
+from euphemia.data.parsing.zonal_scenario import ZonalScenario
+from euphemia.utils.paths import RAW_DATA_DIR
+
+path = RAW_DATA_DIR / "european"
 
 
 def transform_step_orders(orders: pd.DataFrame, periods: List[int], sell: bool, order_id: Optional[int] = None,
@@ -53,13 +56,13 @@ def transform_step_orders(orders: pd.DataFrame, periods: List[int], sell: bool, 
 class ParseEU(ParseData):
     def parse_data(self, day=None) -> ZonalScenario:
         periods = [i for i in range(1, 25)]
-        step_orders = pd.read_csv('../implementation/data/raw_data/european/step_orders.csv')
-        block_orders = pd.read_csv('../implementation/data/raw_data/european/block_orders.csv')
-        complex_orders = pd.read_csv('../implementation/data/raw_data/european/complex_orders.csv')
-        complex_step_orders = pd.read_csv('../implementation/data/raw_data/european/complex_step_orders.csv')
-        scalable_complex_orders = pd.read_csv('../implementation/data/raw_data/european/scalable_complex_orders.csv')
-        scalable_step_orders = pd.read_csv('../implementation/data/raw_data/european/scalable_step_orders.csv')
-        piecewise_linear_orders = pd.read_csv('../implementation/data/raw_data/european/piecewise_linear_orders.csv')
+        step_orders = pd.read_csv(path / 'step_orders.csv')
+        block_orders = pd.read_csv(path / 'block_orders.csv')
+        complex_orders = pd.read_csv(path / 'complex_orders.csv')
+        complex_step_orders = pd.read_csv(path / 'complex_step_orders.csv')
+        scalable_complex_orders = pd.read_csv(path / 'scalable_complex_orders.csv')
+        scalable_step_orders = pd.read_csv(path / 'scalable_step_orders.csv')
+        piecewise_linear_orders = pd.read_csv(path / 'piecewise_linear_orders.csv')
 
         step_orders_transformed = pd.concat([transform_step_orders(step_orders, periods, sell=True),
                                              transform_step_orders(step_orders, periods, sell=False)],

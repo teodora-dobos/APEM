@@ -1,12 +1,12 @@
 from fontTools.merge.util import recalculate
 from pyomo.core.kernel.variable import variable
 
-from implementation.utils.extraction import get
-from implementation.utils.calculations import calculate_flexible_order_active_period
+from euphemia.utils.extraction import get
+from euphemia.utils.calculations import calculate_flexible_order_active_period
 
 
 def PRMIC_PRB_reinsertion(self, is_prmic_not_prb: bool):
-    from implementation.euphemia import Euphemia
+    from euphemia.euphemia import Euphemia
 
     counter = 0
     activated_order_counter = 0

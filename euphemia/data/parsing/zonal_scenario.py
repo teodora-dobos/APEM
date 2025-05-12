@@ -1,6 +1,4 @@
 import pandas as pd
-from pyomo.core.kernel.piecewise_library.transforms import piecewise
-
 
 class ZonalScenario:
     """

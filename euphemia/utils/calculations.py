@@ -1,6 +1,6 @@
 
 def calculate_flexible_order_active_period(master_problem, block_id) -> int:
-    from implementation.euphemia import Euphemia
+    from euphemia.euphemia import Euphemia
     # list with flex_period variables for current order
     flex_vars = [
         (t, var) for (oid, t), var in master_problem.flex_period.items()
