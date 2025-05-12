@@ -24,4 +24,4 @@ def write_prices_failure(file_prices, name, status) -> None:
     Creates a CSV with an error message.
     """
     df = pd.DataFrame([{"error_message": f'{name} pricing error with code {status}'}])
-    df.to_csv(csv_file, index=False)
+    df.to_csv(file_prices, index=False)
