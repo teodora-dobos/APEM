@@ -138,7 +138,7 @@ class Scenario:
             # Assign colors to buses based on zones
             geo_df["color"] = geo_df["zone"].map(zone_to_color_mapping)
 
-            # Create GeoDataFrame for lines
+        # Create GeoDataFrame for lines
         line_df = gpd.GeoDataFrame(
             n.lines,
             crs=CRS,

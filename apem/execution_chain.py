@@ -93,7 +93,7 @@ def _solve_redispatch_problem(scenario: Scenario, power_flow_model: PowerFlowMod
 
 
 def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_algorithm: PricingAlgorithms,
-                           power_flow_model: PowerFlowModels, configuration: Configuration, prices=None):
+                           power_flow_model: PowerFlowModels, configuration: Configuration, prices=None) -> Pricing:
     pricing_algorithm = pricing_algorithm.value
     power_flow_model = power_flow_model.value
 
@@ -107,7 +107,7 @@ def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_a
     return pricing
 
 
-def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration, pf_model_value):
+def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration, pf_model_value) -> PriceAnalysis:
     """Performs several analyses.
     
     Args:
@@ -129,7 +129,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
 
 
 def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModels, pricing_algorithm: PricingAlgorithms,
-                   redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD):
+                   redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD) -> PriceAnalysis:
     """Computes allocation and pricing for some scenario.
 
     Args:
