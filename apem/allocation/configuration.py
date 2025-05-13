@@ -1,9 +1,8 @@
 class Configuration:
     """
     Includes the values of different parameters that can be set in the optimizer.
-    Currently, this class is only used for the DCOPF and redispatch algorithms.
+    The configuration parameters are applied to both the allocation and pricing problems.
     """
-
     def __init__(self, MIP_gap, optimality_tol, time_limit, work_limit, threads, presparsify, strict_supply_demand_eq,
                  relaxation, output_flag):
         self.MIP_gap = MIP_gap

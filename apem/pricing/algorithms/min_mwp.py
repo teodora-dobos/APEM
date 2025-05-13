@@ -5,6 +5,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from apem.allocation.allocation import Allocation
+from apem.allocation.configuration import Configuration
 from apem.allocation.error import Error
 from apem.data.parsing.scenario import Scenario
 from apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
@@ -17,7 +18,7 @@ class MinMWP(PricingAlgorithm):
     """Implementation of Minimum Make-Whole Payments Pricing.
     """
 
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices: Optional[str] = None,
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None,
                        fixed_prices: Optional[Pricing] = None) -> Union[Pricing, Error]:
         """
         Formulates and solves a Min-MWP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
@@ -25,6 +26,7 @@ class MinMWP(PricingAlgorithm):
 
         :param allocation: allocation for which supporting prices are computed
         :param scenario: scenario for which prices are computed
+        :param configuration: configuration object containing the parameters for the pricing algorithm
         :param file_prices: name of the file in which results are written
         :param fixed_prices: prices for which MWPs should be computed
         :return: Pricing object if prices could be computed or Error object otherwise
@@ -40,8 +42,8 @@ class MinMWP(PricingAlgorithm):
 
         model = gp.Model('Min-MWP-Pricing')
 
-        model.setParam("OutputFlag", 0)
-        model.setParam('TimeLimit', 60 * 60)
+        # apply Gurobi configuration parameters
+        configuration.apply_to_model(model)
 
         df_buyers = scenario.df_buyers
         df_sellers = scenario.df_sellers

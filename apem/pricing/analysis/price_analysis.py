@@ -4,6 +4,7 @@ import pandas as pd
 
 from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.allocation.allocation import Allocation
+from apem.allocation.configuration import Configuration
 from apem.data.analysis.plot import plot_supply_demand
 from apem.data.parsing.scenario import Scenario
 from apem.pricing.algorithms.elmp import ELMP
@@ -15,17 +16,18 @@ from apem.pricing.analysis.pricing import Pricing, GLOCS, LLOCS, MWPS
 
 class PriceAnalysis:
 
-    def __init__(self, scenario: Scenario, allocation: Allocation, pricing: Pricing):
+    def __init__(self, scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration):
         self.scenario = scenario
         self.allocation = allocation
         self.pricing = pricing
+        self.configuration = configuration
 
     def compute_glocs(self, file_glocs: str = "", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if not pricing.glocs:
                 elmp = ELMP()
-                elmp_results = elmp.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
+                elmp_results = elmp.compute_prices(self.allocation, self.scenario, self.configuration, fixed_prices=pricing)
                 if elmp_results.status == 1:
                     pricing.glocs = elmp_results.glocs
                 else:
@@ -49,7 +51,7 @@ class PriceAnalysis:
         if pricing.status == 1:
             if not pricing.llocs:
                 ip = IP()
-                ip_results = ip.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
+                ip_results = ip.compute_prices(self.allocation, self.scenario, self.configuration, fixed_prices=pricing)
                 if ip_results.status == 1:
                     pricing.llocs = ip_results.llocs
                 else:
@@ -73,7 +75,7 @@ class PriceAnalysis:
         if pricing.status == 1:
             if not pricing.mwps:
                 min_mwp = MinMWP()
-                min_mwp_results = min_mwp.compute_prices(self.allocation, self.scenario, fixed_prices=pricing)
+                min_mwp_results = min_mwp.compute_prices(self.allocation, self.scenario, self.configuration, fixed_prices=pricing)
                 if min_mwp_results.status == 1:
                     pricing.mwps = min_mwp_results.mwps
                 else:

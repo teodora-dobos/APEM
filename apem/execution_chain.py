@@ -93,7 +93,7 @@ def _solve_redispatch_problem(scenario: Scenario, power_flow_model: PowerFlowMod
 
 
 def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_algorithm: PricingAlgorithms,
-                           power_flow_model: PowerFlowModels, prices=None):
+                           power_flow_model: PowerFlowModels, configuration: Configuration, prices=None):
     pricing_algorithm = pricing_algorithm.value
     power_flow_model = power_flow_model.value
 
@@ -101,13 +101,13 @@ def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_a
     path = f"results/{scenario}_results/{power_flow_model}/{zonal_part}{pricing_algorithm}_results"
     os.makedirs(path, exist_ok=True)
 
-    pricing = pricing_algorithm.compute_prices(allocation, scenario,
+    pricing = pricing_algorithm.compute_prices(allocation, scenario, configuration,
                                                file_prices=path + f"/{pricing_algorithm}_prices.csv",
                                                fixed_prices=prices)
     return pricing
 
 
-def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, pf_model_value):
+def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration, pf_model_value):
     """Performs several analyses.
     
     Args:
@@ -122,7 +122,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
     path = f"results/{scenario}_results"
     os.makedirs(path, exist_ok=True)
 
-    analysis = PriceAnalysis(scenario, allocation, pricing)
+    analysis = PriceAnalysis(scenario, allocation, pricing, configuration)
     analysis.compute_all_stats_and_plot_data(path, pf_model_value)
 
     return analysis
@@ -163,8 +163,8 @@ def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModels, pricing
 
         scenario = zonal_scenario
 
-    pricing = _solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model)
-    return PriceAnalysis(scenario, allocation, pricing)
+    pricing = _solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model, configuration)
+    return PriceAnalysis(scenario, allocation, pricing, configuration)
 
 
 def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowModels,
@@ -191,7 +191,7 @@ def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowMod
         zonal_config = power_flow_model.value.zonal_configuration if power_flow_model == PowerFlowModels.Zonal_NTC else ""
         price_analysis.scenario.plot_network(zonal_config)
 
-    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
+    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing, price_analysis.configuration,
                            power_flow_model.value)
 
 
@@ -225,7 +225,7 @@ def apply_all_algorithms(dataset: Datasets):
 
         for pricing_alg in PricingAlgorithms:
             pricing = _solve_pricing_problem(scenario, allocation, pricing_alg, power_flow_model)
-            analyse_results(scenario, allocation, pricing, power_flow_model.value)
+            analyse_results(scenario, allocation, pricing, power_flow_model.value, configuration)
 
 
 def apply_to_all_datasets(power_flow_model: PowerFlowModels, pricing_algorithm: PricingAlgorithms):
