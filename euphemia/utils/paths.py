@@ -1,9 +1,9 @@
 from pathlib import Path
 
-# Root of APEM package
+# Root of EUPHEMIA package
 EUPHEMIA_ROOT = Path(__file__).resolve().parent.parent
 
-# Path to raw data inside APEM
+# Path to raw data inside EUPHEMIA
 RAW_DATA_DIR = EUPHEMIA_ROOT / "data" / "raw_data"
 
 def ensure_dir(path: Path):

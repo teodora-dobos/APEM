@@ -134,7 +134,7 @@ class DataConversion:
             scalable_order = {'id': scalable_id,
                               'step_orders': suborders_ids,
                               'fixed_term': 0,
-                              'condition': pd.NA,
+                              'condition': 'MIC',
                               'load_gradient': pd.NA,
                               **{f'MAP{t}': self.df_sellers[
                                   (self.df_sellers['seller'] == s) & (self.df_sellers['period'] == t)][

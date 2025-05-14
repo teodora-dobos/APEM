@@ -145,18 +145,17 @@ def check_PRCO_PRSCO(self, id: int, isComplex: bool) -> bool:
         return actual_value <= expected_value
 
 def check_PRB(self, order: int) -> bool:
+    # Always try flexible orders
+    if get(self.block_orders, f'block_type', order) == 'flexible':
+        return True
+
     p = get(self.block_orders, 'p', order)
     q = {t: get(self.block_orders, f'q{t}', order) for t in self.periods}
     sale = True if sum(q.values()) > 0 else False
     avg_mcp = sum(self.prices[t] * q_t for t, q_t in q.items()) / sum(q.values())
 
-    #TODO check if correct for reinsertion
-    # if get(self.block_orders, f'block_type', order) == 'flexible':
-    #     active_period = calculate_flexible_order_active_period(master_problem=self, block_id=order)
-    #     print(active_period)
-    #     avg_mcp = self.prices[active_period] * q[active_period]
 
     if sale and p < avg_mcp or not sale and avg_mcp < p:
         return True
-    #TODO special block types
+    #TODO linked block orders
     return False

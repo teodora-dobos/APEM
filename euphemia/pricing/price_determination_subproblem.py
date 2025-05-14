@@ -50,12 +50,12 @@ class Price_Subproblem:
         accept_step_values = self.solution_dict_df[accept_step_order_columns].values.flatten()
         step_order_df['acceptance'] = accept_step_values
 
-        for i in range(len(step_order_df)):
-            p = step_order_df['p'][i]
-            q = step_order_df['q'][i]
-            t = step_order_df['t'][i]
-            acceptance = step_order_df['acceptance'][i]
-            gurobi_acceptance_var = self.master_problem.accept_step[i + 1]
+        for _, order in step_order_df.iterrows():
+            order_id = order['id']
+            p = order['p']
+            q = order['q']
+            t = order['t']
+            acceptance = order['acceptance']
 
             if q == 0:
                 continue
@@ -65,26 +65,26 @@ class Price_Subproblem:
             if acceptance >= 1.0 - self.epsilon:
                 if q > 0:
                     # Sale: INM → p <= MCP
-                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"sell_step_accepted_{i + 1}")
+                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"sell_step_accepted_{order_id}")
                 else:
                     # Purchase: INM → p >= MCP
-                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"buy_step_accepted_{i + 1}")
+                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"buy_step_accepted_{order_id}")
 
             # OTM → must have been rejected
             elif acceptance <= self.epsilon:
                 if q > 0:
                     # Sale: OTM → p >= MCP
-                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"sell_step_rejected_{i + 1}")
+                    self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon, name=f"sell_step_rejected_{order_id}")
                 else:
                     # Purchase: OTM → p <= MCP
-                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"buy_step_rejected_{i + 1}")
+                    self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, name=f"buy_step_rejected_{order_id}")
 
             # ATM → must be exactly at the money
             elif 0.0 < acceptance < 1.0:
                 self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon,
-                                             name=f"step_partially_accepted_lower_{i + 1}")
+                                             name=f"step_partially_accepted_lower_{order_id}")
                 self.pricing_model.addConstr(self.MCP[t] <= p + self.epsilon,
-                                             name=f"step_partially_accepted_upper_{i + 1}")
+                                             name=f"step_partially_accepted_upper_{order_id}")
 
     def add_piecewise_linear_order_constraints(self):
         accept_piecewise_linear_order_columns = [col for col in self.solution_dict_df.columns if
@@ -96,13 +96,12 @@ class Price_Subproblem:
         piecewise_linear_order_df['acceptance'] = accept_piecewise_linear_order_values
 
         for _, order in piecewise_linear_order_df.iterrows():
-            order_id = int(order['id'])
+            order_id = order['id']
             p0 = order['p0']
             p1 = order['p1']
             q = order['q']
             t = order['t']
             acceptance = order['acceptance']
-            gurobi_acceptance_var = self.master_problem.accept_piecewise_linear[order_id]
 
             if acceptance >= 1.0 - self.epsilon:
                 if q > 0:
@@ -141,10 +140,9 @@ class Price_Subproblem:
 
         for _, block_order in block_order_df.iterrows():
             if block_order['acceptance'] > self.epsilon:  # Only accepted blocks relevant
-                block_id = int(block_order['id'])
+                block_id = block_order['id']
                 p = block_order['p']
-                q_columns = [col for col in block_order_df.columns if col.startswith('q')]
-                q_values = block_order_df.loc[block_id - 1, q_columns].values
+                q_values = block_order.filter(regex='^q').values
 
                 total_quantity = sum(abs(q) for q in q_values)
                 if total_quantity == 0:
@@ -189,7 +187,7 @@ class Price_Subproblem:
 
     def add_linked_block_order_constraints(self, block_order_df, parent_order):
         children_df = block_order_df[(block_order_df['code_prm'] == 'linked') & (block_order_df['block_type'] == 'linked')]
-        parent_id = int(parent_order['id'])
+        parent_id = parent_order['id']
 
         # Family surplus must not be negative
         self.pricing_model.addConstr(gp.quicksum(
@@ -201,8 +199,8 @@ class Price_Subproblem:
                                                                     parent_id] == 0.0
 
     def add_linked_leafs_positive_surplus(self, child_order):
-        parent_id = int(child_order['code_prm'])
-        child_id = int(child_order['id'])
+        parent_id = child_order['code_prm']
+        child_id = child_order['id']
 
         self.pricing_model.addConstr(
             gp.quicksum(child_order['acceptance'] * (child_order['p'] - self.MCP[t]) * child_order[f'q{t}'] for t in
@@ -226,7 +224,7 @@ class Price_Subproblem:
         for _, order in complex_order_df.iterrows():
             # only accepted complex orders relevant
             if order['acceptance'] > self.epsilon and (order['condition'] == 'MP' or order['condition'] == 'MIC'):
-                order_id = int(order['id'])
+                order_id = order['id']
 
                 variable_expected_value = 0
                 actual_value = gp.LinExpr()
@@ -263,7 +261,7 @@ class Price_Subproblem:
 
         for _, order in scalable_complex_order_df.iterrows():
             if order['acceptance'] > self.epsilon and (order['condition'] == 'MP' or order['condition'] == 'MIC'):
-                order_id = int(order['id'])
+                order_id = order['id']
 
                 variable_expected_value = 0
                 actual_value = gp.LinExpr()
@@ -294,7 +292,7 @@ class Price_Subproblem:
         q = step_order['q']
         t = step_order['t']
         p = step_order['p']
-        id = int(step_order['id'])
+        id = step_order['id']
         if acceptance >= 1.0 - self.epsilon:
             if q > 0:
                 self.pricing_model.addConstr(self.MCP[t] >= p - self.epsilon, f"sell_{infix}_step_accepted_{id}")
