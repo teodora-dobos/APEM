@@ -155,11 +155,10 @@ class DataConversion:
         Generate block orders to encode the bids of the sellers that fulfill the following criteria:
             - minimum uptime > 1
             - minimum production level > 0
-            - no-load cost = 0
+            - no-load cost >= 0
         Assume cost1 is the smallest marginal cost.
         """
-        sellers = self.df_sellers[(self.df_sellers['min_uptime'] > 1) & (self.df_sellers['min_prod'] > 0) &
-                                  (self.df_sellers['no_load_cost'] == 0)]['seller'].unique().tolist()
+        sellers = self.df_sellers[(self.df_sellers['min_uptime'] > 1) & (self.df_sellers['min_prod'] > 0)]['seller'].unique().tolist()
         min_uptime_values = self.df_sellers[self.df_sellers['min_uptime'] > 1]['min_uptime'].unique().tolist()
 
         # retrieve patterns that encode in which periods a seller is committed
@@ -177,6 +176,7 @@ class DataConversion:
             except FileNotFoundError:
                 print(f"Error: The file '{file_path}' does not exist. Call generate_write_patterns().")
 
+        print("Pattern retrieval finished")
         block_bids = []
         for s in sellers:
             sellers_general_info = self.df_sellers[self.df_sellers['seller'] == s]
@@ -198,11 +198,21 @@ class DataConversion:
                 if sum(time_commitment) == 0:
                     continue
 
+                # Support for orders with no-load cost > 0
+                active_hours = sum(time_commitment)  # k
+                min_prod = sellers_general_info['min_prod'].values[0]
+                no_load = sellers_general_info['no_load_cost'].values[0]
+                min_cost = sellers_general_info['cost1'].values[0]
+
+                pattern_price = min_cost  # c_min,s
+                if no_load > 0 and active_hours * min_prod > 0:
+                    pattern_price += no_load / (active_hours * min_prod)
+
                 bid_p = {
                     'id': f's{s}pattern{count}',
                     'block_type': 'exclusive',
                     'code_prm': exclusive_id,
-                    'p': min_cost,
+                    'p': pattern_price,
                     **{
                         f'q{k}': (
                             self.df_sellers[
@@ -224,6 +234,8 @@ class DataConversion:
                     block_bids.append(bid_p)
                 else:
                     continue
+
+                print(f"Exclusive blocks finished - Seller {s} - Pattern {pattern}")
 
                 # add linked block orders for the previously added block order
                 # one linked block order for each active period and step bid
