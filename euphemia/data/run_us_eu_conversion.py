@@ -41,6 +41,8 @@ def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = Tr
    block_orders = pd.concat([block_orders_buyers, block_orders_sellers], ignore_index=True)
 
    periods = data.periods
+   periods_df = pd.DataFrame({'period': periods})
+
    # If emtpy datasets after conversion, replace with empty datasets
    if step_orders.empty:
       cols = ['id', 't', 'p', 'q']
@@ -56,6 +58,7 @@ def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = Tr
 
    # Save converted datasets
    dfs = {
+      "periods": periods_df,
       "step_orders": step_orders,
       "block_orders": block_orders,
       "scalable_complex_orders": scalable_complex_orders,
@@ -67,14 +70,6 @@ def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = Tr
    for name, df in dfs.items():
       save_df(df, us_data, name)
 
-   scenario = ZonalScenario(str(us_data), periods, step_orders, block_orders, complex_orders, complex_step_orders,
-                            scalable_complex_orders, scalable_step_orders, piecewise_linear_orders)
-
-
-
-   print("Conversion finished, Starting solving...")
-   model = Euphemia(scenario)
-   model.solve()
 
 
 def save_df(df, us_data: ParseData, name: str):
@@ -86,4 +81,4 @@ def save_df(df, us_data: ParseData, name: str):
 
 
 if __name__ == '__main__':
-   run_us_eu_conversion(ParseIEEERTS, generate_uptime_patterns=False)
+   run_us_eu_conversion(ParsePyPSAEurSmall, generate_uptime_patterns=False)

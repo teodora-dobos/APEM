@@ -54,7 +54,6 @@ class ParseEU(ParseData):
         self.path = path
 
     def parse_data(self, day=None) -> ZonalScenario:
-        periods = [i for i in range(1, 25)]
         step_orders = pd.read_csv(self.path / 'step_orders.csv')
         block_orders = pd.read_csv(self.path / 'block_orders.csv')
         complex_orders = pd.read_csv(self.path / 'complex_orders.csv')
@@ -62,6 +61,8 @@ class ParseEU(ParseData):
         scalable_complex_orders = pd.read_csv(self.path / 'scalable_complex_orders.csv')
         scalable_step_orders = pd.read_csv(self.path / 'scalable_step_orders.csv')
         piecewise_linear_orders = pd.read_csv(self.path / 'piecewise_linear_orders.csv')
+        periods_df = pd.read_csv(self.path / 'periods.csv')
+        periods = periods_df['period'].tolist()
 
         step_orders_transformed = pd.concat([transform_step_orders(step_orders, periods, sell=True),
                                              transform_step_orders(step_orders, periods, sell=False)],
@@ -75,7 +76,7 @@ class ParseEU(ParseData):
             complex_dfs.append(
                 transform_step_orders(complex_step_orders, periods, sell=False, order_id=complex_id))
 
-        complex_step_orders_transformed = pd.concat(complex_dfs)
+        #complex_step_orders_transformed = pd.concat(complex_dfs)
 
         scalable_ids = scalable_complex_orders['id'].tolist()
         scalable_dfs = []
@@ -85,12 +86,7 @@ class ParseEU(ParseData):
             scalable_dfs.append(
                 transform_step_orders(scalable_step_orders, periods, sell=False, order_id=scalable_id, scalable=True))
 
-        scalable_complex_step_orders_transformed = pd.concat(scalable_dfs)
-
-        for df in [step_orders, block_orders, complex_orders, complex_step_orders,
-                   scalable_complex_orders, scalable_step_orders, piecewise_linear_orders]:
-            if 'id' in df.columns:
-                df['id'] = df['id'].astype(int)
+        #scalable_complex_step_orders_transformed = pd.concat(scalable_dfs)
 
         return ZonalScenario('EUDataset', periods, step_orders, block_orders,
                              complex_orders, complex_step_orders,
