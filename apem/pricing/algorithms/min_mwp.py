@@ -5,19 +5,20 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from apem.allocation.allocation import Allocation
+from apem.allocation.configuration import Configuration
 from apem.allocation.error import Error
 from apem.data.parsing.scenario import Scenario
 from apem.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.pricing.analysis.pricing import MWPS, Pricing
 from apem.pricing.analysis.write_prices import write_prices, write_prices_failure
-from apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.utils.extraction import preprocess_as_dict
 
 
 class MinMWP(PricingAlgorithm):
     """Implementation of Minimum Make-Whole Payments Pricing.
     """
 
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, file_prices: Optional[str] = None,
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None,
                        fixed_prices: Optional[Pricing] = None) -> Union[Pricing, Error]:
         """
         Formulates and solves a Min-MWP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
@@ -25,6 +26,7 @@ class MinMWP(PricingAlgorithm):
 
         :param allocation: allocation for which supporting prices are computed
         :param scenario: scenario for which prices are computed
+        :param configuration: configuration object containing the parameters for the pricing algorithm
         :param file_prices: name of the file in which results are written
         :param fixed_prices: prices for which MWPs should be computed
         :return: Pricing object if prices could be computed or Error object otherwise
@@ -40,8 +42,8 @@ class MinMWP(PricingAlgorithm):
 
         model = gp.Model('Min-MWP-Pricing')
 
-        model.setParam("OutputFlag", 0)
-        model.setParam('TimeLimit', 60 * 60)
+        # apply Gurobi configuration parameters
+        configuration.apply_to_model(model)
 
         df_buyers = scenario.df_buyers
         df_sellers = scenario.df_sellers
@@ -54,6 +56,19 @@ class MinMWP(PricingAlgorithm):
         nodes = network.nodes
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
+        
+        # precompute dictionaries for fast access
+        buyer_val_dict, seller_cost_dict = {}, {}
+        
+        buyer_node_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'node')
+        seller_no_load_cost_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'no_load_cost')
+        seller_node_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'node')
+        
+        for block in blocks_buyers:
+            buyer_val_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'val', block)
+            
+        for block in blocks_sellers:
+            seller_cost_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'cost', block)
 
         y_st = allocation.SellersAllocation.y_st
         x_btl = allocation.BuyersAllocation.x_btl
@@ -87,12 +102,12 @@ class MinMWP(PricingAlgorithm):
         # 1
         model.addConstrs(
             - gp.quicksum(
-                extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
+                buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
             + gp.quicksum(
-                p_vt[extract_from_buyers(df_buyers, 'node', b, t), t] * x_btl[b, t, lb]
+                p_vt[buyer_node_dict[b, t], t] * x_btl[b, t, lb]
                 for t in periods
                 for lb in blocks_buyers
             )
@@ -103,16 +118,16 @@ class MinMWP(PricingAlgorithm):
         # 2
         model.addConstrs(
             -gp.quicksum(
-                p_vt[extract_from_sellers(df_sellers, 'node', s, t), t] * y_st[s, t]
+                p_vt[seller_node_dict[s, t], t] * y_st[s, t]
                 for t in periods
             )
             + gp.quicksum(
-                extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
+                seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
                 for t in periods
                 for ls in blocks_sellers
             )
             + gp.quicksum(
-                extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
             - lambda_s[s]

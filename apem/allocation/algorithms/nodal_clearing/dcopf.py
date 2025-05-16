@@ -10,7 +10,7 @@ from apem.allocation.configuration import Configuration
 from apem.allocation.error import Error
 from apem.allocation.power_flow_model import PowerFlowModel
 from apem.data.parsing.scenario import Scenario
-from apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.utils.extraction import preprocess_as_dict
 
 
 class DCOPF(PowerFlowModel):
@@ -42,8 +42,8 @@ class DCOPF(PowerFlowModel):
         else:
             model = gp.Model(f'DCOPF-MILP-Scenario-{scenario}')
 
-        model.setParam("OutputFlag", configuration.output_flag)
-        model.setParam('TimeLimit', configuration.time_limit)
+        # apply Gurobi configuration parameters
+        configuration.apply_to_model(model)
 
         if not configuration.relaxation:
             model.setParam('IntegralityFocus', 1)
@@ -59,7 +59,26 @@ class DCOPF(PowerFlowModel):
         nodes = network.nodes
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
-
+        
+        # precompute dictionaries for fast access
+        buyer_val_dict, buyer_size_dict = {}, {}
+        seller_cost_dict, seller_size_dict = {}, {}
+        
+        buyer_inelastic_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'inelastic_dem')
+        buyer_max_dem_dict = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'max_dem')
+        seller_no_load_cost_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'no_load_cost')
+        seller_min_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'min_prod')
+        seller_max_prod_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'max_prod')
+        seller_min_uptime_dict = preprocess_as_dict(df_sellers, ['seller', 'period'], 'min_uptime')
+        
+        for block in blocks_buyers:
+            buyer_val_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'val', block)
+            buyer_size_dict[block] = preprocess_as_dict(df_buyers, ['buyer', 'period'], 'size', block)
+            
+        for block in blocks_sellers:
+            seller_cost_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'cost', block)
+            seller_size_dict[block] = preprocess_as_dict(df_sellers, ['seller', 'period'], 'size', block)    
+        
         x_bt = model.addVars(buyers, periods, name='x_bt')
         x_btl = model.addVars(buyers, periods, blocks_buyers, name='x_btl')
         y_st = model.addVars(sellers, periods, name='y_st')
@@ -83,19 +102,19 @@ class DCOPF(PowerFlowModel):
         if not redispatch:
             model.setObjective(
                 gp.quicksum(
-                    extract_from_buyers(df_buyers, 'val', b, t, lb) * x_btl[b, t, lb]
+                    buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
                     for b in buyers
                     for t in periods
                     for lb in blocks_buyers
                 )
                 - gp.quicksum(
-                    extract_from_sellers(df_sellers, 'cost', s, t, ls) * y_stl[s, t, ls]
+                    seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
                     for s in sellers
                     for t in periods
                     for ls in blocks_sellers
                 )
                 - gp.quicksum(
-                    extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_st[s, t]
+                    seller_no_load_cost_dict[s, t] * u_st[s, t]
                     for s in sellers
                     for t in periods
                 ),
@@ -117,11 +136,11 @@ class DCOPF(PowerFlowModel):
             if min_cost:
                 model.setObjective(
                     gp.quicksum(
-                        extract_from_sellers(df_sellers, 'cost', s, t, ls) * diff_stl[s, t, ls]
+                        seller_cost_dict[ls][s, t] * diff_stl[s, t, ls]
                         for s in sellers for t in periods for ls in blocks_sellers
                     ) +
                     gp.quicksum(
-                        extract_from_sellers(df_sellers, 'no_load_cost', s, t) * u_diff_st[s, t]
+                        seller_no_load_cost_dict[s, t] * u_diff_st[s, t]
                         for s in sellers for t in periods),
                     GRB.MINIMIZE
                 )
@@ -152,7 +171,7 @@ class DCOPF(PowerFlowModel):
         )
         # 2
         model.addConstrs(
-            x_btl[b, t, lb] <= extract_from_buyers(df_buyers, 'size', b, t, lb)
+            x_btl[b, t, lb] <= buyer_size_dict[lb][b, t]
             for b in buyers
             for t in periods
             for lb in blocks_buyers
@@ -164,13 +183,13 @@ class DCOPF(PowerFlowModel):
                 x_btl[b, t, lb]
                 for lb in blocks_buyers
             )
-            == extract_from_buyers(df_buyers, 'inelastic_dem', b, t)
+            == buyer_inelastic_dem_dict[b, t]
             for b in buyers
             for t in periods
         )
         # 4
         model.addConstrs(
-            x_bt[b, t] <= extract_from_buyers(df_buyers, 'max_dem', b, t)
+            x_bt[b, t] <= buyer_max_dem_dict[b, t]
             for b in buyers
             for t in periods
         )
@@ -184,7 +203,7 @@ class DCOPF(PowerFlowModel):
         # 6
         model.addConstrs(
             y_stl[s, t, ls]
-            - extract_from_sellers(df_sellers, 'size', s, t, ls) * u_st[s, t]
+            - seller_size_dict[ls][s, t] * u_st[s, t]
             <= 0
             for s in sellers
             for t in periods
@@ -204,7 +223,7 @@ class DCOPF(PowerFlowModel):
         # 8
         model.addConstrs(
             y_st[s, t]
-            - extract_from_sellers(df_sellers, 'min_prod', s, t) * u_st[s, t]
+            - seller_min_prod_dict[s, t] * u_st[s, t]
             >= 0
             for s in sellers
             for t in periods
@@ -212,7 +231,7 @@ class DCOPF(PowerFlowModel):
         # 9
         model.addConstrs(
             y_st[s, t]
-            - extract_from_sellers(df_sellers, 'max_prod', s, t) * u_st[s, t]
+            - seller_max_prod_dict[s, t] * u_st[s, t]
             <= 0
             for s in sellers
             for t in periods
@@ -227,13 +246,13 @@ class DCOPF(PowerFlowModel):
         model.addConstrs(
             gp.quicksum(
                 phi_st[s, i]
-                for i in range(t - extract_from_sellers(df_sellers, 'min_uptime', s, t) + 1,
+                for i in range(t - seller_min_uptime_dict[s, t] + 1,
                                t + 1)
             )
             - u_st[s, t]
             <= 0
             for s in sellers
-            for t in periods if t >= extract_from_sellers(df_sellers, 'min_uptime', s, t) + 1
+            for t in periods if t >= seller_min_uptime_dict[s, t] + 1
         )
         # 12
         model.addConstrs(
@@ -337,6 +356,6 @@ class DCOPF(PowerFlowModel):
             print(f'{self} allocation error with code {status}')
             error = Error(status)
             return error
-
+    
     def __str__(self):
         return 'DCOPF'

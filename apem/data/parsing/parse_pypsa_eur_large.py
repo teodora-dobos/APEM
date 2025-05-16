@@ -10,7 +10,7 @@ from apem.utils.paths import RAW_DATA_DIR
 path = RAW_DATA_DIR / "pypsa_eur_large"
 
 class ParsePyPSAEurLarge(ParseData):
-    def parse_data(self):
+    def parse_data(self) -> Scenario:
         df_sellers = pd.read_csv(path / 'sellers.csv')
         df_buyers = pd.read_csv(path / 'buyers.csv')
         network = nx.read_edgelist(path / 'network.csv', nodetype=int, delimiter=',')

@@ -3,7 +3,7 @@ import gurobipy as gp
 from apem.allocation.allocation import Allocation
 from apem.allocation.configuration import Configuration
 from apem.data.parsing.scenario import Scenario
-from apem.utils.extraction import extract_from_buyers, extract_from_sellers
+from apem.utils.extraction import preprocess_as_dict
 
 
 def compute_stats(stats_file: str, scenario: Scenario, configuration: Configuration, allocation: Allocation,
@@ -16,18 +16,29 @@ def compute_stats(stats_file: str, scenario: Scenario, configuration: Configurat
     nodes = scenario.network.nodes
     buyers = scenario.df_buyers['buyer'].unique().tolist()
     sellers = scenario.df_sellers['seller'].unique().tolist()
+    
+    # precompute dictionaries for fast access
+    buyer_val_dict, seller_cost_dict = {}, {}
+    
+    seller_no_load_cost_dict = preprocess_as_dict(scenario.df_sellers, ['seller', 'period'], 'no_load_cost')
+
+    for block in scenario.blocks_buyers:
+        buyer_val_dict[block] = preprocess_as_dict(scenario.df_buyers, ['buyer', 'period'], 'val', block)
+            
+    for block in scenario.blocks_sellers:
+        seller_cost_dict[block] = preprocess_as_dict(scenario.df_sellers, ['seller', 'period'], 'cost', block)
 
     for t in scenario.periods:
         welfare_per = gp.quicksum(
-            extract_from_buyers(scenario.df_buyers, 'val', b, t, lb) * allocation.BuyersAllocation.x_btl[b, t, lb]
+            buyer_val_dict[lb][b, t] * allocation.BuyersAllocation.x_btl[b, t, lb]
             for b in buyers
             for lb in scenario.blocks_buyers
         ) - gp.quicksum(
-            extract_from_sellers(scenario.df_sellers, 'cost', s, t, ls) * allocation.SellersAllocation.y_stl[s, t, ls]
+            seller_cost_dict[ls][s, t] * allocation.SellersAllocation.y_stl[s, t, ls]
             for s in sellers
             for ls in scenario.blocks_sellers
         ) - gp.quicksum(
-            extract_from_sellers(scenario.df_sellers, 'no_load_cost', s, t) * allocation.SellersAllocation.u_st[s, t]
+            seller_no_load_cost_dict[s, t] * allocation.SellersAllocation.u_st[s, t]
             for s in sellers
         )
         f.write(f"Welfare period {t}: {welfare_per}\n")
@@ -59,7 +70,7 @@ def compute_stats(stats_file: str, scenario: Scenario, configuration: Configurat
     f.write(f"Demand = {total_demand}\n")
 
     if not configuration.relaxation:
-        f.write(f"Final MIP gap value: {model.MIPGap}\n")
+        f.write(f"\nFinal MIP gap value: {model.MIPGap}\n")
     f.write(f"Nodes: {len(nodes)}\n")
     f.write(f"Branches: {int(len(allocation.TransmissionNetworkAllocation.f_vwt) / (2 * len(scenario.periods)))}\n")
     f.write(f"Buyers: {len(buyers)}\n")
@@ -79,5 +90,8 @@ def compute_stats(stats_file: str, scenario: Scenario, configuration: Configurat
         f.write(f"COUNT FRACTIONAL: {count_frac}\n")
         f.write(f"COUNT BINARY: {count_binary}\n")
 
+    f.write(f"\nCONFIGURATION:\n")
+    for key, value in vars(configuration).items():
+        f.write(f"  {key}: {value}\n")
     f.write("\n")
     f.close()

@@ -92,7 +92,7 @@ def read_ieee_buyers() -> pd.DataFrame:
 
     :return: buyers dataframe
     """
-    hourly_loads_percentages = read_hourly_loads(path + 'hourly_loads.csv')
+    hourly_loads_percentages = read_hourly_loads(path / 'hourly_loads.csv')
 
     base_loads = pd.read_csv(path / 'baseloads.csv', sep = r'\s+',
                              names=['1', '2', '3', '%_sys_load', 'load_mw', 'load_mvar', 'peak_mw', 'peak_mvar'],
