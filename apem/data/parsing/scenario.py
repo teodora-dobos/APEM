@@ -1,5 +1,5 @@
 from shapely.geometry import Point, LineString
-from typing import Union, Optional
+from typing import Optional
 
 import geopandas as gpd
 import networkx as nx
@@ -19,7 +19,7 @@ class Scenario:
 
     def __init__(self, name: str, df_buyers: pd.DataFrame, df_sellers: pd.DataFrame, network: nx.Graph,
                  nodes_agents: dict, periods: list, blocks_buyers: range, blocks_sellers: range,
-                 r_star: Union[str, int], network_file: Optional[str] = None):
+                 r_star: str, network_file: Optional[str] = None):
         self.name = name
         self.df_buyers = df_buyers
         self.df_sellers = df_sellers

@@ -12,9 +12,13 @@ path = RAW_DATA_DIR / "pypsa_eur_small"
 
 class ParsePyPSAEurSmall(ParseData):
     def parse_data(self) -> Scenario:
-        df_sellers = pd.read_csv(path / 'sellers.csv')
-        df_buyers = pd.read_csv(path / 'buyers.csv')
-        network = nx.read_edgelist(path / 'network.csv', delimiter=',')
+        df_sellers = pd.read_csv(path / 'sellers.csv', dtype={'node': str})
+        df_buyers = pd.read_csv(path / 'buyers.csv', dtype={
+            'node': str,
+            'buyer': str
+        })
+        
+        network = nx.read_edgelist(path / 'network.csv', nodetype=str, delimiter=',')
         periods = [i for i in range(1, 25)]
 
         node_map = pd.read_csv(path / 'nodes_agents.csv')
