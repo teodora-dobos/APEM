@@ -49,6 +49,7 @@ def main():
 
     # Load the network
     n = pypsa.Network(os.path.join(BASE_PATH, NETWORK_FILE))
+    num_periods = len(n.snapshots)
 
     # Filter and rename generator columns
     n.generators = n.generators[
@@ -82,11 +83,11 @@ def main():
     prod = pd.DataFrame(columns=["period", "generator", "p_max_pu"])
     count = 0
     for col in n.generators_t["p_max_pu"].columns:
-        df = pd.DataFrame({"period": range(1, 25),
+        df = pd.DataFrame({"period": range(1, num_periods + 1),
                            "generator": col,
                            "p_max_pu": n.generators_t["p_max_pu"][col]})
-        df.index = range(count, count + 24)
-        count += 24
+        df.index = range(count, count + num_periods)
+        count += num_periods
 
         if prod.empty:  # check if prod is empty before concatenating
             prod = df
@@ -96,11 +97,11 @@ def main():
     # Handle generators with missing time-series data
     for gen in n.generators.index:
         if gen not in n.generators_t["p_max_pu"].columns:
-            df = pd.DataFrame({"period": range(1, 25),
+            df = pd.DataFrame({"period": range(1, num_periods + 1),
                                "generator": gen,
                                "p_max_pu": 1})
-            df.index = range(count, count + 24)
-            count += 24
+            df.index = range(count, count + num_periods)
+            count += num_periods
 
             if prod.empty:  # check if prod is empty before concatenating
                 prod = df
@@ -120,7 +121,7 @@ def main():
     renewable_prod = renewable_prod.groupby(['carrier', 'period']).mean()  # group by carrier and period
     plt.clf()
     pd.pivot_table(renewable_prod.reset_index(), index='period', columns='carrier', values='p_max_pu'
-                   ).plot(xlim=(0, 23), ylim=(0, 1.0), xlabel='hour', ylabel='p_max_pu')
+                   ).plot(xlim=(0, num_periods - 1), ylim=(0, 1.0), xlabel='hour', ylabel='p_max_pu')
     ax = plt.gca()
     ax.set_facecolor('xkcd:white')
     ax.grid(False)
@@ -149,13 +150,13 @@ def main():
     dem = pd.DataFrame(columns=["period", "node", "buyer", "inelastic_dem", "max_dem"])
     count = 0
     for node in n.loads_t["p_set"].columns:
-        df = pd.DataFrame({"period": range(1, 25),
+        df = pd.DataFrame({"period": range(1, num_periods + 1),
                            "node": node,
                            "buyer": node,
                            "inelastic_dem": n.loads_t["p_set"][node],
                            "max_dem": n.loads_t["p_set"][node]})
-        df.index = range(count, count + 24)
-        count += 24
+        df.index = range(count, count + num_periods)
+        count += num_periods
 
         if dem.empty:  # check if prod is empty before concatenating
             dem = df
