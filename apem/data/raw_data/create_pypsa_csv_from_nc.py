@@ -181,6 +181,17 @@ def main():
 
     # Only keep buses that are part of the specified network nodes
     n.buses = n.buses[n.buses.index.isin(network.nodes)]
+    
+    # Export PyPSA coordinate information (x: longitude, y: latitude) for each node to a CSV file
+    nodes_coords = n.buses[["x", "y"]].copy()
+    nodes_coords.reset_index(inplace=True)
+    nodes_coords.rename(columns={
+        "Bus": "node", 
+        "y": "latitude",
+        "x": "longitude"
+    }, inplace=True)
+    nodes_coords = nodes_coords.sort_values(by='node')
+    nodes_coords.to_csv(os.path.join(BASE_PATH, "nodes_coords.csv"), index=False)
 
     # Iterate through network components and print their details
     for c in n.iterate_components(list(n.components.keys())[2:]):
