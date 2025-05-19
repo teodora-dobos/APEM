@@ -4,7 +4,6 @@ from typing import Optional, Tuple, Union
 
 import networkx as nx
 import pandas as pd
-import pypsa
 
 from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.allocation.allocation import Allocation
@@ -13,7 +12,6 @@ from apem.allocation.error import Error
 from apem.allocation.power_flow_model import PowerFlowModel
 from apem.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 from apem.data.parsing.scenario import Scenario
-from apem.utils.paths import RAW_DATA_DIR
 
 
 class Zonal_NTC(PowerFlowModel):
@@ -27,7 +25,7 @@ class Zonal_NTC(PowerFlowModel):
         self.zonal_configuration = zonal_configuration
         self.factor = factor
 
-    def create_zonal_scenario_NTC(self, base_scenario: Scenario, network: pypsa.Network) -> Scenario:
+    def create_zonal_scenario_NTC(self, base_scenario: Scenario) -> Scenario:
         """
         Construct a zonal scenario based on a given nodal base scenario.
         """
@@ -35,24 +33,24 @@ class Zonal_NTC(PowerFlowModel):
         df_buyers = base_scenario.df_buyers
 
         node_to_zone, zones = {}, {}
+        
         for node in base_scenario.network.nodes:
-            for node_index in list(network.buses.index):
-                if str(node) == node_index:
-                    lon = network.buses.at[node_index, 'x']
-                    lat = network.buses.at[node_index, 'y']
-
-                    # map node to zone based on latitude and longitude coordinates
-                    zone = node_zone_mapper(self.zonal_configuration, lat=lat, lon=lon)
-                    node_to_zone[node] = zone
-
-                    # each zone is represented by a single node within that zone
-                    zones.setdefault(zone, node)
-
-                    # the sellers and buyers at the current node are assigned to the zone
-                    df_sellers.loc[df_sellers['node'] == node, 'node'] = zone
-                    df_buyers.loc[df_buyers['node'] == node, 'node'] = zone
-
-                    break
+            if node not in base_scenario.nodes_agents:
+                continue # skip nodes without coordinate information
+            
+            lat = base_scenario.nodes_agents[node]["latitude"]
+            lon = base_scenario.nodes_agents[node]["longitude"]
+            
+            # map node to zone based on latitude and longitude coordinates
+            zone = node_zone_mapper(self.zonal_configuration, lat=lat, lon=lon)
+            node_to_zone[node] = zone
+            
+            # ensure each zone is represented by a single node within that zone
+            zones.setdefault(zone, node)
+            
+            # the sellers and buyers at the current node are assigned to the zone
+            df_sellers.loc[df_sellers['node'] == node, 'node'] = zone
+            df_buyers.loc[df_buyers['node'] == node, 'node'] = zone
 
         # save node_to_zone assignment as .csv file
         results_path = f"results/{base_scenario.name}_results/Zonal_NTC/{self.zonal_configuration}"
@@ -105,15 +103,8 @@ class Zonal_NTC(PowerFlowModel):
     def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None) \
             -> Tuple[Scenario, Union[Allocation, Error]]:
-
-        # load the PyPSA network
-        if scenario.name == 'PyPSA_Eur_Large':
-            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_large" / "elec_s_334m_ec_lv1.5_.nc")
-        elif scenario.name == 'PyPSA_Eur_Small':
-            n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_small" /"elec_s_40_ec_lv1.5_.nc")
-
         # create a zonal NTC scenario
-        zonal_scenario = self.create_zonal_scenario_NTC(base_scenario=scenario, network=n)
+        zonal_scenario = self.create_zonal_scenario_NTC(base_scenario=scenario)
 
         # solve a DCOPF problem for the constructed zonal network
         dcopf = DCOPF()
