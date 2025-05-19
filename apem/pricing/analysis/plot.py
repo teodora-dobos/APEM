@@ -2,7 +2,7 @@ import geopandas as gpd
 import matplotlib as mpl
 import os
 import pandas as pd
-import pypsa
+
 from matplotlib import pyplot as plt
 from shapely.geometry import Point, LineString
 
@@ -17,19 +17,19 @@ def plot_avg_prices(avg_prices: pd.DataFrame, scenario: Scenario, file_plot: str
     plt.close()
 
 
-def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None, zonal_config: str = "") -> None:
-    """Creates a heatmap with the (average) nodal (or zonal) prices for the PyPSA network.
+def plot_price_heatmap(file_heatmap: str, scenario: Scenario, avg_prices: dict = None, zonal_config: str = "") -> None:
+    """Creates a heatmap with the (average) nodal (or zonal) prices for the underlying network.
 
     Args:
         file_heatmap (str): path to store the resulting heatmap
-        dataset (str): the PyPSA dataset being used
+        scenario (Scenario): the scenario object
         avg_prices (dict, optional): average nodal (or zonal) prices
         zonal_config (str, optional): whether Zonal_NTC was used
     """
 
     # Define power flow model and create results directory, if not exists
     power_flow_model = "Zonal_NTC" if zonal_config else "DCOPF"
-    results_directory = os.path.join("results", f"{dataset}_results", power_flow_model)
+    results_directory = os.path.join("results", f"{scenario.name}_results", power_flow_model)
     os.makedirs(results_directory, exist_ok=True)
 
     # Load average prices, if not provided
@@ -38,12 +38,10 @@ def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None,
 
     # Store zonal price information for plotting purposes
     avg_prices_copy = avg_prices.copy()
-
-    # Load PyPSA network
-    if dataset == 'PyPSA_Eur_Large':
-        n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_large" / "elec_s_334m_ec_lv1.5_.nc")
-    elif dataset == 'PyPSA_Eur_Small':
-        n = pypsa.Network(RAW_DATA_DIR / "pypsa_eur_small" / "elec_s_40_ec_lv1.5_.nc")
+    
+    # Get nodes and edges from the network
+    nodes = list(scenario.network.nodes)
+    edges = scenario.network.edges(data=True)
 
     # Handle zonal mapping, if applicable
     if zonal_config:
@@ -51,42 +49,53 @@ def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None,
         df_zones = pd.read_csv(os.path.join(results_directory, zonal_config, "node_to_zone.csv"),
                                dtype={"node": str, "zone": str})
 
-        # Ensure bus indices are strings
-        n.buses.index = n.buses.index.astype(str)
-
-        # Map zones to buses and drop invalid ones
-        n.buses["zone"] = n.buses.index.map(df_zones.set_index("node")["zone"])
-        n.buses.dropna(subset=["zone"], inplace=True)
+        # Filter nodes that are in the networkx graph
+        df_zones = df_zones[df_zones["node"].isin(nodes)]
 
         # Merge and aggregate prices per node
-        df_prices = pd.DataFrame(list(avg_prices.items()), columns=["zone", "price"]).merge(df_zones, on="zone",
-                                                                                            how="inner")
+        df_prices = pd.DataFrame(list(avg_prices.items()), columns=["zone", "price"]).merge(
+            df_zones, on="zone", how="inner")
         avg_prices = df_prices.groupby("node")["price"].mean().to_dict()
 
     else:
-        # Filter buses based on available price data
-        n.buses = n.buses[n.buses.index.isin(avg_prices.keys())]
+        # Filter nodes based on available price data
+        nodes = [node for node in scenario.network.nodes if node in avg_prices]
 
-    # Filter power lines with non-zero capacity 
-    n.lines = n.lines[n.lines["s_nom"] > 0]
-
-    # Extract longitude (x) & latitude (y) for buses, and assign prices
     CRS = "EPSG:4326"
+    
+    # Create GeoDataFrame for nodes with longitude & latitude
     geo_df = gpd.GeoDataFrame(
-        n.buses,
+        {
+            "node": nodes,
+            "latitude": [scenario.nodes_agents[node]["latitude"] for node in nodes],
+            "longitude": [scenario.nodes_agents[node]["longitude"] for node in nodes],
+        },
         crs=CRS,
-        geometry=[Point(xy) for xy in zip(n.buses["x"], n.buses["y"])]
+           geometry=[
+            Point(scenario.nodes_agents[node]["longitude"], scenario.nodes_agents[node]["latitude"])
+            for node in nodes
+        ]
     )
-    geo_df["price"] = geo_df.index.map(avg_prices)
+    geo_df["price"] = geo_df["node"].map(avg_prices)
 
-    # Create GeoDataFrame for lines
+    if zonal_config:
+        geo_df = geo_df.merge(df_zones, on="node", how="left")
+
+    # Create GeoDataFrame for edges
     line_df = gpd.GeoDataFrame(
-        n.lines,
+        {
+            "from_node": [u for u, v, data in edges],      
+            "to_node": [v for u, v, data in edges],
+            "B": [data["B"] for u, v, data in edges],
+            "F_max": [data["F_max"] for u, v, data in edges]  
+        }, 
         crs=CRS,
         geometry=[
-            LineString([(n.buses.loc[line["bus0"], "x"], n.buses.loc[line["bus0"], "y"]),
-                        (n.buses.loc[line["bus1"], "x"], n.buses.loc[line["bus1"], "y"])])
-            for _, line in n.lines.iterrows()
+            LineString([
+                Point(scenario.nodes_agents[u]["longitude"], scenario.nodes_agents[u]["latitude"]),
+                Point(scenario.nodes_agents[v]["longitude"], scenario.nodes_agents[v]["latitude"])
+            ]) 
+            for u, v, data in edges
         ]
     )
 
@@ -146,10 +155,16 @@ def plot_pypsa_heatmap(file_heatmap: str, dataset: str, avg_prices: dict = None,
     )
 
     if zonal_config:
+        # dissolve nodes per zone to get a single geometry per zone
+        zone_geo = geo_df.dissolve(by="zone")
+    
         for zone, price in avg_prices_copy.items():
+            # get the centroid of the combined geometry of the zone
+            point = zone_geo.loc[zone].geometry.centroid
+        
             ax.text(
-                x=geo_df.loc[geo_df["zone"] == zone, "geometry"].iloc[0].x,
-                y=geo_df.loc[geo_df["zone"] == zone, "geometry"].iloc[0].y,
+                x=point.x,
+                y=point.y,
                 s=f"Zone {zone}: {price:.2f} €/MWh",
                 fontsize=13,
                 ha="center",
