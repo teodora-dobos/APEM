@@ -10,11 +10,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
+
+# Sets the working directory to the parent folder
 script_path = os.path.dirname(os.path.abspath(__file__))
 parent_path = os.path.dirname(script_path)
 parent_path = os.path.dirname(parent_path)
-# Setzt das Arbeitsverzeichnis auf den übergeordneten Ordner
 os.chdir(parent_path)
+
 
 #PowerFlowModels: DCOPF, Zonal_NTC
 #Pricing Algorithms: ELMP, IP, Join
@@ -84,8 +87,23 @@ def save_results(Testing_Data_Set):
     df1 = df1.applymap(lambda x: str(x).replace('.', ',') if isinstance(x, (float, int)) else x)
     txt_file_path = f"results/{modified_string}_results/DCOPF/allocation_results/DCOPF_stats.txt"
     # **Read the .txt file for the second sheet**
-    with open(txt_file_path, 'r', encoding='utf-8') as txt_file:
-        txt_content = txt_file.readlines()
+    
+
+    if os.path.exists(txt_file_path):
+        # **Read the .txt file for the second sheet**
+        with open(txt_file_path, 'r', encoding='utf-8') as txt_file:
+            txt_content = txt_file.readlines()
+    else:
+        raise FileNotFoundError(
+            f"The file '{txt_file_path}' does not exist. "
+            f"Please ensure results are generated via analyze_results() before running this step."
+        )
+
+
+
+
+    # with open(txt_file_path, 'r', encoding='utf-8') as txt_file:
+    #     txt_content = txt_file.readlines()
 
     df2 = pd.DataFrame(txt_content, columns=["Allocation Results:"])
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
@@ -101,23 +119,18 @@ def save_results(Testing_Data_Set):
 
 
 def plot_results(all_results, testing_data_set):
-      
-
-
 
     # List of column names
     # Creating the column names
     average_price_keys = [f'Average price in period {x}' for x in list(range(1, 25))]# + list(range(8, 25))]
     #output_folder = 'results_data_analysis'
     
-    # Ensure the output folder exists
-    #os.makedirs(output_folder, exist_ok=True)
+   
     
     # Prepare plot data
     elmp, ip, join = [], [], []
     
     for key in average_price_keys:
-        # row = all_results.loc[all_results[0] == key]
         row = next((item for item in all_results if item[0] == key), None)
         if row is not None:
             elmp.append(float(row[1]))
@@ -131,8 +144,6 @@ def plot_results(all_results, testing_data_set):
     plt.plot(elmp, '-o', label='ELMP')
     plt.plot(ip, '-o', label='IP')
     plt.plot(join, '-o', label='Join')
-    
-    # plt.plot(hourly_costs_real_prices, '-x', label='Real Day-Ahead price')  # Adding the €/MWh values
     plt.title(f'Average Costs per Hour; {testing_data_set}')
     plt.xlabel('Hour')
     plt.xticks(ticks=range(24), labels=range(1, 25))
@@ -154,8 +165,8 @@ def plot_results(all_results, testing_data_set):
     
     # Boxplot creation
     
-    data = [elmp, ip, join]  #, hourly_costs_real_prices]
-    variable_names = ['ELMP', 'IP', 'Join']  #, 'Real Day-Ahead price']
+    data = [elmp, ip, join]  
+    variable_names = ['ELMP', 'IP', 'Join'] 
     
     # Initialize plot
     plt.figure()
@@ -307,9 +318,6 @@ def plot_results(all_results, testing_data_set):
 
 def indicators(All_Results, Testing_Data_Set):
     
-       
-    
-    
     # Create column names
     average_price_keys = [f'Average price in period {x}' for x in range(1, 25)]
     
@@ -329,7 +337,7 @@ def indicators(All_Results, Testing_Data_Set):
         else:
             raise ValueError(f'Row with {key} not found.')
     
-    # Add hourlyCosts as a new time series
+    
     
     data = np.array([ELMP, IP, Join])
     # Compute the statistics matrix
@@ -395,11 +403,7 @@ def indicators(All_Results, Testing_Data_Set):
 
 
 
-
-
-
 #Function Calls
-
 
 All_Results = save_results(Testing_Data_Set)
 plot_results(All_Results,Testing_Data_Set)

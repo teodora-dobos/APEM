@@ -7,10 +7,10 @@ import os
 import re
 import sys
 
-#Determines the path of the current .py file
+
+# Sets the current working directory to this path
 script_path = os.path.dirname(os.path.abspath(__file__))
 parent_path = os.path.dirname(script_path)
-# Sets the current working directory to this path
 os.chdir(parent_path)
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
