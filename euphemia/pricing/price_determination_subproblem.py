@@ -148,9 +148,9 @@ class Price_Subproblem:
                 if total_quantity == 0:
                     continue  # No relevance with q = 0 for all
 
+                # Calculate volume weighted average MCP
                 weighted_mcp = gp.quicksum(
-                    self.MCP[t] * q for t, q in zip(self.master_problem.periods, q_values)
-                ) / total_quantity
+                    self.MCP[t] * abs(q) / total_quantity for t, q in zip(self.master_problem.periods, q_values))
 
                 # set right weighted_mcp in case of flexible block order
                 if block_order['block_type'] == 'flexible':

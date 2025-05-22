@@ -152,7 +152,8 @@ def check_PRB(self, order: int) -> bool:
     p = get(self.block_orders, 'p', order)
     q = {t: get(self.block_orders, f'q{t}', order) for t in self.periods}
     sale = True if sum(q.values()) > 0 else False
-    avg_mcp = sum(self.prices[t] * q_t for t, q_t in q.items()) / sum(q.values())
+    # Calculate volume weighted average MCP
+    avg_mcp = sum(self.prices[t] * abs(q_t) / abs(sum(q.values())) for t, q_t in q.items())
 
     if sale and p < avg_mcp or not sale and avg_mcp < p:
         return True

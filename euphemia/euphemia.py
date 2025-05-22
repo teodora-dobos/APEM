@@ -183,6 +183,7 @@ class Euphemia:
                 price_subproblem = Price_Subproblem(master_problem=self)
                 price_subproblem.solve_price_determination_subproblem()
 
+                # If price subproblem optimal check if new incumbent was found
                 if price_subproblem.pricing_model.Status == GRB.OPTIMAL:
                     print("Found market clearing prices")
 
@@ -196,11 +197,11 @@ class Euphemia:
                         file.flush()
                         os.fsync(file.fileno())
 
-                    self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in
+                    if objective_value > self.current_best_objective:
+                        self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in
                                      price_subproblem.pricing_model.getVars()}, reinsertion=False)
-
-                    self.current_best_objective = objective_value
-                    self.found_solution = True
+                        self.current_best_objective = objective_value
+                        self.found_solution = True
 
                 # if price subproblem infeasible add cut to master problem
                 if price_subproblem.pricing_model.Status == GRB.INFEASIBLE:
