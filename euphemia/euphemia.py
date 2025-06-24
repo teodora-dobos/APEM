@@ -6,8 +6,11 @@ from typing import Optional
 import gurobipy as gp
 from gurobipy import GRB
 import re
+import pandas as pd
 
 from euphemia.data.parsing.zonal_scenario import ZonalScenario
+from euphemia.enums.cut_types import CutType
+from euphemia.enums.order_types import OrderType
 from euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
 from euphemia.pricing.price_determination_subproblem import Price_Subproblem
 from euphemia.reinsertions.prmic_prb_reinsertion import PRMIC_PRB_reinsertion
@@ -50,6 +53,13 @@ class Euphemia:
         self.accept_piecewise_linear = self.model.addVars(list(self.piecewise_linear_orders['id']),
                                                           vtype=GRB.CONTINUOUS, lb=0, ub=1,
                                                           name='accept_piecewise_linear')
+
+        self.add_acceptance_variables_to_dataframe()
+
+        # Compute overlapping block orders
+        self.block_overlap = self._compute_block_overlaps()
+        self.block_orders['overlap_set'] = self.block_orders['id'].map(self.block_overlap)
+
         self.current_alloc_solution = {}
         self.found_solution = False
         self.current_best_objective = -1
@@ -58,33 +68,32 @@ class Euphemia:
         self.model.Params.LazyConstraints = 1
 
         # Needed to avoid race conditions
-        #self.model.setParam("Threads", 1)
+        # self.model.setParam("Threads", 1)
 
         # Disable presolve to avoid model simplification
         # self.model.setParam("Presolve", 0)
         # Disable all automatic cutting planes (global cuts)
-        #self.model.setParam("Cuts", 0)
+        # self.model.setParam("Cuts", 0)
         # Disable primal heuristics (e.g., feasibility pump, local branching)
         # self.model.setParam("Heuristics", 0)
         # Use pseudo-costs for branching (more predictable, reproducible)
-        #self.model.setParam("VarBranch", 0)
+        # self.model.setParam("VarBranch", 0)
         # Solve node relaxations using the dual simplex method (not barrier)
-        #self.model.setParam("NodeMethod", 1)
+        # self.model.setParam("NodeMethod", 1)
         # Do not bias the solver toward improving bound or finding solutions
-        #self.model.setParam("MIPFocus", 0)
+        # self.model.setParam("MIPFocus", 0)
         # Disable symmetry detection and exploitation
-        #self.model.setParam("Symmetry", 0)
+        # self.model.setParam("Symmetry", 0)
         # Disable presolve sparsification
-        #self.model.setParam("PreSparsify", 0)
+        # self.model.setParam("PreSparsify", 0)
         # Disable variable aggregation in presolve
-        #self.model.setParam("Aggregate", 0)
+        # self.model.setParam("Aggregate", 0)
         # Use single-threaded execution for reproducibility and full control
-        #self.model.setParam("Threads", 1)
+        # self.model.setParam("Threads", 1)
         # Provide detailed info in case of infeasibility or unboundedness
-        #self.model.setParam("InfUnbdInfo", 1)
+        # self.model.setParam("InfUnbdInfo", 1)
         # Dual Simplex
-        #self.model.setParam("Method", 1)
-
+        # self.model.setParam("Method", 1)
 
         self.M = 10 ** 6
         self.prices = {}
@@ -144,8 +153,10 @@ class Euphemia:
             print("Master problem is infeasible")
 
         if self.found_solution:
-            print(f'------- Surplus maximization and price problem successfully finished after {self.iteration} iterations -------')
-            print(f'Final economic surplus{" of reinsertion run" if self.reinsertion_run else ""}: {self.current_best_objective}')
+            print(
+                f'------- Surplus maximization and price problem successfully finished after {self.iteration} iterations -------')
+            print(
+                f'Final economic surplus{" of reinsertion run" if self.reinsertion_run else ""}: {self.current_best_objective}')
             print(f'Found prices: {self.prices}')
 
             if not self.reinsertion_run:
@@ -156,7 +167,6 @@ class Euphemia:
         """
         Search for a selection of block and MIC orders that maximizes the economic surplus.
         """
-
         self.model.optimize(callback=self.master_problem_callback)
 
     def master_problem_callback(self, callbackModel, where) -> None:
@@ -176,6 +186,7 @@ class Euphemia:
 
                 # match variables with value in current solution
                 self.current_alloc_solution = {v.VarName: [val] for v, val in zip(vars, solution)}
+                self.update_order_dataframes()
 
                 # Write current allocation solution to file
                 file_path = f"{EUPHEMIA_ROOT / self.paths['alloc']}/results.txt"
@@ -206,7 +217,7 @@ class Euphemia:
 
                     if objective_value > self.current_best_objective:
                         self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in
-                                     price_subproblem.pricing_model.getVars()}, reinsertion=False)
+                                         price_subproblem.pricing_model.getVars()}, reinsertion=False)
                         self.current_best_objective = objective_value
                         self.found_solution = True
 
@@ -219,12 +230,83 @@ class Euphemia:
                             print(f"Infeasible constraint: {constr}")
                             constr_name = constr.ConstrName
 
-                            if constr_name in price_subproblem.cuts.keys():
-                                cut = price_subproblem.cuts[constr_name]
-                                print(f"Adding cut: {cut}")
-                                callbackModel.cbLazy(cut)
+                            if constr_name in price_subproblem.constraint_meta_data.keys():
+                                metadata = price_subproblem.constraint_meta_data[constr_name]
+
+                                if metadata[0] == OrderType.BLOCK and metadata[2] == CutType.PB:
+                                    block_order = self.block_orders[self.block_orders['id'] == metadata[1]].iloc[0]
+                                    self.add_price_based_cut(callbackModel, block_order)
+                                else:
+                                    #TODO add OR
+                                    if metadata[0] == OrderType.BLOCK:
+                                        callbackModel.cbLazy(self.MAR_aux[metadata[1]] == 0.0)
 
                     self.add_no_good_cut(callbackModel=callbackModel)
+
+    def add_acceptance_variables_to_dataframe(self) -> None:
+        self.step_orders['acceptance_var'] = self.step_orders['id'].map(self.accept_step)
+        self.piecewise_linear_orders['acceptance_var'] = self.piecewise_linear_orders['id'].map(
+            self.accept_piecewise_linear)
+        self.block_orders['acceptance_var'] = self.block_orders['id'].map(self.accept_block)
+        self.complex_orders['acceptance_var'] = self.complex_orders['id'].map(self.accept_complex)
+        self.scalable_complex_orders['acceptance_var'] = self.scalable_complex_orders['id'].map(self.accept_scalable)
+
+    def update_order_dataframes(self) -> None:
+        solution_df = pd.DataFrame(self.current_alloc_solution)
+
+        # step orders
+        accept_step_order_columns = [col for col in solution_df.columns if 'accept_step' in col]
+        accept_step_values = solution_df[accept_step_order_columns].values.flatten()
+        self.step_orders['acceptance'] = accept_step_values
+
+        # pircewise linear orders
+        accept_piecewise_linear_order_columns = [col for col in solution_df.columns if
+                                                 'accept_piecewise_linear' in col]
+        accept_piecewise_linear_order_values = solution_df[
+            accept_piecewise_linear_order_columns].values.flatten()
+        self.piecewise_linear_orders['acceptance'] = accept_piecewise_linear_order_values
+
+        # block orders
+        accept_block_columns = [col for col in solution_df.columns if 'accept_block' in col]
+        accept_block_values = solution_df[accept_block_columns].values.flatten()
+        self.block_orders['acceptance'] = accept_block_values
+
+        # complex orders
+        accept_complex_columns = [col for col in solution_df.columns if 'accept_complex[' in col]
+        accept_complex_step_columns = [col for col in solution_df.columns if 'accept_complex_step[' in col]
+        accept_complex_values = solution_df[accept_complex_columns].values.flatten()
+        accept_complex_step_values = solution_df[accept_complex_step_columns].values.flatten()
+
+        self.complex_orders['acceptance'] = accept_complex_values
+        self.complex_step_orders['acceptance'] = accept_complex_step_values
+
+        # scalable complex orders
+        accept_scalable_columns = [col for col in solution_df.columns if 'accept_scalable_complex[' in col]
+        accept_scalable_step_columns = [col for col in solution_df.columns if 'accept_scalable_step[' in col]
+        accept_scalable_values = solution_df[accept_scalable_columns].values.flatten()
+        accept_scalable_step_values = solution_df[accept_scalable_step_columns].values.flatten()
+
+        self.scalable_complex_orders['acceptance'] = accept_scalable_values
+        self.scalable_step_orders['acceptance'] = accept_scalable_step_values
+
+    def _compute_block_overlaps(self) -> dict[int, set[int]]:
+        """
+        Computes block orders that have at least one overlapping period with quantity unequal to 0.
+        Can be used for Price-based-cuts
+        """
+        period_cols = [f"q{t}" for t in self.periods]
+        mask = self.block_orders.set_index("id")[period_cols].ne(0)  # True falls Menge ≠ 0
+        overlap = {i: set() for i in mask.index}
+
+        ids = mask.index.to_list()
+        for i in ids:
+            for j in ids:
+                if i >= j:
+                    continue
+                if (mask.loc[i] & mask.loc[j]).any():
+                    overlap[i].add(j)
+                    overlap[j].add(i)
+        return overlap
 
     def add_no_good_cut(self, callbackModel) -> None:
         # create cut that makes current solution invalid
@@ -244,6 +326,30 @@ class Euphemia:
         expr = gp.quicksum(terms)
         callbackModel.cbLazy(expr >= 1)
         print(f"Added cut: {expr} >= 1")
+
+    def add_price_based_cut(self, callbackModel, block_order) -> None:
+
+        terms = [1 - self.MAR_aux[block_order['id']]]  # (1 - ACCEPT_hat)
+
+        def is_sale(bo_id: int) -> bool:
+            return self.block_orders.loc[self.block_orders['id'] == bo_id,
+            [f"q{t}" for t in self.periods]].values.sum() > 0
+
+        for overlapping_order_id in block_order['overlap_set']:
+            accepted = get(self.block_orders, 'acceptance', overlapping_order_id) > self.epsilon
+            sale = is_sale(overlapping_order_id)
+
+            if is_sale(block_order['id']):
+                if sale and accepted: terms.append(1 - self.MAR_aux[overlapping_order_id])
+                if (not sale) and (not accepted): terms.append(self.MAR_aux[overlapping_order_id])
+            else:
+                if (not sale) and accepted: terms.append(1 - self.MAR_aux[overlapping_order_id])
+                if sale and (not accepted): terms.append(self.MAR_aux[overlapping_order_id])
+
+        callbackModel.cbLazy(gp.quicksum(terms) >= 1)
+        print(f"Added {gp.quicksum(terms)} >= 1")
+
+
 
     def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
         """

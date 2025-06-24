@@ -12,6 +12,7 @@ from euphemia.utils.paths import EUPHEMIA_ROOT, RAW_DATA_DIR, CONVERTED_DATASET_
 
 class Datasets(Enum):
     GENERATED = ParseEU(RAW_DATA_DIR / "generated")
+    OMIE = ParseEU(RAW_DATA_DIR / "omie")
     IEEE_RTS = ParseEU(CONVERTED_DATASET_PATH_MAP[ParseIEEERTS])
     ARPA = ParseEU(CONVERTED_DATASET_PATH_MAP[ParseARPA])
     PyPSAEurSmall = ParseEU(CONVERTED_DATASET_PATH_MAP[ParsePyPSAEurSmall])
