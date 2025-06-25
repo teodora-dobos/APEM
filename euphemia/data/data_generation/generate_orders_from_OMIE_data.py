@@ -51,8 +51,10 @@ def generate_sco_orders_from_omie(omie_df):
 
         for _, row in group.iterrows():
             t = int(row["periodo"])
+            if t < 1 or t > 24:
+                continue
             step_id = f"{sco_id}_{t}_{row['num_tramo']}"
-            map_dict[f"MAP{t}"] = max(map_dict[f"MAP{t}"], row["mav"])  # max MAV je Stunde
+            map_dict[f"MAP{t}"] = max(map_dict[f"MAP{t}"], row["mav"])
             step_ids.append(step_id)
             step_rows.append({
                 "id": step_id,
@@ -93,12 +95,15 @@ def generate_complex_orders_from_omie(omie_df):
         step_ids = []
 
         for _, row in group.iterrows():
+            t = int(row["periodo"])
+            if t < 1 or t > 24:
+                continue
             step_id = f"{cid}_{row['periodo']}_{row['num_tramo']}"
             step_ids.append(step_id)
             step_rows.append({
                 "id": step_id,
                 "complex_order_id": cid,
-                "t": int(row["periodo"]),
+                "t": t,
                 "p": row["precio"],
                 "q": sign * row["cantidad"]
             })

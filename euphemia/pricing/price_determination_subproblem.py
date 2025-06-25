@@ -18,6 +18,7 @@ class Price_Subproblem:
         self.solution_dict_df = pd.DataFrame(self.master_problem.current_alloc_solution)
         self.epsilon = master_problem.epsilon
         self.constraint_meta_data = {}
+        self.isConstrained = True
 
         self.pricing_model = gp.Model('Price-Subproblem')
 
@@ -33,10 +34,12 @@ class Price_Subproblem:
             for t in self.master_problem.periods), GRB.MINIMIZE)
 
         self.add_block_order_constraints()
-        self.add_step_order_constraints()
-        self.add_complex_order_constraints()
-        self.add_scalable_complex_order_constraints()
         self.add_piecewise_linear_order_constraints()
+        if self.isConstrained:
+            self.add_step_order_constraints()
+            self.add_complex_order_constraints()
+            self.add_scalable_complex_order_constraints()
+
 
         self.pricing_model.write(f"{self.master_problem.paths['debug']}/pricing_model.lp")
 
