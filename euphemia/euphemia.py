@@ -74,7 +74,7 @@ class Euphemia:
         self.price_lower_bound = -500
         self.price_upper_bound = 4000
         self.delta_PAB = 50
-        self.delta_MIC = 50
+        self.delta_MIC = 100
         self.epsilon = 1e-4
         self.distance_factor = 1e-1
         self.max_iterations = 2000
@@ -368,19 +368,22 @@ class Euphemia:
 
             # Apply combinatorial benders cut over PAMICs/PAMPs
             terms = []
+            #TODO load gradient orders
             violated_complex_mic = self.get_MIC_complex_orders(threshold=False)
             print(f"PAMIC complex: {violated_complex_mic}")
             if violated_complex_mic:
-                terms.extend(1 - self.accept_complex[i] for i in violated_complex_mic)
+                terms.extend(self.accept_complex[i] for i in violated_complex_mic)
+                #terms.extend(1 - self.accept_complex[i] for i in violated_complex_mic)
 
             violated_scalable_mic = self.get_MIC_scalable_orders(threshold=False)
             print(f"PAMIC scalable complex: {violated_scalable_mic}")
             if violated_scalable_mic:
-                terms.extend(1 - self.accept_scalable[i] for i in violated_scalable_mic)
+                terms.extend(self.accept_scalable[i] for i in violated_scalable_mic)
+                #terms.extend(1 - self.accept_scalable[i] for i in violated_scalable_mic)
 
             if terms:
-                print(f"Added cb cut on PA (scalable) complex orders: {gp.quicksum(terms)} >= 1")
-                callbackModel.cbLazy(gp.quicksum(terms) >= 1)
+                print(f"Deactivate PA (scalable) complex orders: {gp.quicksum(terms)} == 0")
+                callbackModel.cbLazy(gp.quicksum(terms) == 0)
         else:
             print("Something went wrong and in the unconstrained problem no prices could be found")
         self.add_no_good_cut(callbackModel)
@@ -529,7 +532,7 @@ class Euphemia:
     def get_MIC_complex_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
         """
         If threshold is False, return a list with complex orders that do not have the MIC/MP condition satisfied.
-        If threshold is True, return a list of complex orders that are in-the-money by at most delta_MIC.
+        If threshold is True, return a list of complex orders that are out-of-the-money by at most delta_MIC.
         """
         prices = self.prices if not reinsertion else self.prices_reinsertion
 
@@ -545,9 +548,6 @@ class Euphemia:
             variable_term = get(self.complex_orders, 'variable_term', i)
             step_orders_str = get(self.complex_orders, 'step_orders', i)
             step_orders = parse_step_order_ids(step_orders_str, self.complex_step_orders)
-
-            print(i)
-            print(step_orders)
 
             expected = sum(variable_term * abs(get(self.complex_step_orders, 'q', j)) * get(self.complex_step_orders, 'acceptance', j)
                            for j in step_orders) + fixed_term
@@ -568,9 +568,9 @@ class Euphemia:
                 elif i in mp_complex_order_ids and expected < actual:
                     res.append(i)
             else:
-                if i in mic_complex_order_ids and expected < actual < expected + self.delta_MIC:
+                if i in mic_complex_order_ids and expected - self.delta_MIC > actual:
                     res.append(i)
-                elif i in mp_complex_order_ids and expected - self.delta_MIC < actual < expected:
+                elif i in mp_complex_order_ids and actual > expected + self.delta_MIC:
                     res.append(i)
 
             path_key = 'complex_mic_inm_threshold' if threshold else 'complex_mic'
@@ -585,7 +585,8 @@ class Euphemia:
     def get_MIC_scalable_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
         """
         If threshold is False, return a list with scalable complex orders that do not have the MIC/MP condition
-        satisfied. If threshold is True, return a list of scalable complex orders that are in-the-money by at most
+        satisfied.
+        If threshold is True, return a list of scalable complex orders that are out-of-the-money by at most
         delta_MIC.
         """
         prices = self.prices if not reinsertion else self.prices_reinsertion
@@ -626,9 +627,9 @@ class Euphemia:
                 elif i in mp_scalable_order_ids and expected < actual:
                     res.append(i)
             else:
-                if i in mic_scalable_order_ids and expected < actual < expected + self.delta_MIC:
+                if i in mic_scalable_order_ids and expected - self.delta_MIC > actual:
                     res.append(i)
-                elif i in mp_scalable_order_ids and expected - self.delta_MIC < actual < expected:
+                elif i in mp_scalable_order_ids and actual > expected + self.delta_MIC:
                     res.append(i)
 
             path_key = 'scalable_mic_inm_threshold' if threshold else 'scalable_mic'

@@ -30,19 +30,17 @@ def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
                 # Give Gurobi incumbent as starting point
                 if is_prmic_reinsertion:
                     for _, order in self.complex_orders.iterrows():
-                        reinsertion_run.accept_complex[order['id']].Start = self.current_alloc_solution[f'accept_complex[{order["id"]}]'][0]
+                        reinsertion_run.accept_complex[order['id']].Start = order['acceptance']
                     for _, order in self.complex_orders.iterrows():
-                        reinsertion_run.accept_scalable[order['id']].Start = self.current_alloc_solution[f'accept_scalable_complex[{order["id"]}]'][0]
+                        reinsertion_run.accept_scalable[order['id']].Start = order['acceptance']
 
 
                 # PRB reinsertion: Fix selection of (Scalable) Complex Orders
                 if not is_prmic_reinsertion:
                     for _, order in self.complex_orders.iterrows():
-                        reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] == self.current_alloc_solution[f'accept_complex[{order["id"]}]'][0])
+                        reinsertion_run.model.addConstr(reinsertion_run.accept_complex[order['id']] == order['acceptance'])
                     for _, order in self.scalable_complex_orders.iterrows():
-                        reinsertion_run.model.addConstr(reinsertion_run.accept_scalable[order['id']] ==
-                                                        self.current_alloc_solution[f'accept_scalable_complex[{order["id"]}]'][
-                                                            0])
+                        reinsertion_run.model.addConstr(reinsertion_run.accept_scalable[order['id']] == order['acceptance'])
                     # Give Gurobi incumbent as starting point
                     for _, order in self.block_orders.iterrows():
                         reinsertion_run.MAR_aux[order['id']].Start = self.current_alloc_solution[f'y[{order["id"]}]'][0]
@@ -67,6 +65,7 @@ def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
                         print(f'Activation of {order_type} {id} improved surplus from {self.current_best_objective} to {reinsertion_run.current_best_objective}')
                         # Save better results in master problem and recalculate order list
                         self.current_alloc_solution = reinsertion_run.current_alloc_solution
+                        self.update_order_dataframes()
                         self.current_best_objective = reinsertion_run.current_best_objective
                         self.set_prices(reinsertion_run.prices, reinsertion=False)
 
@@ -97,8 +96,7 @@ def calculate_paradoxically_rejected_orders(self, is_prmic_reinsertion: bool):
     if not is_prmic_reinsertion:
         # Rejected blocks
         for _, order in self.block_orders.iterrows():
-            id = order['id']
-            if self.current_alloc_solution[f'accept_block[{id}]'][0] == 0:
+            if order['acceptance'] == 0:
                 rejected_orders['block'].append(order['id'])
 
         # PRBs
@@ -108,12 +106,10 @@ def calculate_paradoxically_rejected_orders(self, is_prmic_reinsertion: bool):
     else:
         # Rejected (scalable) complex orders
         for _, order in self.complex_orders.iterrows():
-            id = order['id']
-            if self.current_alloc_solution[f'accept_complex[{id}]'][0] == 0:
+            if order['acceptance'] == 0:
                 rejected_orders['complex'].append(order['id'])
         for _, order in self.scalable_complex_orders.iterrows():
-            id = order['id']
-            if self.current_alloc_solution[f'accept_scalable_complex[{id}]'][0] == 0:
+            if order['acceptance'] == 0:
                 rejected_orders['scalable_complex'].append(order['id'])
 
         # PRMICs
@@ -139,7 +135,7 @@ def check_PRCO_PRSCO(self, id: int, isComplex: bool) -> bool:
         return False
 
     for _, step_order in step_orders.iterrows():
-        step_acceptance = self.current_alloc_solution[f'accept_complex_step[{step_order["id"]}]' if isComplex else f'accept_scalable_step[{step_order["id"]}]'][0]
+        step_acceptance = step_order['acceptance']
         if step_order['complex_order_id' if isComplex else 'scalable_order_id'] == id:
             variable_term = step_order['p'] if not isComplex else variable_term
 
