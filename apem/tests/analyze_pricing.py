@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
     print("Working directory set to:", os.getcwd())
 
-    Testing_Data_Set = 'ARPA'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
+    Testing_Data_Set = 'PyPSAEurSmall'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
     saving = True  # If True: All Outputs will be saved at results_data_analysis
     show_plots = False
 
