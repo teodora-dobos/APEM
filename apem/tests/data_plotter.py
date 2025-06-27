@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
+def plot_results(all_results, testing_data_set, saving=True, show_plots=False):
     """Generates and saves plots based on the results.
 
     Args:
@@ -167,7 +167,6 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
     plt.xticks(range(1, 25))
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
 
     if saving:
         plt.savefig(f'apem/tests/results_data_analysis/Wellfare_{testing_data_set}.png')

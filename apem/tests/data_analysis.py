@@ -14,8 +14,8 @@ parent_path = os.path.dirname(parent_path)
 os.chdir(parent_path)
 
 Testing_Data_Set = 'PyPSAEurSmall'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
-saving = 1  # for 1: All Outputs will be saved at apem/tests/results_data_analysis
-show_plots = 1
+saving = True  # for 1: All Outputs will be saved at apem/tests/results_data_analysis
+show_plots = False
 
 # Function Calls
 all_results = save_results(Testing_Data_Set)
