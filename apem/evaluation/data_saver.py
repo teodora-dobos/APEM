@@ -26,7 +26,7 @@ def save_results(testing_data_set):
 
     data_dict = {}
 
-    output_dir = 'apem/tests/results_data_analysis'
+    output_dir = 'apem/evaluation/results_data_analysis'
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f'Summary_{testing_data_set}.xlsx')
 

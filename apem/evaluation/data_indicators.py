@@ -52,7 +52,7 @@ def indicators(all_results, testing_data_set):
     print('Distance Matrix (Euclidean Distance):')
     print(pd.DataFrame(distanceMatrix, index=names, columns=names))
 
-    output_folder = 'apem/tests/results_data_analysis'
+    output_folder = 'apem/evaluation/results_data_analysis'
     os.makedirs(output_folder, exist_ok=True)
 
     excel_filename = os.path.join(output_folder, f'Indicators_{testing_data_set}.xlsx')

@@ -41,8 +41,8 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
     plt.grid(True)
 
     if saving:
-        os.makedirs('apem/tests/results_data_analysis', exist_ok=True)
-        plt.savefig(f'apem/tests/results_data_analysis/Average_Costs_Hour_{testing_data_set}.png')
+        os.makedirs('apem/evaluation/results_data_analysis', exist_ok=True)
+        plt.savefig(f'apem/evaluation/results_data_analysis/Average_Costs_Hour_{testing_data_set}.png')
     if not show_plots:
         plt.close()
     else:
@@ -60,7 +60,7 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
     plt.grid(True)
 
     if saving:
-        plt.savefig(f'apem/tests/results_data_analysis/Boxplot_Average_Costs_{testing_data_set}.png')
+        plt.savefig(f'apem/evaluation/results_data_analysis/Boxplot_Average_Costs_{testing_data_set}.png')
 
     if not show_plots:
         plt.close()
@@ -114,8 +114,8 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
     plt.grid()
 
     if saving:
-        os.makedirs('apem/tests/results_data_analysis', exist_ok=True)
-        plt.savefig(f'apem/tests/results_data_analysis/Average_Zone_{testing_data_set}.png')
+        os.makedirs('apem/evaluation/results_data_analysis', exist_ok=True)
+        plt.savefig(f'apem/evaluation/results_data_analysis/Average_Zone_{testing_data_set}.png')
 
     if not show_plots:
         plt.close()
@@ -135,14 +135,14 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
         plt.ylim(-25, 275)
 
     if saving:
-        plt.savefig(f'apem/tests/results_data_analysis/Boxplot_Average_Zone_{testing_data_set}.png')
+        plt.savefig(f'apem/evaluation/results_data_analysis/Boxplot_Average_Zone_{testing_data_set}.png')
     if not show_plots:
         plt.close()
     else:
         plt.show()
 
     # Load the Excel file and read the specific sheet
-    with pd.ExcelFile(f"apem/tests/results_data_analysis/Summary_{testing_data_set}.xlsx") as xls:
+    with pd.ExcelFile(f"apem/evaluation/results_data_analysis/Summary_{testing_data_set}.xlsx") as xls:
         allocation_results_df = pd.read_excel(xls, sheet_name='Allocation Results')
 
     # Extract welfare values
@@ -170,7 +170,7 @@ def plot_results(all_results, testing_data_set, saving=1, show_plots=1):
     plt.show()
 
     if saving:
-        plt.savefig(f'apem/tests/results_data_analysis/Wellfare_{testing_data_set}.png')
+        plt.savefig(f'apem/evaluation/results_data_analysis/Wellfare_{testing_data_set}.png')
     if not show_plots:
         plt.close()
     else:
