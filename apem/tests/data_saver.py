@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 
+
 def save_results(testing_data_set):
     """Saves the results of the algorithms into an Excel file.
 
@@ -11,24 +12,30 @@ def save_results(testing_data_set):
     Returns:
         list: Collected data from the results files.
     """
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
+
+    modified_string = re.sub(r'(?<!^)(?=[A-Z][a-z])', '_', testing_data_set)
+    base_path = os.path.join(PROJECT_ROOT, "results", f"{modified_string}_results", "DCOPF")
+
+    result_files = {
+        'ELMP': os.path.join("ELMP_results", "ELMP_stats.txt"),
+        'IP': os.path.join("IP_results", "IP_stats.txt"),
+        'Join': os.path.join("Join_results", "Join_stats.txt")
+    }
+
+    data_dict = {}
+
     output_dir = 'apem/tests/results_data_analysis'
     os.makedirs(output_dir, exist_ok=True)
     output_file = os.path.join(output_dir, f'Summary_{testing_data_set}.xlsx')
-
-    modified_string = re.sub(r'(?<!^)(?=[A-Z][a-z])', '_', testing_data_set)
-    base_path = f"results/{modified_string}_results/DCOPF/"
-
-    result_files = {
-        'ELMP': 'ELMP_results\\ELMP_stats.txt',
-        'IP': 'IP_results\\IP_stats.txt',
-        'Join': 'Join_results\\Join_stats.txt'
-    }
 
     data_dict = {}
 
     for key, rel_path in result_files.items():
         file_path = os.path.join(base_path, rel_path)
         file_path = os.path.normpath(file_path)
+        print(file_path)
 
         if os.path.exists(file_path):
             with open(file_path, 'r', encoding='utf-8') as file:

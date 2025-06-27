@@ -11,6 +11,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 Testing_Data_Set = 'PyPSAEurLarge'  # Choose between IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
 precise_output = 0  # Set to 1 for detailed output
 
+
 def unit_test_pricing_stats(testing_data_set, precise_output):
     """Validates the output files in the results folder to ensure correct data types for pricing stats.
 
@@ -21,10 +22,10 @@ def unit_test_pricing_stats(testing_data_set, precise_output):
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
     base_path = os.path.join('..', 'results', f'{modified_string}_results', 'DCOPF')
 
-    result_files = ['ELMP_results/ELMP_stats.txt', 
-                    'IP_results/IP_stats.txt', 
+    result_files = ['ELMP_results/ELMP_stats.txt',
+                    'IP_results/IP_stats.txt',
                     'Join_results/Join_stats.txt']
-    
+
     all_files_valid = True
 
     for result_file in result_files:
@@ -44,15 +45,16 @@ def unit_test_pricing_stats(testing_data_set, precise_output):
                     if precise_output:
                         print(f'{result_file}: File structure is invalid.')
                     all_files_valid = False
-        
+
         except Exception as e:
             print(f'Error reading file: {file_path}')
             all_files_valid = False
-    
+
     if all_files_valid:
         print('All stats.txt files of the pricing results have a valid structure.')
     else:
         print('Some stats.txt files of the pricing results did not have a valid structure.')
+
 
 def validate_stats_txt_structure(file_content):
     """Validates the structure of the stats.txt file content.
@@ -93,6 +95,7 @@ def validate_stats_txt_structure(file_content):
 
     return is_valid
 
+
 def unit_test_pricing_csv(testing_data_set, precise_output):
     """Validates the output CSV files in the results folder for pricing data.
 
@@ -103,10 +106,10 @@ def unit_test_pricing_csv(testing_data_set, precise_output):
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
     base_path = os.path.join('..', 'results', f'{modified_string}_results', 'DCOPF')
 
-    csv_files = ['ELMP_results/ELMP_prices.csv', 
-                 'IP_results/IP_prices.csv', 
+    csv_files = ['ELMP_results/ELMP_prices.csv',
+                 'IP_results/IP_prices.csv',
                  'Join_results/Join_prices.csv']
-    
+
     all_csv_files_valid = True
 
     for csv_file in csv_files:
@@ -126,7 +129,7 @@ def unit_test_pricing_csv(testing_data_set, precise_output):
                     if precise_output:
                         print(f'{csv_file}: CSV structure is invalid.')
                     all_csv_files_valid = False
-            
+
         except Exception as e:
             print(f'Error reading CSV file: {file_path}')
             all_csv_files_valid = False
@@ -135,6 +138,7 @@ def unit_test_pricing_csv(testing_data_set, precise_output):
         print('All prices.csv files of the pricing results have a valid structure.')
     else:
         print('Some prices.csv files of the pricing results did not have a valid structure.')
+
 
 def validate_prices_csv_structure(file_content):
     """Validates the structure of the prices CSV file content.
@@ -146,8 +150,8 @@ def validate_prices_csv_structure(file_content):
         bool: True if the structure is valid, else False.
     """
     patterns = [
-        r'^DE0 -?\d+,-?\d+,-?\d+\.\d+', #PyPSAEurSmall
-        r'^\d+,-?\d+,-?\d+\.\d+' #PyPSAEurLarge
+        r'^DE0 -?\d+,-?\d+,-?\d+\.\d+',  # PyPSAEurSmall
+        r'^\d+,-?\d+,-?\d+\.\d+'  # PyPSAEurLarge
     ]
 
     lines = file_content.strip().split('\n')
@@ -163,6 +167,7 @@ def validate_prices_csv_structure(file_content):
 
     return is_valid
 
+
 def unit_test_allocation_stats(testing_data_set, precise_output):
     """Validates the output files in the results folder for allocation stats.
 
@@ -174,7 +179,7 @@ def unit_test_allocation_stats(testing_data_set, precise_output):
     base_path = os.path.join('..', 'results', f'{modified_string}_results', 'DCOPF')
 
     result_files = ['allocation_results/DCOPF_stats.txt']
-    
+
     all_files_valid = True
 
     for result_file in result_files:
@@ -194,15 +199,16 @@ def unit_test_allocation_stats(testing_data_set, precise_output):
                     if precise_output:
                         print(f'{result_file}: File structure is invalid.')
                     all_files_valid = False
-        
+
         except Exception as e:
             print(f'Error reading file: {file_path}')
             all_files_valid = False
-    
+
     if all_files_valid:
         print('All stats.txt files of the allocation results have a valid structure.')
     else:
         print('Some stats.txt files of the allocation results did not have a valid structure.')
+
 
 def validate_stats_DCOPF_txt_structure(file_content):
     """Validates the structure of the DCOPF stats.txt file content.
@@ -234,7 +240,7 @@ def validate_stats_DCOPF_txt_structure(file_content):
 
     welfare_period_pattern = r'Welfare period \d+: -?\d+\.\d+'
     for i in range(1, 24):
-        required_structure.insert(i-1, welfare_period_pattern)
+        required_structure.insert(i - 1, welfare_period_pattern)
 
     lines = [line for line in file_content.split('\n') if line.strip() and '←' not in line]
 
@@ -246,6 +252,7 @@ def validate_stats_DCOPF_txt_structure(file_content):
             break
 
     return is_valid
+
 
 def unit_test_allocation_csv(testing_data_set, precise_output):
     """Validates the output CSV files in the results folder for allocation data.
@@ -278,7 +285,7 @@ def unit_test_allocation_csv(testing_data_set, precise_output):
                     if precise_output:
                         print(f'{csv_file}: CSV structure is invalid.')
                     all_csv_files_valid = False
-            
+
         except Exception as e:
             print(f'Error reading CSV file: {file_path}')
             all_csv_files_valid = False
@@ -287,6 +294,7 @@ def unit_test_allocation_csv(testing_data_set, precise_output):
         print('All prices.csv files of the allocation results have a valid structure.')
     else:
         print('Some prices.csv files of the allocation results did not have a valid structure.')
+
 
 def validate_prices_allocation_csv_structure(file_content):
     """Validates the structure of the allocation prices CSV file content.
@@ -327,13 +335,9 @@ def validate_prices_allocation_csv_structure(file_content):
 
     return is_valid
 
+
 # Function Calls
 unit_test_pricing_stats(Testing_Data_Set, precise_output)
 unit_test_pricing_csv(Testing_Data_Set, precise_output)
 unit_test_allocation_stats(Testing_Data_Set, precise_output)
 unit_test_allocation_csv(Testing_Data_Set, precise_output)
-
-
-
-
-

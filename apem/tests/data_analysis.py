@@ -1,12 +1,11 @@
 import sys
 import os
 
-# Füge den übergeordneten Ordner zu sys.path hinzu
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data_saver import save_results
 from data_indicators import indicators
-from data.analysis.data_plotter import plot_results  # Angepasster Import-Pfad
+from data_plotter import plot_results
 
 # Sets the working directory to the parent folder
 script_path = os.path.dirname(os.path.abspath(__file__))
