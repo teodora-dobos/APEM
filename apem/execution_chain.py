@@ -28,8 +28,10 @@ from apem.config_loader import ConfigLoader
 from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms, PowerFlowModels
 from apem.allocation.power_flow_model import PowerFlowModel
 
+
 def _retrieve_data(dataset: Datasets) -> Scenario:
     return dataset.value.parse_data()
+
 
 def _create_configuration() -> Configuration:
     """Create a Configuration instance using the current configuration."""
@@ -46,7 +48,6 @@ def _create_configuration() -> Configuration:
         output_flag=config.get('output_flag', 0),
         verbosity=config.get('verbosity', True)
     )
-
 
 
 def _solve_allocation_problem(scenario: Scenario, power_flow_model: PowerFlowModel, configuration: Configuration,
@@ -96,7 +97,8 @@ def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_a
     return pricing
 
 
-def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration, pf_model_value, 
+def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration,
+                    pf_model_value,
                     base_scenario: Optional[Scenario] = None) -> PriceAnalysis:
     """Performs several analyses.
     
@@ -137,24 +139,24 @@ def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModel, pricing_
     """
     scenario = _retrieve_data(dataset)
     configuration = _create_configuration()
-    
+
     if isinstance(power_flow_model, DCOPF):
         allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
         pricing = _solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model, configuration)
         return PriceAnalysis(scenario, allocation, pricing, configuration)
-        
+
     else:
         if dataset not in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]:
             raise ValueError(
                 f"The dataset {dataset.name} cannot be used in combination with the power flow model \
-                {power_flow_model.value}. Zonal prices can only be computed for the PyPSA datasets."
+                {power_flow_model}. Zonal prices can only be computed for the PyPSA datasets."
             )
 
         zonal_scenario, allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
 
         _solve_redispatch_problem(zonal_scenario, power_flow_model, redispatch_algorithm=redispatch_algorithm,
                                   nodal_scenario=scenario, configuration=configuration,
-                                  zonal_allocation=allocation.SellersAllocation) # TODO: warum 2x scenario als Input?
+                                  zonal_allocation=allocation.SellersAllocation)
 
         pricing = _solve_pricing_problem(zonal_scenario, allocation, pricing_algorithm, power_flow_model, configuration)
         return PriceAnalysis(zonal_scenario, allocation, pricing, configuration, scenario)
@@ -180,19 +182,19 @@ def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowMod
     price_analysis = solve_scenario(dataset, power_flow_model, pricing_algorithm, redispatch_algorithm)
     is_pypsa_dataset = dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]
     base_scenario = None
-    
+
     if is_pypsa_dataset:
         isDCOPF = isinstance(power_flow_model, DCOPF)
-        scenario_to_analyse = (price_analysis.scenario if isDCOPF 
+        scenario_to_analyse = (price_analysis.scenario if isDCOPF
                                else price_analysis.base_scenario)
         base_scenario = None if isDCOPF else price_analysis.base_scenario
-        zonal_config = (power_flow_model.zonal_configuration if 
+        zonal_config = (power_flow_model.zonal_configuration if
                         isinstance(power_flow_model, Zonal_NTC) else "")
-        
+
         scenario_to_analyse.analyse_scenario()  # analyse base scenario
         scenario_to_analyse.plot_network(zonal_config)  # plot underlying network
-        
-    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing, 
+
+    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
                            price_analysis.configuration, power_flow_model, base_scenario)
 
 
@@ -207,7 +209,7 @@ def apply_all_algorithms(dataset: Datasets):
     original_scenario = scenario  # keep original scenario for Zonal_NTC
     configuration = _create_configuration()
     is_pypsa_dataset = dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]
-    
+
     if is_pypsa_dataset:
         scenario.analyse_scenario()  # analyse base scenario
 
@@ -219,7 +221,7 @@ def apply_all_algorithms(dataset: Datasets):
             scenario, allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
 
         else:
-            continue # skip invalid combinations
+            continue  # skip invalid combinations
 
         if is_pypsa_dataset:
             zonal_config = power_flow_model.value.zonal_configuration if power_flow_model == PowerFlowModels.Zonal_NTC else ""
@@ -227,7 +229,7 @@ def apply_all_algorithms(dataset: Datasets):
 
         for pricing_alg in PricingAlgorithms:
             pricing = _solve_pricing_problem(scenario, allocation, pricing_alg, power_flow_model, configuration)
-            
+
             base_scenario = None if power_flow_model == PowerFlowModels.DCOPF else original_scenario
             analyse_results(scenario, allocation, pricing, configuration, power_flow_model.value, base_scenario)
 
@@ -241,7 +243,7 @@ def apply_to_all_datasets(power_flow_model: PowerFlowModel, pricing_algorithm: P
         pricing_algorithm (PricingAlgorithm): pricing algorithm used for the pricing computations
     """
     datasets = Datasets if isinstance(power_flow_model, DCOPF) else [Datasets.PyPSAEurSmall,
-                                                                           Datasets.PyPSAEurLarge]
+                                                                     Datasets.PyPSAEurLarge]
 
     for dataset in datasets:
         solve_and_analyse_scenario(dataset, power_flow_model, pricing_algorithm)

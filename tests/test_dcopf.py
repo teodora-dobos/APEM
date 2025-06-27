@@ -24,25 +24,25 @@ class Test_DCOPF_IEEERTS_PricingAlgorithm(unittest.TestCase):
 
     def test_IEEE_RTS_DCOPF_IP(self):
         try:
-            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF, PricingAlgorithms.IP)
+            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_IP: {e}")
 
     def test_IEEE_RTS_DCOPF_ELMP(self):
         try:
-            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF, PricingAlgorithms.ELMP)
+            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_ELMP: {e}")
 
     def test_IEEE_RTS_DCOPF_Join(self):
         try:
-            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF, PricingAlgorithms.Join)
+            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_Join: {e}")
 
     def test_IEEE_RTS_DCOPF_MinMWP(self):
         try:
-            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP)
+            solve_scenario(Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_MinMWP: {e}")
 
@@ -65,25 +65,25 @@ class Test_DCOPF_ARPA_PricingAlgorithm(unittest.TestCase):
 
     def test_ARPA_DCOPF_IP(self):
         try:
-            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF, PricingAlgorithms.IP)
+            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_ARPA_DCOPF_IP: {e}")
 
     def test_ARPA_DCOPF_ELMP(self):
         try:
-            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF, PricingAlgorithms.ELMP)
+            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_ARPA_DCOPF_ELMP: {e}")
 
     def test_ARPA_DCOPF_Join(self):
         try:
-            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF, PricingAlgorithms.Join)
+            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_ARPA_DCOPF_Join: {e}")
 
     def test_ARPA_DCOPF_MinMWP(self):
         try:
-            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP)
+            solve_scenario(Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_ARPA_DCOPF_MinMWP: {e}")
 
@@ -106,25 +106,25 @@ class Test_DCOPF_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):
 
     def test_PyPSAEurSmall_DCOPF_IP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF, PricingAlgorithms.IP)
+            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_IP: {e}")
 
     def test_PyPSAEurSmall_DCOPF_ELMP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF, PricingAlgorithms.ELMP)
+            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_ELMP: {e}")
 
     def test_PyPSAEurSmall_DCOPF_Join(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF, PricingAlgorithms.Join)
+            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_Join: {e}")
 
     def test_PyPSAEurSmall_DCOPF_MinMWP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP)
+            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_MinMWP: {e}")
 
@@ -147,25 +147,25 @@ class Test_DCOPF_PyPSAEurLarge_PricingAlgorithm(unittest.TestCase):
 
     def test_PyPSAEurLarge_DCOPF_IP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF, PricingAlgorithms.IP)
+            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_IP: {e}")
 
     def test_PyPSAEurLarge_DCOPF_ELMP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF, PricingAlgorithms.ELMP)
+            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_ELMP: {e}")
 
     def test_PyPSAEurLarge_DCOPF_Join(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF, PricingAlgorithms.Join)
+            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_Join: {e}")
 
     def test_PyPSAEurLarge_DCOPF_MinMWP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP)
+            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_MinMWP: {e}")
 
@@ -188,25 +188,25 @@ class Test_DCOPF_PJM_PricingAlgorithm(unittest.TestCase):
 
     def test_PJM_DCOPF_IP(self):
         try:
-            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF, PricingAlgorithms.IP)
+            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_IP: {e}")
 
     def test_PJM_DCOPF_ELMP(self):
         try:
-            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF, PricingAlgorithms.ELMP)
+            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_ELMP: {e}")
 
     def test_PJM_DCOPF_Join(self):
         try:
-            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF, PricingAlgorithms.Join)
+            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_Join: {e}")
 
     def test_PJM_DCOPF_MinMWP(self):
         try:
-            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF, PricingAlgorithms.MinMWP)
+            solve_scenario(Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_MinMWP: {e}")
 
