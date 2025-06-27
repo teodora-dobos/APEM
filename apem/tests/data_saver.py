@@ -35,7 +35,6 @@ def save_results(testing_data_set):
     for key, rel_path in result_files.items():
         file_path = os.path.join(base_path, rel_path)
         file_path = os.path.normpath(file_path)
-        print(file_path)
 
         if os.path.exists(file_path):
             with open(file_path, 'r', encoding='utf-8') as file:
