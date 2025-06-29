@@ -19,13 +19,13 @@ det_colspecs = [
     (0, 10),   # cod_oferta
     (10, 15),  # version
     (15, 18),  # periodo
-    (18, 20),  # num_block
-    (20, 22),  # num_tramo
-    (22, 24),  # grupo_excl
+    (18, 20),  # num_block - 0 for simple order
+    (20, 22),  # num_tramo - 1 for block order
+    (22, 24),  # grupo_excl - exclusive block order group
     (24, 41),  # precio
     (41, 48),  # cantidad
     (48, 55),  # mav
-    (55, 61),  # mar
+    (55, 60),  # mar
 ]
 det_columns = ['cod_oferta', 'version', 'periodo', 'num_block', 'num_tramo',
                'grupo_excl', 'precio', 'cantidad', 'mav', 'mar']
@@ -33,20 +33,29 @@ det_df = pd.read_fwf(det_path, colspecs=det_colspecs, names=det_columns, encodin
 
 # === STEP 3: Read CAB file (header metadata) ===
 cab_colspecs = [
-    (0, 10),   # cod_oferta
-    (10, 15),  # version
-    (15, 22),  # cod_uof
-    (22, 52),  # unidad
-    (52, 53),  # cv
-    (53, 54),  # ofer_plazo
-    (54, 71),  # fijo_eur
-    (71, 78),  # potencia_max
-    (78, 80),  # cod_int
-    (80, 93),  # timestamp
+    (0, 7),    # cod_oferta
+    (7, 10),   # version
+    (10, 17),  # cod_uof
+    (17, 47),  # unidad
+    (47, 48),  # cv - C=buy V=sell
+    (49, 50),  # ofer_plazo
+    (84, 91),  # MaxRamSub - Up load gradient
+    (91, 98),  # MaxRamBaj - Down load gradient
+    (98, 115), # fijo_eur - fixed term
+    (115, 132),# var_eur - variable term
+    (132, 139),# potencia_max
+    (139, 146),# MaxRamArr - Startup load gradient
+    (146, 153),# MaxRamPar - Stopping load gradient
+    (153, 155),# cod_int
+    (155, 169) # timestamp
 ]
-cab_columns = ['cod_oferta', 'version_hdr', 'cod_uof', 'unidad', 'cv', 'ofer_plazo',
-               'fijo_eur', 'potencia_max', 'cod_int', 'timestamp']
+
+cab_columns = ['cod_oferta', 'version', 'cod_uof', 'unidad', 'cv', 'ofer_plazo', 'max_ram_sub', 'max_ram_baj',
+               'fijo_eur', 'var_eur', 'potencia_max', 'max_ram_arr', 'max_ram_par', 'cod_int', 'timestamp']
 cab_df = pd.read_fwf(cab_path, colspecs=cab_colspecs, names=cab_columns, encoding="latin1")
+
+print(cab_df.head())
+print(det_df.head())
 
 # === STEP 4: Normalize cod_oferta for merging ===
 det_df['cod_oferta'] = det_df['cod_oferta'].astype(str).str.strip()
