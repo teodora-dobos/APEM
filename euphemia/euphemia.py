@@ -81,7 +81,7 @@ class Euphemia:
         self.max_iterations = 2000
         self.iteration = 0
         self.objective_lower_bound = 0
-        self.cutting_strategy = CutType.PB
+        self.cutting_strategy = CutType.CB
         self.paths = {
             "alloc": "euphemia_results/allocation",
             "prices": "euphemia_results/prices",
