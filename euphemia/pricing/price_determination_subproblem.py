@@ -89,7 +89,6 @@ class Price_Subproblem:
                                          name=f"{infix}_step_partially_accepted_upper_{id}")
 
     def add_piecewise_linear_order_constraints(self):
-
         for _, order in self.master_problem.piecewise_linear_orders.iterrows():
             order_id = order['id']
             p0 = order['p0']
@@ -116,7 +115,6 @@ class Price_Subproblem:
                     self.pricing_model.addConstr(self.MCP[t] >= p0 - self.epsilon, name=f"buy_PLO_rejected_{order_id}")
             # ATM → must be exactly at the money
             elif self.epsilon < acceptance < 1.0 - self.epsilon:
-                print(f"PLO acceptance = {acceptance}")
                 self.pricing_model.addConstr((self.MCP[t] - p0) / (p1 - p0) - self.epsilon <= acceptance,
                                              name=f"PLO_partially_accepted_lower_{order_id}")
                 self.pricing_model.addConstr((self.MCP[t] - p0) / (p1 - p0) + self.epsilon >= acceptance,

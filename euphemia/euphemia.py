@@ -76,12 +76,13 @@ class Euphemia:
         self.price_upper_bound = 4000
         self.delta_PAB = 50
         self.delta_MIC = 100
+        self.delta_load_gradient = 100
         self.epsilon = 1e-4
         self.distance_factor = 1e-1
         self.max_iterations = 2000
         self.iteration = 0
         self.objective_lower_bound = 0
-        self.cutting_strategy = CutType.CB
+        self.cutting_strategy = CutType.PB
         self.paths = {
             "alloc": "euphemia_results/allocation",
             "prices": "euphemia_results/prices",
@@ -377,7 +378,6 @@ class Euphemia:
 
             # Deactivate PAMICs/PAMPs
             terms = []
-            #TODO load gradient orders
             violated_complex_mic = self.get_MIC_complex_orders(threshold=True)
             print(f"PAMIC complex: {violated_complex_mic}")
             if violated_complex_mic:
@@ -387,6 +387,16 @@ class Euphemia:
             print(f"PAMIC scalable complex: {violated_scalable_mic}")
             if violated_scalable_mic:
                 terms.extend(self.accept_scalable[i] for i in violated_scalable_mic)
+
+            violated_complex_load_gradient = self.get_load_gradient_orders(threshold=True, complex=True)
+            print(f"PA complex load gradient: {violated_complex_load_gradient}")
+            if violated_complex_load_gradient:
+                terms.extend(self.accept_complex[i] for i in violated_complex_load_gradient)
+
+            violated_scalable_load_gradient = self.get_load_gradient_orders(threshold=True, complex=False)
+            print(f"PA complex load gradient: {violated_scalable_load_gradient}")
+            if violated_scalable_load_gradient:
+                terms.extend(self.accept_scalable[i] for i in violated_scalable_load_gradient)
 
             if terms:
                 print(f"Deactivate PA (scalable) complex orders: {gp.quicksum(terms)} == 0")
@@ -647,6 +657,54 @@ class Euphemia:
 
         return res
 
+    def get_load_gradient_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False,
+                                 complex: bool = True) -> list:
+        """
+        Returns a list of accepted load gradient orders (either complex or scalable complex, depending on `complex` flag)
+        that have a negative total surplus.
+
+        If `threshold=True`, only orders with total surplus < -delta_load_gradient are returned.
+        If `threshold=False`, all orders with surplus < 0 are returned (i.e., paradoxically accepted).
+
+        Parameters:
+            threshold: If True, apply margin (delta_load_gradient) to determine out-of-the-money.
+            reinsertion: If True, use prices from reinsertion subproblem.
+            complex: If True, evaluate complex orders; otherwise evaluate scalable complex orders.
+        """
+        prices = self.prices if not reinsertion else self.prices_reinsertion
+
+        # Select order and step dataframes depending on `complex` flag
+        if complex:
+            orders_df = self.complex_orders[
+                (self.complex_orders['condition'] == 'load gradient') &
+                (self.complex_orders['acceptance'] > self.epsilon)
+                ]
+            step_orders_df = self.complex_step_orders
+            step_parent_col = 'complex_order_id'
+        else:
+            orders_df = self.scalable_complex_orders[
+                (self.scalable_complex_orders['condition'] == 'load gradient') &
+                (self.scalable_complex_orders['acceptance'] > self.epsilon)
+                ]
+            step_orders_df = self.scalable_step_orders
+            step_parent_col = 'scalable_order_id'
+
+        res = []
+
+        for _, order in orders_df.iterrows():
+            surplus = 0.0
+            order_id = order['id']
+            for _, step in step_orders_df[step_orders_df[step_parent_col] == order_id].iterrows():
+                t = step['t']
+                q = step['q']
+                p = step['p']
+                accept = step['acceptance']
+                surplus += accept * q * (prices[t] - p)
+
+            if (not threshold and surplus < 0) or (threshold and surplus < -self.delta_load_gradient):
+                res.append(order_id)
+
+        return res
 
     def add_MIC_complex_cut(self, single: Optional[bool] = False) -> bool:
         """
