@@ -10,30 +10,30 @@ Note that the format is very likely to change in 2025 with the introduction of 1
 
 Each row represents a unique offer unit that entered the market coupling process. All fields are in fixed positions.
 
-| Column Name       | Description                                                                 | Format   | Position |
-|-------------------|-----------------------------------------------------------------------------|----------|----------|
-| `CodOferta`       | Offer code (unique identifier)                                              | Integer  | 1        |
-| `Version`         | Offer version number                                                        | Integer  | 8        |
-| `Código Unidad`   | Identifier of the bidding unit                                              | String   | 11       |
-| `Descripción`     | Description of the bidding unit                                             | String   | 18       |
-| `CV`              | Indicates if it's a purchase (`C`) or sale (`V`)                            | Char     | 48       |
-| `Int`             | Not used                                                                    | Char     | 49       |
-| `OferPlazo`       | Offer type: Normal (`O`) or from contract disaggregation (`P`)             | Char     | 50       |
-| (Unused)          | Reserved fields, not used                                                   | Float    | 51-67    |
-| `MaxRamSub`       | Maximum ramp-up (MW/min)                                                    | Float    | 85       |
-| `MaxRamBaj`       | Maximum ramp-down (MW/min)                                                  | Float    | 92       |
-| `Fijoeuro`        | Fixed cost in EUR (from 1/6/2010)                                           | Float    | 99       |
-| `Vareuro`         | Variable cost in EUR/MWh (from 1/6/2010)                                    | Float    | 116      |
-| `MaxPot`          | Maximum power (MW)                                                          | Float    | 133      |
-| `MaxRamArr`       | Max ramp for startup                                                        | Float    | 140      |
-| `MaxRamPar`       | Max ramp for shutdown                                                       | Float    | 147      |
-| `CodInt`          | Interconnection code                                                        | Integer  | 154      |
-| `Año`             | Year of offer insertion                                                     | Integer  | 156      |
-| `Mes`             | Month of offer insertion                                                    | Integer  | 160      |
-| `Día`             | Day of offer insertion                                                      | Integer  | 162      |
-| `Hora`            | Hour of offer insertion                                                     | Integer  | 164      |
-| `Minuto`          | Minute of offer insertion                                                   | Integer  | 166      |
-| `Segundo`         | Second of offer insertion                                                   | Integer  | 168      |
+| Column Name       | Description                                           | Format   | Position |
+|-------------------|-------------------------------------------------------|----------|----------|
+| `CodOferta`       | Offer code (unique identifier)                        | Integer  | 1        |
+| `Version`         | Offer version number                                  | Integer  | 8        |
+| `Código Unidad`   | Identifier of the bidding unit                        | String   | 11       |
+| `Descripción`     | Description of the bidding unit                       | String   | 18       |
+| `CV`              | Indicates if it's a purchase (`C`) or sale (`V`)      | Char     | 48       |
+| `Int`             | Not used                                              | Char     | 49       |
+| `OferPlazo`       | Offer type: Normal (`O`) or from contract disaggregation (`P`) | Char     | 50       |
+| (Unused)          | Reserved fields, not used                             | Float    | 51-67    |
+| `MaxRamSub`       | Maximum ramp-up                                       | Float    | 85       |
+| `MaxRamBaj`       | Maximum ramp-down                                     | Float    | 92       |
+| `Fijoeuro`        | Fixed cost in EUR (from 1/6/2010)                     | Float    | 99       |
+| `Vareuro`         | Variable cost in EUR/MWh (from 1/6/2010)              | Float    | 116      |
+| `MaxPot`          | Maximum power (MW)                                    | Float    | 133      |
+| `MaxRamArr`       | Max ramp for startup                                  | Float    | 140      |
+| `MaxRamPar`       | Max ramp for shutdown                                 | Float    | 147      |
+| `CodInt`          | Interconnection code                                  | Integer  | 154      |
+| `Año`             | Year of offer insertion                               | Integer  | 156      |
+| `Mes`             | Month of offer insertion                              | Integer  | 160      |
+| `Día`             | Day of offer insertion                                | Integer  | 162      |
+| `Hora`            | Hour of offer insertion                               | Integer  | 164      |
+| `Minuto`          | Minute of offer insertion                             | Integer  | 166      |
+| `Segundo`         | Second of offer insertion                             | Integer  | 168      |
 
 ---
 
