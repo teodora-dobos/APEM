@@ -401,9 +401,12 @@ class Euphemia:
             if terms:
                 print(f"Deactivate PA (scalable) complex orders: {gp.quicksum(terms)} == 0")
                 callbackModel.cbLazy(gp.quicksum(terms) == 0)
+            # If no paradoxically accepted orders but subproblem infeasible add simple no good cut
+            elif not pab_blocks:
+                self.add_no_good_cut(callbackModel)
         else:
             print("Something went wrong and in the unconstrained problem no prices could be found")
-        self.add_no_good_cut(callbackModel)
+
 
     def add_price_based_cut_to_block(self, callbackModel, block_order) -> None:
         terms = [1 - self.MAR_aux[block_order['id']]]  # (1 - ACCEPT_hat)

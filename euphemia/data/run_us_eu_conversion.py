@@ -1,5 +1,4 @@
 import pandas as pd
-from jinja2.compiler import generate
 
 from apem.data.parsing.parse_arpa import ParseARPA
 from apem.data.parsing.parse_data import ParseData
@@ -9,12 +8,25 @@ from apem.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
 from apem.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
 
 from apem.data.data_conversion import DataConversion
-from euphemia.data.parsing.zonal_scenario import ZonalScenario
-from euphemia.euphemia import Euphemia
 from euphemia.utils.paths import CONVERTED_DATASET_PATH_MAP
 
 
-def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = True):
+"""
+Run the conversion and compression of a US dataset to EU bidding language
+
+- us_data: the dataset that should be used
+- generate_uptime_patterns: whether to generate commitment patterns 
+   for units with minimum uptime constraints or not. Patterns are saved so only necessary for the inital run
+- reduce_linked_blocks: whether to merge linked blocks over several time periods connected to one exclusive block to only one linked block
+   to model additional capacity
+- use_contiguous_patterns: restrict patterns to those with one contiguous on/off period
+- compress_identical_blocks: comprise identical block orders from the same generator types in one order
+"""
+def run_us_eu_conversion(us_data: ParseData,
+                         generate_uptime_patterns: bool = True,
+                         reduce_linked_blocks: bool = True,
+                         use_contiguous_patterns: bool = True,
+                         compress_identical_blocks: bool = True):
    # Convert US market data
    print("Loading US market data...")
    data = us_data().parse_data()
@@ -26,9 +38,9 @@ def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = Tr
    scalable_complex_orders, scalable_step_orders = conversion.generate_no_min_uptime_bids()
    if generate_uptime_patterns:
       print("Generating patterns for min uptime demand data...")
-      conversion.generate_write_patterns()
+      conversion.generate_write_patterns(use_contiguous_patterns=use_contiguous_patterns)
    print("Converting min uptime demand data...")
-   block_orders_sellers = conversion.generate_min_uptime_bids()
+   block_orders_sellers = conversion.generate_min_uptime_bids(reduce_linked_blocks=reduce_linked_blocks)
 
    # Load empty datasets for data not filled
    cols = ['id', 'step_orders', 'fixed_term', 'variable_term', 'condition', 'load_gradient']
@@ -40,7 +52,10 @@ def run_us_eu_conversion(us_data: ParseData, generate_uptime_patterns: bool = Tr
 
    # merge block orders
    block_orders = pd.concat([block_orders_buyers, block_orders_sellers], ignore_index=True)
-   block_orders = DataConversion._compress_linked(conversion, block_orders)
+
+   # compress identical block orders
+   if compress_identical_blocks:
+      block_orders = DataConversion.compress_linked(conversion, block_orders)
 
    periods = data.periods
    periods_df = pd.DataFrame({'period': periods})
@@ -83,4 +98,8 @@ def save_df(df, us_data: ParseData, name: str):
 
 
 if __name__ == '__main__':
-   run_us_eu_conversion(ParseIEEERTS, generate_uptime_patterns=False)
+   run_us_eu_conversion(ParseIEEERTS,
+                        generate_uptime_patterns=False,
+                        use_contiguous_patterns=True,
+                        reduce_linked_blocks=True,
+                        compress_identical_blocks=True)

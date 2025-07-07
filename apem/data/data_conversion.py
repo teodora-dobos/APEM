@@ -153,7 +153,7 @@ class DataConversion:
 
         return df_scalable_orders, df_scalable_step_orders
 
-    def generate_min_uptime_bids(self) -> pd.DataFrame:
+    def generate_min_uptime_bids(self, reduce_linked_blocks: bool) -> pd.DataFrame:
         """
         Generate block orders to encode the bids of the sellers that fulfill the following criteria:
             - minimum uptime > 1
@@ -187,6 +187,7 @@ class DataConversion:
             min_cost = sellers_general_info['cost1'].values[0]
             exclusive_id = f's{s}exclusive'
             count = 1
+            seen_time_commitments = set()
 
             for pattern in patterns[min_uptime]:
                 # create a vector in which the value at index i is 1 if the pattern indicates that the seller is
@@ -200,6 +201,12 @@ class DataConversion:
 
                 if sum(time_commitment) == 0:
                     continue
+
+                # Check if pattern was already added as block order
+                tc_tuple = tuple(time_commitment)
+                if tc_tuple in seen_time_commitments:
+                    continue  # already processed this time pattern
+                seen_time_commitments.add(tc_tuple)
 
                 # Support for orders with no-load cost > 0
                 active_hours = sum(time_commitment)  # k
@@ -240,7 +247,7 @@ class DataConversion:
 
                 print(f"Exclusive blocks finished - Seller {s} - Pattern {pattern}")
 
-                self.add_linked_block_orders(time_commitment, s, count, block_bids, reduce_orders=True)
+                self.add_linked_block_orders(time_commitment, s, count, block_bids, reduce_orders=reduce_linked_blocks)
 
                 count += 1
 
@@ -354,7 +361,7 @@ class DataConversion:
                     block_bids.append(bid_p)
 
 
-    def generate_write_patterns(self) -> None:
+    def generate_write_patterns(self, use_contiguous_patterns: bool) -> None:
         """
         Generate and write all patterns in .txt files.
         """
@@ -363,7 +370,7 @@ class DataConversion:
         ensure_dir(path)
         for min_uptime in min_uptimes:
             file_name = path / f'{min_uptime}.txt'
-            patterns = self.generate_contiguous_patterns(min_uptime)
+            patterns = self.generate_contiguous_patterns(min_uptime) if use_contiguous_patterns else self.generate_patterns(min_uptime)
             with open(file_name, 'w') as f:
                 for p in patterns:
                     row = ' '.join(map(str, p))
@@ -379,7 +386,7 @@ class DataConversion:
     We round numerical values to avoid hash instability due to tiny
     floating‑point noise.
     """
-    def _blk_signature(self, row: pd.Series) -> str:
+    def block_signature(self, row: pd.Series) -> str:
         qty_cols = [c for c in row.index if c.startswith("q")]
         tup = (
             row["block_type"],
@@ -395,17 +402,17 @@ class DataConversion:
     
     A linked chain is a rooted tree: one exclusive parent order plus
     zero or more linked children.  Two chains are considered identical
-    (and thus mergeable) if *every* node (block) in both trees has an
+    (and thus mergeable) if every node (block) in both trees has an
     identical signature and the tree topology is the same.
 
     After merging we:
       • sum the quantities of identical blocks,
-      • adjust MAR of the parent (MAR=1/n if all originals had MAR=1),
+      • adjust MAR of the parent (MAR=1/n),
       • concatenate the original IDs so that we can still trace them,
       • update the children so their `code_prm` points to the *new*
         parent ID.
     """
-    def _compress_linked(self, df: pd.DataFrame) -> pd.DataFrame:
+    def compress_linked(self, df: pd.DataFrame) -> pd.DataFrame:
         qty_cols = [c for c in df.columns if c.startswith("q")]
 
         # 1) Determine the parent ID for every row:
@@ -421,14 +428,14 @@ class DataConversion:
         )
 
         # 3) Build the per‑block signature dict  {order_id: signature}
-        sig_series = df.apply(self._blk_signature, axis=1)
+        sig_series = df.apply(self.block_signature, axis=1)
         blk_sig = dict(zip(df["id"], sig_series))
 
-        def chain_sig(pid: str):
-            """Recursively compute the signature of the entire chain below *pid*."""
+        def chain_sig(chain: str):
+            """Recursively compute the signature of the entire chain below."""
             return (
-                blk_sig[pid],
-                tuple(sorted(chain_sig(c) for c in children_map.get(pid, [])))
+                blk_sig[chain],
+                tuple(sorted(chain_sig(c) for c in children_map.get(chain, [])))
             )
 
         # All roots = exclusive blocks (one per chain)
