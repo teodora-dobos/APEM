@@ -1,32 +1,29 @@
 import pandas as pd
 
-from apem.data.parsing.parse_arpa import ParseARPA
 from apem.data.parsing.parse_data import ParseData
 from apem.data.parsing.parse_ieee_rts import ParseIEEERTS
-from apem.data.parsing.parse_pjm import ParsePJM
-from apem.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
-from apem.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
 
-from apem.data.data_conversion import DataConversion
+from euphemia.data.conversion.data_conversion import DataConversion
 from euphemia.utils.paths import CONVERTED_DATASET_PATH_MAP
 
 
-"""
-Run the conversion and compression of a US dataset to EU bidding language
-
-- us_data: the dataset that should be used
-- generate_uptime_patterns: whether to generate commitment patterns 
-   for units with minimum uptime constraints or not. Patterns are saved so only necessary for the inital run
-- reduce_linked_blocks: whether to merge linked blocks over several time periods connected to one exclusive block to only one linked block
-   to model additional capacity
-- use_contiguous_patterns: restrict patterns to those with one contiguous on/off period
-- compress_identical_blocks: comprise identical block orders from the same generator types in one order
-"""
 def run_us_eu_conversion(us_data: ParseData,
                          generate_uptime_patterns: bool = True,
                          reduce_linked_blocks: bool = True,
                          use_contiguous_patterns: bool = True,
                          compress_identical_blocks: bool = True):
+   """
+   Run the conversion and compression of a US dataset to EU bidding language
+
+   - us_data: the dataset that should be used
+   - generate_uptime_patterns: whether to generate commitment patterns
+      for units with minimum uptime constraints or not. Patterns are saved so only necessary for the inital run
+   - reduce_linked_blocks: whether to merge linked blocks over several time periods connected to one exclusive block to only one linked block
+      to model additional capacity
+   - use_contiguous_patterns: restrict patterns to those with one contiguous on/off period
+   - compress_identical_blocks: comprise identical block orders from the same generator types in one order
+   """
+
    # Convert US market data
    print("Loading US market data...")
    data = us_data().parse_data()

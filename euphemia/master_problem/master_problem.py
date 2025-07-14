@@ -8,29 +8,37 @@ import re
 import pandas as pd
 import time
 
+import euphemia.cutting.price_based as price_based_cutting
+import euphemia.cutting.no_good as no_good_cutting
+import euphemia.cutting.combinatorial_benders as combinatorial_benders_cutting
 from euphemia.data.parsing.zonal_scenario import ZonalScenario
 from euphemia.enums.cut_types import CutType
-from euphemia.enums.order_types import OrderType
+from euphemia.euphemia_config import EuphemiaConfig
 from euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
-from euphemia.pricing.price_determination_subproblem import Price_Subproblem
+from euphemia.pricing.price_determination_subproblem import PriceSubproblem
 from euphemia.reinsertions.prmic_prb_reinsertion import PRMIC_PRB_reinsertion
 from euphemia.utils.calculations import calculate_flexible_order_active_period
 from euphemia.utils.extraction import get, parse_step_order_ids
 from euphemia.utils.paths import EUPHEMIA_ROOT
 
 
-class Euphemia:
-    def __init__(self, scenario: ZonalScenario):
-        self.model = gp.Model('Euphemia')
-        self.scenario = scenario
-        self.periods = scenario.periods
-        self.step_orders = scenario.step_orders
-        self.block_orders = scenario.block_orders
-        self.complex_orders = scenario.complex_orders
-        self.complex_step_orders = scenario.complex_step_orders
-        self.scalable_complex_orders = scenario.scalable_complex_orders
-        self.scalable_step_orders = scenario.scalable_step_orders
-        self.piecewise_linear_orders = scenario.piecewise_linear_orders
+
+class MasterProblem:
+    def __init__(self, config: EuphemiaConfig):
+        if not config:
+            config = EuphemiaConfig()
+
+        self.config = config
+        self.model = gp.Model('Euphemia Master Problem')
+        self.scenario = config.scenario
+        self.periods = self.scenario.periods
+        self.step_orders = self.scenario.step_orders
+        self.block_orders = self.scenario.block_orders
+        self.complex_orders = self.scenario.complex_orders
+        self.complex_step_orders = self.scenario.complex_step_orders
+        self.scalable_complex_orders = self.scenario.scalable_complex_orders
+        self.scalable_step_orders = self.scenario.scalable_step_orders
+        self.piecewise_linear_orders = self.scenario.piecewise_linear_orders
 
         self.accept_step = self.model.addVars(list(self.step_orders['id']), vtype=GRB.CONTINUOUS, lb=0, ub=1,
                                               name='accept_step')
@@ -57,7 +65,7 @@ class Euphemia:
 
         self.add_acceptance_variables_to_dataframe()
 
-        # Compute overlapping block orders
+        # Compute overlapping block orders for price-based cuts
         self.block_overlap = self.compute_block_overlaps()
         self.block_orders['overlap_set'] = self.block_orders['id'].map(self.block_overlap)
 
@@ -65,23 +73,28 @@ class Euphemia:
         self.found_solution = False
         self.current_best_objective = -1
         self.reinsertion_run = False
-        self.disable_reinsertion = True
 
-        self.model.Params.LazyConstraints = 1
-
+        self.iteration = 0
+        self.start_time = 0
         self.M = 10 ** 6
         self.prices = {}
         self.prices_reinsertion = {}
-        self.price_lower_bound = -500
-        self.price_upper_bound = 4000
-        self.delta_PAB = 50
-        self.beta_MIC = 0.1
-        self.delta_load_gradient = 5000
-        self.epsilon = 1e-4
-        self.max_iterations = 50
-        self.iteration = 0
-        self.start_time = 0
-        self.cutting_strategy = CutType.PB
+
+        self.model.Params.LazyConstraints = 1
+
+
+        self.price_lower_bound = config.price_lower_bound
+        self.price_upper_bound = config.price_upper_bound
+        self.delta_PAB = config.delta_PAB
+        self.beta_MIC = config.beta_MIC
+        self.delta_load_gradient = config.delta_load_gradient
+        self.epsilon = config.epsilon
+        self.max_iterations = config.max_iterations
+        self.cutting_strategy = config.cutting_strategy
+        self.disable_reinsertion = config.disable_reinsertion
+
+
+
         self.paths = {
             "alloc": "euphemia_results/allocation",
             "prices": "euphemia_results/prices",
@@ -104,7 +117,7 @@ class Euphemia:
                 shutil.rmtree(full_path)
             os.makedirs(full_path, exist_ok=True)
 
-    def solve(self) -> None:
+    def run(self) -> None:
         """
         Compute market clearing prices, matched volumes, selection of block and complex orders that will be executed,
         accepted percentage for each curtailable block.
@@ -163,19 +176,27 @@ class Euphemia:
         """
         self.model.optimize(callback=self.master_problem_callback)
 
-    def master_problem_callback(self, callbackModel, where) -> None:
+
+    def master_problem_callback(self, callback_model, where) -> None:
+        """
+        Callback function that is executed for each valid integer solution from the master problem.
+
+        Checks if pricing subproblem is feasible or not.
+        If infeasible a lazy cut is added to the master problem.
+        """
+
         # when a MIP solution was found
         if where == GRB.Callback.MIPSOL:
             # Check iteration limit
             if self.iteration >= self.max_iterations:
                 print(f"Maximum iterations ({self.max_iterations}) reached. Terminating.")
-                callbackModel.terminate()
+                callback_model.terminate()
                 elapsed = time.time() - self.start_time
                 # Log if no solution could be found
                 file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
                 with open(file_path, 'a', buffering=1) as file:
                     file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                    if (self.cutting_strategy == CutType.PB):
+                    if self.cutting_strategy == CutType.PB:
                         file.write(
                             f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
                     file.write(f"No solution in iteration limit of {self.max_iterations}\n")
@@ -185,9 +206,9 @@ class Euphemia:
                 return
                 
             # get current solution
-            objective_value = callbackModel.cbGet(GRB.Callback.MIPSOL_OBJ)
-            vars = callbackModel.getVars()
-            solution = callbackModel.cbGetSolution(vars)
+            objective_value = callback_model.cbGet(GRB.Callback.MIPSOL_OBJ)
+            vars = callback_model.getVars()
+            solution = callback_model.cbGetSolution(vars)
             if solution is not None:
                 print("Found integer solution")
                 print("Objective value:", objective_value)
@@ -201,13 +222,13 @@ class Euphemia:
                 file_path = EUPHEMIA_ROOT / self.paths['alloc'] / "results.txt"
                 with open(file_path, 'w', buffering=1) as f:
                     f.write(f"New solution with objective value {objective_value}\n")
-                    for var in callbackModel.getVars():
-                        f.write(f"{var.VarName}: {callbackModel.cbGetSolution(var)}\n")
+                    for var in callback_model.getVars():
+                        f.write(f"{var.VarName}: {callback_model.cbGetSolution(var)}\n")
                     f.flush()
                     os.fsync(f.fileno())
 
                 print("Solving price determination subproblem...")
-                price_subproblem = Price_Subproblem(master_problem=self)
+                price_subproblem = PriceSubproblem(master_problem=self)
                 price_subproblem.solve_price_determination_subproblem()
 
                 # If price subproblem optimal check if new incumbent was found
@@ -235,38 +256,21 @@ class Euphemia:
                     print("Price subproblem is infeasible")
 
                     if self.cutting_strategy == CutType.CB:
-                        price_subproblem.pricing_model.computeIIS()
-                        terms = []
-                        for constr in price_subproblem.pricing_model.getConstrs():
-                            if constr.IISConstr:
-                                print(f"Infeasible constraint: {constr}")
-                                constr_name = constr.ConstrName
-
-                                if constr_name in price_subproblem.constraint_meta_data.keys():
-                                    metadata = price_subproblem.constraint_meta_data[constr_name]
-
-                                    # Combinatorial Benders Cut
-                                    if metadata[0] == OrderType.BLOCK:
-                                        terms.append(1 - self.MAR_aux[metadata[1]])
-                                    elif metadata[0] == OrderType.COMPLEX:
-                                        terms.append(1 - self.accept_complex[metadata[1]])
-                                    elif metadata[0] == OrderType.SCALABLE_COMPLEX:
-                                        terms.append(1 - self.accept_scalable[metadata[1]])
-
-                        if terms:
-                            callbackModel.cbLazy(gp.quicksum(terms) >= 1)
-                        else:
-                            self.add_no_good_cut(callbackModel=callbackModel)
+                        combinatorial_benders_cutting.add_combinatorial_benders_cut(self=self, callback_model=callback_model, price_subproblem=price_subproblem)
 
                     elif self.cutting_strategy == CutType.NG:
-                        self.add_no_good_cut(callbackModel=callbackModel)
+                        no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
 
                     elif self.cutting_strategy == CutType.PB:
-                        self.handle_price_based_cutting(callbackModel=callbackModel)
+                        price_based_cutting.handle_price_based_cutting(self=self, callback_model=callback_model)
 
 
 
     def add_acceptance_variables_to_dataframe(self) -> None:
+        """
+        Add reference to acceptance variable to each order in dataframe for further processing
+        """
+
         self.step_orders['acceptance_var'] = self.step_orders['id'].map(self.accept_step)
         self.piecewise_linear_orders['acceptance_var'] = self.piecewise_linear_orders['id'].map(
             self.accept_piecewise_linear)
@@ -321,8 +325,9 @@ class Euphemia:
     def compute_block_overlaps(self) -> dict[int, set[int]]:
         """
         Computes block orders that have at least one overlapping period with quantity unequal to 0.
-        Can be used for Price-based-cuts
+        Can be used for Price-based cuts
         """
+
         period_cols = [f"q{t}" for t in self.periods]
 
         # Extract only the 'id' column and the period quantity columns
@@ -350,98 +355,6 @@ class Euphemia:
 
         return overlap
 
-
-    def add_no_good_cut(self, callbackModel) -> None:
-        # create cut that makes current solution invalid
-        terms = []
-        # match variable from current solution with gurobi variable from model
-        for gurobi_acceptance_var in callbackModel.getVars():
-            if gurobi_acceptance_var.VType == GRB.BINARY:
-                solution_value = self.current_alloc_solution.get(gurobi_acceptance_var.VarName)
-                if solution_value is None:
-                    print(f"{gurobi_acceptance_var.VarName} not found in solution dict")
-                    continue
-                if solution_value[0] > 0.5:
-                    terms.append(1 - gurobi_acceptance_var)
-                else:
-                    terms.append(gurobi_acceptance_var)
-        if terms:
-            expr = gp.quicksum(terms)
-            callbackModel.cbLazy(expr >= 1)
-            print(f"Added no good cut: {expr} >= 1")
-
-
-    def handle_price_based_cutting(self, callbackModel) -> None:
-        print("Creating unconstrained subproblem")
-        price_subproblem = Price_Subproblem(master_problem=self)
-        price_subproblem.isConstrained = False
-        price_subproblem.solve_price_determination_subproblem()
-
-        if price_subproblem.pricing_model.Status == GRB.OPTIMAL:
-            # Update prices (No final prices!)
-            self.set_prices({int(re.search(r'\d+', var.varName).group()): var.X for var in
-                             price_subproblem.pricing_model.getVars()}, reinsertion=False)
-
-            # Add price-based cut to block orders
-            pab_blocks = self.get_block_bids(threshold=False)
-            print(f"PABs: {pab_blocks}")
-            for b in pab_blocks:
-                block_order = self.block_orders[self.block_orders['id'] == b].iloc[0]
-                self.add_price_based_cut_to_block(callbackModel, block_order)
-
-            # Deactivate PAMICs/PAMPs
-            terms = []
-            violated_complex_mic = self.get_MIC_complex_orders(threshold=True)
-            print(f"PAMIC complex: {violated_complex_mic}")
-            if violated_complex_mic:
-                terms.extend(self.accept_complex[i] for i in violated_complex_mic)
-
-            violated_scalable_mic = self.get_MIC_scalable_orders(threshold=True)
-            print(f"PAMIC scalable complex: {violated_scalable_mic}")
-            if violated_scalable_mic:
-                terms.extend(self.accept_scalable[i] for i in violated_scalable_mic)
-
-            violated_complex_load_gradient = self.get_load_gradient_orders(threshold=True, complex=True)
-            print(f"PA complex load gradient: {violated_complex_load_gradient}")
-            if violated_complex_load_gradient:
-                terms.extend(self.accept_complex[i] for i in violated_complex_load_gradient)
-
-            violated_scalable_load_gradient = self.get_load_gradient_orders(threshold=True, complex=False)
-            print(f"PA complex load gradient: {violated_scalable_load_gradient}")
-            if violated_scalable_load_gradient:
-                terms.extend(self.accept_scalable[i] for i in violated_scalable_load_gradient)
-
-            if terms:
-                print(f"Deactivate PA (scalable) complex orders: {gp.quicksum(terms)} == 0")
-                callbackModel.cbLazy(gp.quicksum(terms) == 0)
-            # If no paradoxically accepted orders but subproblem infeasible add simple no good cut
-            elif not pab_blocks:
-                self.add_no_good_cut(callbackModel)
-        else:
-            print("Something went wrong and in the unconstrained problem no prices could be found")
-            self.add_no_good_cut(callbackModel)
-
-
-    def add_price_based_cut_to_block(self, callbackModel, block_order) -> None:
-        terms = [1 - self.MAR_aux[block_order['id']]]  # (1 - ACCEPT_hat)
-
-        def is_sale(bo_id: int) -> bool:
-            return self.block_orders.loc[self.block_orders['id'] == bo_id,
-            [f"q{t}" for t in self.periods]].values.sum() > 0
-
-        for overlapping_order_id in block_order['overlap_set']:
-            accepted = self.current_alloc_solution[f"y[{overlapping_order_id}]"][0] > self.epsilon
-            sale = is_sale(overlapping_order_id)
-
-            if is_sale(block_order['id']):
-                if sale and accepted: terms.append(1 - self.MAR_aux[overlapping_order_id])
-                if (not sale) and (not accepted): terms.append(self.MAR_aux[overlapping_order_id])
-            else:
-                if (not sale) and accepted: terms.append(1 - self.MAR_aux[overlapping_order_id])
-                if sale and (not accepted): terms.append(self.MAR_aux[overlapping_order_id])
-
-        callbackModel.cbLazy(gp.quicksum(terms) >= 1)
-        print(f"Added {gp.quicksum(terms)} >= 1")
 
 
     def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
@@ -725,6 +638,8 @@ class Euphemia:
 
     def add_MIC_complex_cut(self, single: Optional[bool] = False) -> bool:
         """
+        --- Not used in current implementation ---
+
         If single is False, add cuts to reject complex orders that are in-the-money by less than delta_MIC.
         If single is True, add a single cut.
         """
@@ -745,6 +660,8 @@ class Euphemia:
 
     def add_MIC_scalable_cut(self, single: Optional[bool] = False) -> bool:
         """
+        --- Not used in current implementation ---
+
         If single is False, add cuts to reject scalable complex orders that are in-the-money by less than delta_MIC.
         If single is True, add a single cut.
         """

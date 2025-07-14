@@ -11,7 +11,7 @@ from euphemia.utils.calculations import calculate_flexible_order_active_period
 from euphemia.utils.paths import EUPHEMIA_ROOT
 
 
-class Price_Subproblem:
+class PriceSubproblem:
     def __init__(self, master_problem):
         self.master_problem = master_problem
         self.M = master_problem.M
@@ -27,8 +27,7 @@ class Price_Subproblem:
                                               lb=self.master_problem.price_lower_bound,
                                               ub=self.master_problem.price_upper_bound, vtype=GRB.CONTINUOUS)
 
-    def solve_price_determination_subproblem(self, reinsertion: Optional[bool] = False) -> None:
-
+    def solve_price_determination_subproblem(self) -> None:
         self.pricing_model.setObjective(gp.quicksum(
             ((self.MCP[t] - (self.master_problem.price_upper_bound - self.master_problem.price_lower_bound) / 2) ** 2)
             for t in self.master_problem.periods), GRB.MINIMIZE)
@@ -45,12 +44,11 @@ class Price_Subproblem:
 
         self.pricing_model.optimize()
 
-    """
-    Add constraints in order to avoid the paradoxical acceptance and rejection of period step orders
-    """
-
     def add_step_order_constraints(self):
-        # Step order DataFrame with acceptance values
+        """
+        Add constraints in order to avoid the paradoxical acceptance and rejection of step orders
+        """
+        # Iterate through step order DataFrame with acceptance values
         for _, order in self.master_problem.step_orders.iterrows():
             self.add_step_order_constraint(order, infix="normal")
 
@@ -89,6 +87,9 @@ class Price_Subproblem:
                                          name=f"{infix}_step_partially_accepted_upper_{id}")
 
     def add_piecewise_linear_order_constraints(self):
+        """
+        Add constraints in order to avoid the paradoxical acceptance and rejection of piecewise linear orders
+        """
         for _, order in self.master_problem.piecewise_linear_orders.iterrows():
             order_id = order['id']
             p0 = order['p0']
@@ -120,11 +121,11 @@ class Price_Subproblem:
                 self.pricing_model.addConstr((self.MCP[t] - p0) / (p1 - p0) + self.epsilon >= acceptance,
                                              name=f"PLO_partially_accepted_upper_{order_id}")
 
-    """
-    Add constraints in order to avoid the paradoxical acceptance of block orders (PABs)
-    """
-
     def add_block_order_constraints(self):
+        """
+        Add constraints in order to avoid the paradoxical acceptance of block orders (PABs)
+        """
+
         for _, block_order in self.master_problem.block_orders.iterrows():
             if block_order['acceptance'] > self.epsilon:  # Only accepted blocks relevant
                 block_id = block_order['id']
@@ -172,6 +173,10 @@ class Price_Subproblem:
                     self.add_linked_block_order_constraints(parent_order=block_order)
 
     def add_linked_block_order_constraints(self, parent_order):
+        """
+        Add constraint so that families have a positive surplus
+        """
+
         parent_id = parent_order['id']
         children_df = self.master_problem.block_orders[
             (self.master_problem.block_orders['code_prm'] == parent_id) & (self.master_problem.block_orders['block_type'] == 'linked')]
@@ -186,6 +191,10 @@ class Price_Subproblem:
         self.constraint_meta_data[f'linked_block_positive_family_parent_{parent_id}'] = (OrderType.BLOCK, parent_id)
 
     def add_linked_leafs_positive_surplus(self, child_order):
+        """
+        Add constraint so that leafs have a positive surplus
+        """
+
         parent_id = child_order['code_prm']
         child_id = child_order['id']
 
@@ -196,6 +205,9 @@ class Price_Subproblem:
         self.constraint_meta_data[f'linked_block_positive_leaf_{child_id}'] = (OrderType.BLOCK, parent_id)
 
     def add_complex_order_constraints(self):
+        """
+        Add constraints to prevent the paradoxical acceptance of complex orders
+        """
         for _, order in self.master_problem.complex_orders.iterrows():
             # only accepted complex orders relevant
             if order['acceptance'] > self.epsilon and order['condition'] != 'load gradient':
@@ -205,6 +217,10 @@ class Price_Subproblem:
 
 
     def add_scalable_complex_order_constraints(self):
+        """
+        Add constraints to prevent the paradoxical acceptance of scalable complex orders
+        """
+
         for _, order in self.master_problem.scalable_complex_orders.iterrows():
             if order['acceptance'] > self.epsilon and order['condition'] != 'load gradient':
                 self.add_MIC_MP_constraints(order, self.master_problem.scalable_step_orders, OrderType.SCALABLE_COMPLEX)
@@ -212,16 +228,20 @@ class Price_Subproblem:
                 self.add_load_gradient_constraints(order, self.master_problem.scalable_step_orders, OrderType.SCALABLE_COMPLEX)
 
     def add_MIC_MP_constraints(self, order, step_order_df, order_type: OrderType):
+        """
+        Constraints to make sure MIC/MP condition is met
+        """
+
         order_id = order['id']
 
-        parent_column = 'complex_order_id' if order_type == OrderType.COMPLEX else 'scalable_order_id'
+        parent_column = 'complex_order_id' if order_type == order_type.COMPLEX else 'scalable_order_id'
         variable_expected_value = 0
         actual_value = gp.LinExpr()
         # calculate minimal expected income / maximum payment
         for _, step_order in step_order_df.iterrows():
             if step_order[parent_column] == order_id:
                 # calculate values for MIC / MP
-                if order_type == OrderType.COMPLEX:
+                if order_type == order_type.COMPLEX:
                     variable_expected_value += step_order['acceptance'] * order['variable_term'] * abs(
                         step_order['q'])
                 else:
@@ -230,8 +250,8 @@ class Price_Subproblem:
                 actual_value += step_order['acceptance'] * abs(step_order['q']) * self.MCP[step_order['t']]
         expected_value = order['fixed_term'] + variable_expected_value
 
-        label_MP = f"MP_condition_CO_{order_id}" if order_type == OrderType.COMPLEX else f"MP_condition_SCO_{order_id}"
-        label_MIC = f"MIC_condition_CO_{order_id}" if order_type == OrderType.COMPLEX else f"MIC_condition_SCO_{order_id}"
+        label_MP = f"MP_condition_CO_{order_id}" if order_type == order_type.COMPLEX else f"MP_condition_SCO_{order_id}"
+        label_MIC = f"MIC_condition_CO_{order_id}" if order_type == order_type.COMPLEX else f"MIC_condition_SCO_{order_id}"
 
         if order['condition'] == 'MP':
             self.pricing_model.addConstr(actual_value <= expected_value, label_MP)
@@ -241,10 +261,14 @@ class Price_Subproblem:
             self.constraint_meta_data[label_MIC] = (order_type, order_id)
 
     def add_load_gradient_constraints(self, order, step_order_df, order_type: OrderType):
+        """
+        Constraints to make sure load gradient orders have a positive surplus
+        """
+
         order_id = order['id']
         surplus_expr = gp.LinExpr()
 
-        parent_column = 'complex_order_id' if order_type == OrderType.COMPLEX else 'scalable_order_id'
+        parent_column = 'complex_order_id' if order_type == order_type.COMPLEX else 'scalable_order_id'
 
         for _, step in step_order_df.iterrows():
             if step[parent_column] == order_id:
@@ -254,7 +278,7 @@ class Price_Subproblem:
                 accept = step['acceptance']
                 surplus_expr += accept * q * (self.MCP[t] - p)
 
-        label = f'load_gradient_surplus_CO_{order_id}' if order_type == OrderType.COMPLEX else f'load_gradient_SCO_{order_id}'
+        label = f'load_gradient_surplus_CO_{order_id}' if order_type == order_type.COMPLEX else f'load_gradient_SCO_{order_id}'
 
         self.pricing_model.addConstr(surplus_expr >= 0.0, name=label)
         self.constraint_meta_data[label] = (order_type, order_id)

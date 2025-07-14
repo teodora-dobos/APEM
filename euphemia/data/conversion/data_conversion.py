@@ -8,7 +8,9 @@ import json
 import numpy as np
 
 from apem.data.parsing.scenario import Scenario
-from apem.utils.paths import RAW_DATA_DIR, ensure_dir
+from apem.utils.paths import ensure_dir
+
+from euphemia.utils.paths import EUPHEMIA_ROOT
 
 
 class DataConversion:
@@ -166,7 +168,7 @@ class DataConversion:
         # retrieve patterns that encode in which periods a seller is committed
         patterns = {}
         for val in range(2, 25):
-            file_path = RAW_DATA_DIR / "euphemia" / "patterns" / f"{val}.txt"
+            file_path = EUPHEMIA_ROOT / "data" / "conversion" / "patterns" / f"{val}.txt"
             patterns_val = []
 
             try:
@@ -375,7 +377,7 @@ class DataConversion:
         Generate and write all patterns in .txt files.
         """
         min_uptimes = range(2, 25)
-        path = RAW_DATA_DIR / "euphemia" / "patterns"
+        path = EUPHEMIA_ROOT / "data" / "conversion" / "patterns"
         ensure_dir(path)
         for min_uptime in min_uptimes:
             file_name = path / f'{min_uptime}.txt'
@@ -385,17 +387,16 @@ class DataConversion:
                     row = ' '.join(map(str, p))
                     f.write(row + '\n')
 
-    """
-    Generate a stable hash for a *single* block
-    
-    The hash must uniquely identify a block by the attributes that
-    are relevant for Euphemia's optimisation: block type, the 24‑hour
-    quantity vector, price and MAR.  Seller/buyer IDs are *not* part
-    of the hash because they do not influence the market clearing.
-    We round numerical values to avoid hash instability due to tiny
-    floating‑point noise.
-    """
     def block_signature(self, row: pd.Series) -> str:
+        """
+        Generate a stable hash for a single block
+
+        The hash must uniquely identify a block by the attributes that
+        are relevant: block type, the 24‑hour
+        quantity vector, price and MAR. Seller/buyer IDs are not part
+        of the hash because they do not influence the market clearing.
+        """
+
         qty_cols = [c for c in row.index if c.startswith("q")]
         tup = (
             row["block_type"],
@@ -406,37 +407,38 @@ class DataConversion:
         # Short but collision‑resistant fingerprint (SHA‑1 over JSON dump)
         return hashlib.sha1(json.dumps(tup).encode()).hexdigest()
 
-    """
-    Lossless aggregation of *identical* linked‑block chains
-    
-    A linked chain is a rooted tree: one exclusive parent order plus
-    zero or more linked children.  Two chains are considered identical
-    (and thus mergeable) if every node (block) in both trees has an
-    identical signature and the tree topology is the same.
 
-    After merging we:
-      • sum the quantities of identical blocks,
-      • adjust MAR of the parent (MAR=1/n),
-      • concatenate the original IDs so that we can still trace them,
-      • update the children so their `code_prm` points to the *new*
-        parent ID.
-    """
     def compress_blocks(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Lossless aggregation of identical linked‑block chains
+
+        A linked chain is a rooted tree: one exclusive parent order plus
+        zero or more linked children. Two chains are considered identical
+        (and thus mergeable) if every node (block) in both trees has an
+        identical signature and the tree topology is the same.
+
+        After merging we:
+        • sum the quantities of identical blocks,
+        • set the MAR of the parent (MAR=1),
+        • concatenate the original IDs so that we can still trace them,
+        • update the children so their `code_prm` points to the new parent ID.
+        """
+
         qty_cols = [c for c in df.columns if c.startswith("q")]
 
-        # 1) Determine the parent ID for every row:
+        # --- Determine the parent ID for every row: ---
         #    – exclusive blocks reference themselves,
         #    – linked blocks reference the column `code_prm`.
         df["parent_id"] = np.where(
             df["block_type"] == "exclusive", df["id"], df["code_prm"]
         )
 
-        # 2) Build a mapping  Parent‑ID → [child‑IDs]  (only linked rows)
+        # Build a mapping  Parent‑ID → [child‑IDs]  (only linked rows)
         children_map = (
             df[df["block_type"] == "linked"].groupby("parent_id")["id"].apply(list).to_dict()
         )
 
-        # 3) Build the per‑block signature dict  {order_id: signature}
+        # --- Build the per‑block signature dict  {order_id: signature} ---
         sig_series = df.apply(self.block_signature, axis=1)
         blk_sig = dict(zip(df["id"], sig_series))
 
@@ -451,7 +453,7 @@ class DataConversion:
         roots = df.loc[df["block_type"] == "exclusive", "id"].tolist()
         chain_sigs = {r: chain_sig(r) for r in roots}
 
-        # 4) Group roots whose *full chain* signatures are identical
+        # --- Group roots whose *full chain* signatures are identical ---
         buckets: dict[tuple, list[str]] = defaultdict(list)
         for rid, sig in chain_sigs.items():
             buckets[sig].append(rid)

@@ -5,7 +5,7 @@ from euphemia.utils.calculations import calculate_flexible_order_active_period
 
 
 def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
-    from euphemia.euphemia import Euphemia
+    from euphemia.master_problem.master_problem import MasterProblem
 
     counter = 0
     activated_order_counter = 0
@@ -23,7 +23,7 @@ def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
             for id in ids:
                 print(f'{order_type} order {id} is paradoxically rejected. Attempting to activate it...')
                 # New model for current reinsertion run
-                reinsertion_run = Euphemia(self.scenario)
+                reinsertion_run = MasterProblem(self.config)
                 reinsertion_run.reinsertion_run = True
                 reinsertion_run.current_best_objective = self.current_best_objective
 
@@ -53,7 +53,7 @@ def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
                 elif (order_type == 'scalable_complex'):
                     reinsertion_run.model.addConstr(reinsertion_run.accept_scalable[id] == 1, name=f'accept-{id}')
 
-                reinsertion_run.solve()
+                reinsertion_run.run()
 
                 if reinsertion_run.found_solution:
                     # Solution found but surplus smaller
@@ -114,19 +114,19 @@ def calculate_paradoxically_rejected_orders(self, is_prmic_reinsertion: bool):
 
         # PRMICs
         for id in rejected_orders['complex']:
-            if check_PRCO_PRSCO(self, id, isComplex=True):
+            if check_PRCO_PRSCO(self, id, is_complex=True):
                 paradoxically_rejected_orders['complex'].append(id)
         for id in rejected_orders['scalable_complex']:
-            if check_PRCO_PRSCO(self, id, isComplex=False):
+            if check_PRCO_PRSCO(self, id, is_complex=False):
                 paradoxically_rejected_orders['scalable_complex'].append(id)
 
     return rejected_orders, paradoxically_rejected_orders
 
 
-def check_PRCO_PRSCO(self, id: int, isComplex: bool) -> bool:
-    orders = self.complex_orders if isComplex else self.scalable_complex_orders
-    step_orders = self.complex_step_orders if isComplex else self.scalable_step_orders
-    variable_term = get(orders, 'variable_term', id) if isComplex else None
+def check_PRCO_PRSCO(self, id: int, is_complex: bool) -> bool:
+    orders = self.complex_orders if is_complex else self.scalable_complex_orders
+    step_orders = self.complex_step_orders if is_complex else self.scalable_step_orders
+    variable_term = get(orders, 'variable_term', id) if is_complex else None
     variable_expected_value = 0
     actual_value= 0
     condition = get(orders, 'condition', id)
@@ -138,8 +138,8 @@ def check_PRCO_PRSCO(self, id: int, isComplex: bool) -> bool:
         # if step order is INM it could be accepted
         sign = 1 if step_order['q'] >= 0 else -1
         step_acceptance = sign * (self.prices[step_order['t']] - step_order['p']) >= 0
-        if step_order['complex_order_id' if isComplex else 'scalable_order_id'] == id:
-            variable_term = step_order['p'] if not isComplex else variable_term
+        if step_order['complex_order_id' if is_complex else 'scalable_order_id'] == id:
+            variable_term = step_order['p'] if not is_complex else variable_term
 
             variable_expected_value += step_acceptance * variable_term * abs(step_order['q'])
             actual_value += step_acceptance * abs(step_order['q']) * self.prices[step_order['t']]
