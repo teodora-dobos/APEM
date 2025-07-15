@@ -2,7 +2,6 @@ from apem.execution_chain import solve_and_analyse_scenario
 from apem.config_loader import ConfigLoader
 
 from euphemia.enums.cut_types import CutType
-
 from euphemia.execution_chain import Datasets as EuphemiaDatasets, run_evaluation
 from euphemia.execution_chain import solve_euphemia as solve_euphemia
 

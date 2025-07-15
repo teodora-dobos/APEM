@@ -51,7 +51,7 @@ def handle_price_based_cutting(self, callback_model) -> None:
             callback_model.cbLazy(gp.quicksum(terms) == 0)
         # If no paradoxically accepted orders but subproblem infeasible add simple no good cut
         elif not pab_blocks:
-            self.add_no_good_cut(callback_model)
+            no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
     else:
         print("Something went wrong and in the unconstrained problem no prices could be found")
         no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
