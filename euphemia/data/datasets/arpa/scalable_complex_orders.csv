@@ -1,0 +1,27 @@
+id,step_orders,fixed_term,condition,load_gradient,MAP1
+s17MAP,"['s17min_prod_t1', 's17t1l1', 's17t1l2', 's17t1l3', 's17t1l4']",0,MIC,,4.0
+s18MAP,"['s18min_prod_t1', 's18t1l1', 's18t1l2', 's18t1l3', 's18t1l4']",0,MIC,,6.4
+s19MAP,"['s19min_prod_t1', 's19t1l1', 's19t1l2', 's19t1l3', 's19t1l4']",0,MIC,,7.7
+s20MAP,"['s20min_prod_t1', 's20t1l1', 's20t1l2', 's20t1l3', 's20t1l4']",0,MIC,,2.6
+s21MAP,"['s21min_prod_t1', 's21t1l1', 's21t1l2', 's21t1l3', 's21t1l4']",0,MIC,,9.4
+s22MAP,"['s22min_prod_t1', 's22t1l1', 's22t1l2', 's22t1l3', 's22t1l4']",0,MIC,,9.56
+s23MAP,"['s23min_prod_t1', 's23t1l1', 's23t1l2', 's23t1l3', 's23t1l4']",0,MIC,,14.14
+s24MAP,"['s24min_prod_t1', 's24t1l1', 's24t1l2', 's24t1l3', 's24t1l4']",0,MIC,,1.46
+s25MAP,"['s25min_prod_t1', 's25t1l1', 's25t1l2', 's25t1l3', 's25t1l4']",0,MIC,,4.17
+s42MAP,"['s42min_prod_t1', 's42t1l1', 's42t1l2', 's42t1l3', 's42t1l4']",0,MIC,,0.16
+s43MAP,"['s43min_prod_t1', 's43t1l1', 's43t1l2', 's43t1l3', 's43t1l4']",0,MIC,,2.82
+s47MAP,"['s47min_prod_t1', 's47t1l1', 's47t1l2', 's47t1l3', 's47t1l4']",0,MIC,,1.79
+s48MAP,"['s48min_prod_t1', 's48t1l1', 's48t1l2', 's48t1l3', 's48t1l4']",0,MIC,,3.9
+s49MAP,"['s49min_prod_t1', 's49t1l1', 's49t1l2', 's49t1l3', 's49t1l4']",0,MIC,,11.14
+s50MAP,"['s50min_prod_t1', 's50t1l1', 's50t1l2', 's50t1l3', 's50t1l4']",0,MIC,,4.53
+s51MAP,"['s51min_prod_t1', 's51t1l1', 's51t1l2', 's51t1l3', 's51t1l4']",0,MIC,,4.12
+s52MAP,"['s52min_prod_t1', 's52t1l1', 's52t1l2', 's52t1l3', 's52t1l4']",0,MIC,,3.18
+s61MAP,"['s61min_prod_t1', 's61t1l1', 's61t1l2', 's61t1l3', 's61t1l4']",0,MIC,,9.39
+s62MAP,"['s62min_prod_t1', 's62t1l1', 's62t1l2', 's62t1l3', 's62t1l4']",0,MIC,,7.13
+s64MAP,"['s64min_prod_t1', 's64t1l1', 's64t1l2', 's64t1l3', 's64t1l4']",0,MIC,,7.95
+s65MAP,"['s65min_prod_t1', 's65t1l1', 's65t1l2', 's65t1l3', 's65t1l4']",0,MIC,,6.36
+s86MAP,"['s86t1l2', 's86t1l3', 's86t1l4']",0,MIC,,0.0
+s87MAP,"['s87t1l2', 's87t1l3', 's87t1l4']",0,MIC,,0.0
+s91MAP,"['s91t1l2', 's91t1l3', 's91t1l4']",0,MIC,,0.0
+s93MAP,"['s93min_prod_t1', 's93t1l1', 's93t1l2', 's93t1l3', 's93t1l4']",0,MIC,,11.24
+s94MAP,"['s94min_prod_t1', 's94t1l1', 's94t1l2', 's94t1l3', 's94t1l4']",0,MIC,,13.87
