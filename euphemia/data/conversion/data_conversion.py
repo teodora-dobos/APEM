@@ -44,7 +44,7 @@ class DataConversion:
         df['block_type'] = 'normal'
         df['code_prm'] = pd.NA
         df['MAR'] = 1
-        df['p'] = 10 ** 6
+        df['p'] = 10 ** 5
 
         columns = ['id', 'block_type', 'code_prm', 'p'] + [f'q{i}' for i in self.periods] + ['MAR']
         df = df[columns]

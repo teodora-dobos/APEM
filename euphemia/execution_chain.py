@@ -12,13 +12,12 @@ def solve_euphemia(dataset: Datasets, cutting_strategy: CutType):
     euphemia = MasterProblem(config)
     euphemia.run()
 
-def run_evaluation(withIEEE: bool = False):
+def run_evaluation():
     config = EuphemiaConfig()
     config.disable_reinsertion = True
 
     datasets = [Datasets.GENERATED_SMALL, Datasets.GENERATED_LARGE, Datasets.GME, Datasets.OMIE, Datasets.ARPA]
-    if withIEEE:
-        datasets.append(Datasets.IEEE_RTS)
+
     for dataset in datasets:
         config.set_dataset(dataset)
 
@@ -64,3 +63,33 @@ def run_evaluation(withIEEE: bool = False):
     euphemia.run()
 
     print("Evaluation finished")
+
+def run_IEEE_evaluation():
+    config = EuphemiaConfig()
+    config.disable_reinsertion = True
+    config.calculate_corrected_welfare = True
+    config.set_dataset(Datasets.IEEE_RTS)
+
+    print(f"Running Combinatorial Benders Cut on {Datasets.IEEE_RTS}")
+    config.cutting_strategy = CutType.CB
+    euphemia = MasterProblem(config)
+    euphemia.run()
+
+    print(f"Running Price-based Cut on {Datasets.IEEE_RTS}; beta_MIC=10% delta_load_gradient=10000")
+    config.cutting_strategy = CutType.PB
+    config.beta_MIC = 0.1
+    config.delta_load_gradient = 10000
+    euphemia = MasterProblem(config)
+    euphemia.run()
+
+    print(f"Running Price-based Cut on {Datasets.IEEE_RTS}; beta_MIC=50% delta_load_gradient=70000")
+    config.beta_MIC = 0.5
+    config.delta_load_gradient = 70000
+    euphemia = MasterProblem(config)
+    euphemia.run()
+
+    print(f"Running Price-based Cut on {Datasets.IEEE_RTS}; beta_MIC=25% delta_load_gradient=40000")
+    config.beta_MIC = 0.25
+    config.delta_load_gradient = 40000
+    euphemia = MasterProblem(config)
+    euphemia.run()

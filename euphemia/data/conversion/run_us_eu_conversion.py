@@ -99,6 +99,9 @@ def save_df(df, us_data: ParseData, name: str):
 
 
 if __name__ == '__main__':
+   """
+   Run a conversion of US market data
+   """
    run_us_eu_conversion(ParseIEEERTS,
                         generate_uptime_patterns=True,
                         use_contiguous_patterns=True,

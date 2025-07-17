@@ -11,13 +11,12 @@ import time
 import euphemia.cutting.price_based as price_based_cutting
 import euphemia.cutting.no_good as no_good_cutting
 import euphemia.cutting.combinatorial_benders as combinatorial_benders_cutting
-from euphemia.data.parsing.zonal_scenario import ZonalScenario
 from euphemia.enums.cut_types import CutType
 from euphemia.euphemia_config import EuphemiaConfig
 from euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
 from euphemia.pricing.price_determination_subproblem import PriceSubproblem
 from euphemia.reinsertions.prmic_prb_reinsertion import PRMIC_PRB_reinsertion
-from euphemia.utils.calculations import calculate_flexible_order_active_period
+from euphemia.utils.calculations import calculate_flexible_order_active_period, calculate_block_demand_surplus
 from euphemia.utils.extraction import get, parse_step_order_ids
 from euphemia.utils.paths import EUPHEMIA_ROOT
 
@@ -92,6 +91,7 @@ class MasterProblem:
         self.max_iterations = config.max_iterations
         self.cutting_strategy = config.cutting_strategy
         self.disable_reinsertion = config.disable_reinsertion
+        self.calculate_corrected_welfare = config.calculate_corrected_welfare
 
 
 
@@ -157,12 +157,16 @@ class MasterProblem:
                 file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
                 with open(file_path, 'a', buffering=1) as file:
                     file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                    if (self.cutting_strategy == CutType.PB):
+                    if self.cutting_strategy == CutType.PB:
                         file.write(f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
                     file.write(f"Iterations: {self.iteration}\n")
                     file.write(f"Final welfare: {self.current_best_objective}\n")
                     file.write(f"Time passed: {elapsed:.3f} seconds\n")
-                    file.write(f"Clearing prices {self.prices}\n\n")
+                    file.write(f"Clearing prices {self.prices}\n")
+                    if self.calculate_corrected_welfare:
+                        inelastic_surplus = calculate_block_demand_surplus(self)
+                        file.write(f"Corrected welfare: {self.current_best_objective - inelastic_surplus}\n")
+                    file.write("\n")
                     file.flush()
                     os.fsync(file.fileno())
 
