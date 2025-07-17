@@ -6,6 +6,7 @@ apem-venv/
 results/
 stats/
 launch.json
+euphemia/euphemia_results
 
 # Created by https://www.toptal.com/developers/gitignore/api/linux,windows,python
 # Edit at https://www.toptal.com/developers/gitignore?templates=linux,windows,python
