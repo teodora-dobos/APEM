@@ -195,18 +195,19 @@ class MasterProblem:
             if self.iteration >= self.max_iterations:
                 print(f"Maximum iterations ({self.max_iterations}) reached. Terminating.")
                 callback_model.terminate()
-                elapsed = time.time() - self.start_time
-                # Log if no solution could be found
-                file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
-                with open(file_path, 'a', buffering=1) as file:
-                    file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                    if self.cutting_strategy == CutType.PB:
-                        file.write(
-                            f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
-                    file.write(f"No solution in iteration limit of {self.max_iterations}\n")
-                    file.write(f"Time passed: {elapsed:.3f} seconds\n\n")
-                    file.flush()
-                    os.fsync(file.fileno())
+                if not self.reinsertion_run:
+                    elapsed = time.time() - self.start_time
+                    # Log if no solution could be found
+                    file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
+                    with open(file_path, 'a', buffering=1) as file:
+                        file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
+                        if self.cutting_strategy == CutType.PB:
+                            file.write(
+                                f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
+                        file.write(f"No solution in iteration limit of {self.max_iterations}\n")
+                        file.write(f"Time passed: {elapsed:.3f} seconds\n\n")
+                        file.flush()
+                        os.fsync(file.fileno())
                 return
                 
             # get current solution
