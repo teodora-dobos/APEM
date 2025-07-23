@@ -8,6 +8,7 @@ from apem.data.parsing.parse_pjm import ParsePJM
 from euphemia.data.parsing.parse_eu import ParseEU
 from euphemia.utils.paths import DATA_DIR, CONVERTED_DATASET_PATH_MAP
 
+
 class Datasets(Enum):
     GENERATED_SMALL = ParseEU(DATA_DIR / "generated_small", "Generated Small")
     GENERATED_LARGE = ParseEU(DATA_DIR / "generated_large", "Generated Large")

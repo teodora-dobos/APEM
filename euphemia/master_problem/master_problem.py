@@ -21,7 +21,6 @@ from euphemia.utils.extraction import get, parse_step_order_ids
 from euphemia.utils.paths import EUPHEMIA_ROOT
 
 
-
 class MasterProblem:
     def __init__(self, config: EuphemiaConfig):
         if not config:
@@ -81,7 +80,6 @@ class MasterProblem:
 
         self.model.Params.LazyConstraints = 1
 
-
         self.price_lower_bound = config.price_lower_bound
         self.price_upper_bound = config.price_upper_bound
         self.delta_PAB = config.delta_PAB
@@ -92,8 +90,6 @@ class MasterProblem:
         self.cutting_strategy = config.cutting_strategy
         self.disable_reinsertion = config.disable_reinsertion
         self.calculate_corrected_welfare = config.calculate_corrected_welfare
-
-
 
         self.paths = {
             "alloc": "euphemia_results/allocation",
@@ -158,7 +154,8 @@ class MasterProblem:
                 with open(file_path, 'a', buffering=1) as file:
                     file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
                     if self.cutting_strategy == CutType.PB:
-                        file.write(f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
+                        file.write(
+                            f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
                     file.write(f"Iterations: {self.iteration}\n")
                     file.write(f"Final welfare: {self.current_best_objective}\n")
                     file.write(f"Time passed: {elapsed:.3f} seconds\n")
@@ -179,7 +176,6 @@ class MasterProblem:
         Search for a selection of block and MIC orders that maximizes the economic surplus.
         """
         self.model.optimize(callback=self.master_problem_callback)
-
 
     def master_problem_callback(self, callback_model, where) -> None:
         """
@@ -209,7 +205,7 @@ class MasterProblem:
                         file.flush()
                         os.fsync(file.fileno())
                 return
-                
+
             # get current solution
             objective_value = callback_model.cbGet(GRB.Callback.MIPSOL_OBJ)
             vars = callback_model.getVars()
@@ -261,15 +257,15 @@ class MasterProblem:
                     print("Price subproblem is infeasible")
 
                     if self.cutting_strategy == CutType.CB:
-                        combinatorial_benders_cutting.add_combinatorial_benders_cut(self=self, callback_model=callback_model, price_subproblem=price_subproblem)
+                        combinatorial_benders_cutting.add_combinatorial_benders_cut(self=self,
+                                                                                    callback_model=callback_model,
+                                                                                    price_subproblem=price_subproblem)
 
                     elif self.cutting_strategy == CutType.NG:
                         no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
 
                     elif self.cutting_strategy == CutType.PB:
                         price_based_cutting.handle_price_based_cutting(self=self, callback_model=callback_model)
-
-
 
     def add_acceptance_variables_to_dataframe(self) -> None:
         """
@@ -282,7 +278,6 @@ class MasterProblem:
         self.block_orders['acceptance_var'] = self.block_orders['id'].map(self.accept_block)
         self.complex_orders['acceptance_var'] = self.complex_orders['id'].map(self.accept_complex)
         self.scalable_complex_orders['acceptance_var'] = self.scalable_complex_orders['id'].map(self.accept_scalable)
-
 
     def update_order_dataframes(self) -> None:
         """
@@ -326,7 +321,6 @@ class MasterProblem:
         self.scalable_complex_orders['acceptance'] = accept_scalable_values
         self.scalable_step_orders['acceptance'] = accept_scalable_step_values
 
-
     def compute_block_overlaps(self) -> dict[int, set[int]]:
         """
         Computes block orders that have at least one overlapping period with quantity unequal to 0.
@@ -360,8 +354,6 @@ class MasterProblem:
 
         return overlap
 
-
-
     def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
         """
         Compute accepted block orders that satisfy a condition.
@@ -380,14 +372,14 @@ class MasterProblem:
 
             # Check if this is a linked parent order
             is_linked_parent = any(
-                other_order['block_type'] == 'linked' and i == other_order['code_prm'] 
+                other_order['block_type'] == 'linked' and i == other_order['code_prm']
                 for _, other_order in self.block_orders.iterrows()
             )
 
             if is_linked_parent:
                 # For linked parent orders, calculate family surplus (parent + all children)
                 family_surplus = 0
-                
+
                 # Parent surplus: acceptance * q_t * (MCP_t - p)
                 parent_surplus = 0
                 for t in self.periods:
@@ -396,39 +388,42 @@ class MasterProblem:
                         if not reinsertion:
                             parent_surplus += get(self.block_orders, 'acceptance', i) * q_t * (self.prices[t] - p)
                         else:
-                            parent_surplus += get(self.block_orders, 'acceptance', i) * q_t * (self.prices_reinsertion[t] - p)
-                
+                            parent_surplus += get(self.block_orders, 'acceptance', i) * q_t * (
+                                    self.prices_reinsertion[t] - p)
+
                 family_surplus += parent_surplus
-                
+
                 # Children surplus: Find children where code_prm == parent_id
                 children_df = self.block_orders[
                     (self.block_orders['code_prm'] == i) & (self.block_orders['block_type'] == 'linked')
-                ]
-                
+                    ]
+
                 for _, child in children_df.iterrows():
                     child_id = child['id']
                     child_p = child['p']
                     child_accepted = get(self.block_orders, 'acceptance', child_id) > self.epsilon
-                    
+
                     if child_accepted:
                         child_surplus = 0
                         for t in self.periods:
                             child_q_t = get(self.block_orders, f'q{t}', child_id)
                             if child_q_t != 0:
                                 if not reinsertion:
-                                    child_surplus += get(self.block_orders, 'acceptance', child_id) * child_q_t * (self.prices[t] - child_p)
+                                    child_surplus += get(self.block_orders, 'acceptance', child_id) * child_q_t * (
+                                            self.prices[t] - child_p)
                                 else:
-                                    child_surplus += get(self.block_orders, 'acceptance', child_id) * child_q_t * (self.prices_reinsertion[t] - child_p)
-                        
+                                    child_surplus += get(self.block_orders, 'acceptance', child_id) * child_q_t * (
+                                            self.prices_reinsertion[t] - child_p)
+
                         family_surplus += child_surplus
-                
+
                 # Check if family has negative surplus (PAB condition for linked parent)
                 if not threshold:
                     if family_surplus < 0:  # Family has negative surplus -> PAB
                         res.append(i)
                 else:
                     pass
-                    
+
             else:
                 # Normal block order logic (non-linked parent)
                 total_quantity = sum(abs(q_t) for q_t in q.values())
@@ -437,14 +432,16 @@ class MasterProblem:
                         self.prices[t] * abs(q_t) / total_quantity for t, q_t in zip(self.periods, q.values()))
                 else:
                     weighted_mcp = sum(
-                        self.prices_reinsertion[t] * abs(q_t) / total_quantity for t, q_t in zip(self.periods, q.values()))
+                        self.prices_reinsertion[t] * abs(q_t) / total_quantity for t, q_t in
+                        zip(self.periods, q.values()))
 
                 # set right weighted_mcp in case of flexible block order
                 if type == 'flexible':
                     # overwrite weighted MCP with correct value considering flex_period variable
                     active_period = calculate_flexible_order_active_period(master_problem=self,
                                                                            block_id=i)
-                    weighted_mcp = self.prices[active_period] * q[1] if not reinsertion else self.prices_reinsertion[active_period] * q[1]
+                    weighted_mcp = self.prices[active_period] * q[1] if not reinsertion else self.prices_reinsertion[
+                                                                                                 active_period] * q[1]
 
                 if threshold:
                     if sale and weighted_mcp - self.delta_PAB < p < weighted_mcp or not sale and weighted_mcp < p < weighted_mcp - self.delta_PAB:
@@ -460,7 +457,6 @@ class MasterProblem:
             file.writelines(f"{bid}\n" for bid in res)
 
         return res
-
 
     def add_block_cut(self, single: Optional[bool] = False) -> bool:
         """
@@ -479,7 +475,6 @@ class MasterProblem:
 
         print("Block cut successfully added.")
         return True
-
 
     def get_MIC_complex_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
         """
@@ -501,8 +496,10 @@ class MasterProblem:
             step_orders_str = get(self.complex_orders, 'step_orders', i)
             step_orders = parse_step_order_ids(step_orders_str, self.complex_step_orders)
 
-            expected = sum(variable_term * abs(get(self.complex_step_orders, 'q', j)) * get(self.complex_step_orders, 'acceptance', j)
-                           for j in step_orders) + fixed_term
+            expected = sum(
+                variable_term * abs(get(self.complex_step_orders, 'q', j)) * get(self.complex_step_orders, 'acceptance',
+                                                                                 j)
+                for j in step_orders) + fixed_term
             actual = 0
             for t in self.periods:
                 step_orders_t = self.complex_step_orders[
@@ -520,9 +517,9 @@ class MasterProblem:
                 elif i in mp_complex_order_ids and expected < actual:
                     res.append(i)
             else:
-                if i in mic_complex_order_ids and expected *(1-self.beta_MIC) > actual:
+                if i in mic_complex_order_ids and expected * (1 - self.beta_MIC) > actual:
                     res.append(i)
-                elif i in mp_complex_order_ids and actual > expected * (1+self.beta_MIC):
+                elif i in mp_complex_order_ids and actual > expected * (1 + self.beta_MIC):
                     res.append(i)
 
             path_key = 'complex_mic_inm_threshold' if threshold else 'complex_mic'
@@ -532,7 +529,6 @@ class MasterProblem:
                 file.writelines(f"{bid}\n" for bid in res)
 
         return res
-
 
     def get_MIC_scalable_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
         """
@@ -579,9 +575,9 @@ class MasterProblem:
                 elif i in mp_scalable_order_ids and expected < actual:
                     res.append(i)
             else:
-                if i in mic_scalable_order_ids and expected *(1-self.beta_MIC)  > actual:
+                if i in mic_scalable_order_ids and expected * (1 - self.beta_MIC) > actual:
                     res.append(i)
-                elif i in mp_scalable_order_ids and actual > (1+self.beta_MIC):
+                elif i in mp_scalable_order_ids and actual > (1 + self.beta_MIC):
                     res.append(i)
 
             path_key = 'scalable_mic_inm_threshold' if threshold else 'scalable_mic'
@@ -662,7 +658,6 @@ class MasterProblem:
         print("MIC complex cut successfully added.")
         return True
 
-
     def add_MIC_scalable_cut(self, single: Optional[bool] = False) -> bool:
         """
         --- Not used in current implementation ---
@@ -684,25 +679,9 @@ class MasterProblem:
         print("MIC scalable complex cut successfully added.")
         return True
 
-
-    def check_in_the_money_complex(self, order_id: int) -> bool:
-        """
-        Check if a complex MIC/MP order is in-the-money.
-        """
-        pass
-
-
-    def check_in_the_money_scalable(self, order_id: id) -> bool:
-        """
-        Check if a scalable complex order is in-the-money.
-        """
-        pass
-
-
     def volume_indeterminacy_subproblem(self):
         # later
         pass
-
 
     def set_prices(self, prices: dict, reinsertion: Optional[bool] = False) -> None:
         if not reinsertion:
@@ -710,10 +689,8 @@ class MasterProblem:
         else:
             self.prices_reinsertion = prices
 
-
     def get_objective(self) -> float:
         return self.model.getObjective().getValue()
-
 
     def __str__(self):
         return 'Euphemia'

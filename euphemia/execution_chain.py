@@ -4,13 +4,13 @@ from euphemia.euphemia_config import EuphemiaConfig
 from euphemia.master_problem.master_problem import MasterProblem
 
 
-
 def solve_euphemia(dataset: Datasets, cutting_strategy: CutType):
     config = EuphemiaConfig()
     config.set_dataset(dataset)
     config.cutting_strategy = cutting_strategy
     euphemia = MasterProblem(config)
     euphemia.run()
+
 
 def run_evaluation():
     config = EuphemiaConfig()
@@ -47,7 +47,6 @@ def run_evaluation():
         euphemia = MasterProblem(config)
         euphemia.run()
 
-
     config.cutting_strategy = CutType.NG
 
     print(f"No good Cut on {Datasets.GENERATED_SMALL}")
@@ -63,6 +62,7 @@ def run_evaluation():
     euphemia.run()
 
     print("Evaluation finished")
+
 
 def run_IEEE_evaluation():
     config = EuphemiaConfig()
