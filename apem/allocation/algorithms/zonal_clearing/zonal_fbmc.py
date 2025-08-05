@@ -316,7 +316,7 @@ class RedispatchModel:
 
             zonal_prices = zonal_results['duals']['zonal_price']
             gen_zones = network.generators.bus.map(node_to_zone)
-            gen_prices = pd.Series({g: zonal_prices.at[snapshots[0], gen_zones[g]] for g in generators})
+            gen_prices = pd.Series({g: zonal_prices.at[t, gen_zones[g]] for g in generators})
             
             cost_up_reg = gp.quicksum(p_up[g, t] * gen_costs[g] for g, t in p_up)
             profit_margin = (gen_prices - gen_costs).clip(lower=0)
