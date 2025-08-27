@@ -3,7 +3,7 @@ import pandas as pd
 import pypsa
 from gurobipy import GRB
 import re
-import numpy as np # Import numpy for isclose
+import numpy as np
 
 # A large number to represent the cost of non-served energy (C^nse)
 C_NSE = 10000  
@@ -47,14 +47,6 @@ class NodalDispatchModel:
         
         bus_demand = network.loads_t.p_set.T.groupby(network.loads.bus).sum().T
         bus_demand = bus_demand.reindex(columns=buses, fill_value=0)
-
-        # --- VERIFICATION STEP 2: Sanity Check Inputs ---
-        if verbose:
-            print("--- Input Sanity Checks ---")
-            print(f"Snapshots: {len(snapshots)}, Buses: {len(buses)}, Generators: {len(generators)}, Lines: {len(lines)}")
-            print(f"Total Demand (first snapshot): {bus_demand.iloc[0].sum():.2f} MW")
-            print(f"PTDF Matrix Shape: {ptdf.shape}")
-            print("---------------------------\n")
 
         # --- 2. Define Decision Variables ---
         p_gen = model.addVars(generators, snapshots, name="p_gen", lb=0)
@@ -157,7 +149,12 @@ class NodalDispatchModel:
             p_bus_optimal = pd.DataFrame({b: {t: p_bus[b, t].X for t in snapshots} for b in buses})
             flow_optimal = pd.DataFrame({l: {t: flow[l, t].X for t in snapshots} for l in lines})
             nse_optimal = pd.DataFrame({b: {t: nse[b, t].X for t in snapshots} for b in buses})
+
+            startup_optimal = pd.DataFrame({g: {t: startup[g, t].X for t in snapshots} for g in generators})
             
+
+            all_vars_for_saving = [{"variable": v.VarName, "value": v.X} for v in model.getVars()]
+
             # --- 6. Fix binary variables to get duals ---
             for v in model.getVars():
                 if v.VType in (GRB.BINARY, GRB.INTEGER):
@@ -185,7 +182,10 @@ class NodalDispatchModel:
                 "p_bus": p_bus_optimal,
                 "flow": flow_optimal,
                 "nse": nse_optimal,
-                "duals": {"nodal_price": nodal_prices}
+                "startup": startup_optimal,
+                "duals": {"nodal_price": nodal_prices},
+                "model" : model,
+                "all_vars": all_vars_for_saving
             }
             
             return results

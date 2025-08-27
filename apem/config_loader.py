@@ -2,6 +2,7 @@ import json
 from typing import Dict, Any
 
 from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms
 
@@ -27,7 +28,7 @@ class ConfigLoader:
             raise ValueError(f"Invalid dataset: {self.raw_config['scenario']['dataset']}")
 
         # Validate power flow model
-        if self.raw_config['scenario']['power_flow_model']['type'] not in ["DCOPF", "Zonal_NTC"]:
+        if self.raw_config['scenario']['power_flow_model']['type'] not in ["DCOPF", "Zonal_NTC", "Nodal_FBMC"]:
             raise ValueError(f"Invalid power flow model: {self.raw_config['scenario']['power_flow_model']['type']}")
 
         # Validate pricing algorithm
@@ -54,7 +55,10 @@ class ConfigLoader:
         if model_type == "Zonal_NTC":
             zonal_config = self.config['zonal_configuration']
             return Zonal_NTC(zonal_configuration=zonal_config['type'], factor=zonal_config['factor'])
-        return DCOPF()
+        elif model_type == "DCOPF":
+            return DCOPF()
+        else:
+            return NodalFBMC()
 
     def get_pricing_algorithm(self) -> PricingAlgorithms:
         return PricingAlgorithms[self.config['scenario']['pricing_algorithm']]

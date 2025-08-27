@@ -8,6 +8,7 @@
     ],
     "_available_power_flow_models": [
         "DCOPF",
+        "Nodal_FBMC",
         "Zonal_NTC"
     ],
     "_available_pricing_algorithms": [
@@ -31,11 +32,11 @@
     ],
     "verbosity": true,
     "scenario": {
-        "dataset": "PyPSAEurLarge",
+        "dataset": "PyPSAEurSmall",
         "power_flow_model": {
-            "type": "Zonal_NTC"
+            "type": "Nodal_FBMC"
         },
-        "pricing_algorithm": "IP",
+        "pricing_algorithm": "ELMP",
         "redispatch_algorithm": "MinCostRD"
     },
     "solver_configuration": {

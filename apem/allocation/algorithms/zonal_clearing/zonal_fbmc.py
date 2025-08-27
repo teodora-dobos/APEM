@@ -93,7 +93,7 @@ class BaseCaseGenerator:
         gen_costs = network_instance.generators.marginal_cost
         startup_costs = network_instance.generators.start_up_cost
         p_min_pu = network_instance.generators.p_min_pu
-        p_max_pu_t = network_instance.generators_t.p_max_pu # Use time-varying max power
+        p_max_pu_t = network_instance.generators_t.p_max_pu
         p_nom = network_instance.generators.p_nom
         bus_demand = network_instance.loads_t.p_set.T.groupby(network_instance.loads.bus).sum().T
         bus_demand = bus_demand.reindex(columns=self.buses, fill_value=0)
@@ -229,7 +229,7 @@ class ZonalDispatchModel:
         # Generator constraints (similar to Eq. 1)
         gen_to_zone = network.generators.bus.map(node_to_zone).dropna()
         p_min_pu, p_nom = network.generators.p_min_pu, network.generators.p_nom
-        p_max_pu_t = network.generators_t.p_max_pu # CORRECT: Use time-varying max power
+        p_max_pu_t = network.generators_t.p_max_pu
         for g in generators:
             for t_idx, t in enumerate(snapshots):
                 model.addConstr(p_gen[g, t] >= p_min_pu[g] * p_nom[g] * u[g, t])
@@ -316,7 +316,7 @@ class RedispatchModel:
 
             zonal_prices = zonal_results['duals']['zonal_price']
             gen_zones = network.generators.bus.map(node_to_zone)
-            gen_prices = pd.Series({g: zonal_prices.at[t, gen_zones[g]] for g in generators})
+            gen_prices = pd.Series({g: zonal_prices.at[snapshots[0], gen_zones[g]] for g in generators})
             
             cost_up_reg = gp.quicksum(p_up[g, t] * gen_costs[g] for g, t in p_up)
             profit_margin = (gen_prices - gen_costs).clip(lower=0)
@@ -370,7 +370,6 @@ class RedispatchModel:
             nse_redispatch = pd.DataFrame({b: {t: nse[b, t].X for t in snapshots} for b in buses})
             
             redispatch_cost = model.ObjVal
-            # Robust calculation of total startup cost
             startup_cost_total = (startup_redispatch * startup_costs).sum().sum()
             
             final_operating_cost = ((p_gen_redispatch * gen_costs).sum().sum() + startup_cost_total + (nse_redispatch.sum().sum() * C_NSE))

@@ -13,11 +13,13 @@ from apem.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCos
 from apem.allocation.algorithms.zonal_clearing.redispatch.min_vol import MinVolRD
 from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 
 
 # Only for apply_all_algorithms in execution_chain.py
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
+    NodalFBMC = NodalFBMC()
     Zonal_NTC = Zonal_NTC(zonal_configuration='zonal_DE4-refined',
                           factor=0.8)
     # set zonal_configuration to one of national, zonal_DE2-k, zonal_DE2-s, zonal_DE3, zonal_DE4, zonal_DE4-refined,

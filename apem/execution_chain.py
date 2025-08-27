@@ -4,6 +4,7 @@ from typing import Optional, Union, Dict, Any
 
 from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.allocation.allocation import SellersAllocation, Allocation
 from apem.allocation.configuration import Configuration
 from apem.allocation.error import Error
@@ -138,7 +139,7 @@ def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModel, pricing_
     scenario = _retrieve_data(dataset)
     configuration = _create_configuration()
     
-    if isinstance(power_flow_model, DCOPF):
+    if isinstance(power_flow_model, (DCOPF, NodalFBMC)):
         allocation = _solve_allocation_problem(scenario, power_flow_model, configuration)
         pricing = _solve_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model, configuration)
         return PriceAnalysis(scenario, allocation, pricing, configuration)
@@ -182,7 +183,7 @@ def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowMod
     base_scenario = None
     
     if is_pypsa_dataset:
-        isDCOPF = isinstance(power_flow_model, DCOPF)
+        isDCOPF = isinstance(power_flow_model, (DCOPF, NodalFBMC))
         scenario_to_analyse = (price_analysis.scenario if isDCOPF 
                                else price_analysis.base_scenario)
         base_scenario = None if isDCOPF else price_analysis.base_scenario
