@@ -72,8 +72,7 @@ The most important section is `scenario`, which defines the dataset, market mode
 - **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC`
 - **Cut types** (only for `EU_model`): `price based`, `combinatorial benders`, `no good`
 - **Pricing algorithms** (only for `US_model`): `ELMP`, `IP`, `MinMWP`, `Join`
-- **Redispatch algorithms** (only for `US_model/Zonal_NTC`):  
-  `MinCostRD`, `MinVolRD`
+- **Redispatch algorithms** (only for `US_model/Zonal_NTC`): `MinCostRD`, `MinVolRD`
 - **Zonal configurations**:  
   `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE4-refined`, `zonal_DE5`
 
