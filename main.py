@@ -9,27 +9,16 @@ from euphemia.data.conversion.run_us_eu_conversion import run_us_eu_conversion
 
 
 def main():
-    euphemia = True
+    # solve_euphemia(EuphemiaDatasets.ARPA, CutType.PB)
 
-    # Euphemia example
-    if euphemia:
-        solve_euphemia(EuphemiaDatasets.GME, CutType.PB)
-        # run_evaluation()
-        # run_IEEE_evaluation()
-        # run_us_eu_conversion(ParseIEEERTS,
-        #                      generate_uptime_patterns=True,
-        #                      use_contiguous_patterns=True,
-        #                      reduce_linked_blocks=True,
-        #                      compress_identical_blocks=True)
-
-    else:
-        config = ConfigLoader()
-        solve_and_analyse_scenario(
-            dataset=config.get_dataset(),
-            power_flow_model=config.get_power_flow_model(),
-            pricing_algorithm=config.get_pricing_algorithm(),
-            redispatch_algorithm=config.get_redispatch_algorithm()
-        )
+    config = ConfigLoader()
+    solve_and_analyse_scenario(
+        dataset=config.get_dataset(),
+        market_model=config.get_market_model(),
+        power_flow_model=config.get_power_flow_model(),
+        pricing_algorithm=config.get_pricing_algorithm(),
+        redispatch_algorithm=config.get_redispatch_algorithm()
+    )
 
 
 if __name__ == "__main__":

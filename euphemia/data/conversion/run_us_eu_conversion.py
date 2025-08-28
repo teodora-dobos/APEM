@@ -27,10 +27,13 @@ def run_us_eu_conversion(us_data: ParseData,
     # Convert US market data
     print("Loading US market data...")
     data = us_data().parse_data()
+
     conversion = DataConversion(data)
+
     print("Converting demand data...")
     block_orders_buyers = conversion.compute_buyers_inelastic_bids()
     step_orders = conversion.compute_buyers_elastic_bids()
+
     print("Converting no min uptime and no no-load cost demand data...")
     scalable_complex_orders, scalable_step_orders = conversion.generate_zero_no_load_cost_bids()
     if generate_uptime_patterns:
@@ -47,11 +50,11 @@ def run_us_eu_conversion(us_data: ParseData,
     cols = ['id', 't', 'p0', 'p1', 'q']
     piecewise_linear_orders = pd.DataFrame(columns=cols)
 
-    # compress identical block orders
+    # Compress identical block orders
     if compress_identical_blocks:
         block_orders_sellers = DataConversion.compress_blocks(conversion, block_orders_sellers)
 
-    # merge block orders
+    # Merge block orders
     block_orders = pd.concat([block_orders_buyers, block_orders_sellers], ignore_index=True)
 
     print(f"Size of block orders: {len(block_orders)}")
@@ -59,7 +62,7 @@ def run_us_eu_conversion(us_data: ParseData,
     periods = data.periods
     periods_df = pd.DataFrame({'period': periods})
 
-    # If emtpy datasets after conversion, replace with empty datasets
+    # If empty datasets after conversion, replace with empty datasets
     if step_orders.empty:
         cols = ['id', 't', 'p', 'q']
         step_orders = pd.DataFrame(columns=cols)
@@ -92,12 +95,12 @@ def save_df(df, us_data: ParseData, name: str):
     output_dir.mkdir(parents=True, exist_ok=True)
     filepath = output_dir / f"{name}.csv"
     df.to_csv(filepath, index=False)
-    print(f"saved: {filepath}")
+    print(f"Saved: {filepath}")
 
 
 if __name__ == '__main__':
     """
-    Run a conversion of US market data
+    Convert US market data into European market data.
     """
     run_us_eu_conversion(ParseIEEERTS,
                          generate_uptime_patterns=True,

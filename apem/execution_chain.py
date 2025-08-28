@@ -22,11 +22,13 @@ from apem.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCos
 from apem.allocation.algorithms.zonal_clearing.redispatch.min_vol import MinVolRD
 from apem.pricing.analysis.pricing import Pricing
 from apem.config_loader import ConfigLoader
-from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms, PowerFlowModels
+from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms, PowerFlowModels, MarketModels
 from apem.allocation.power_flow_model import PowerFlowModel
 from apem.config_loader import ConfigLoader
 from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms, PowerFlowModels
 from apem.allocation.power_flow_model import PowerFlowModel
+from euphemia.enums.cut_types import CutType
+from euphemia.execution_chain import solve_euphemia
 
 
 def _retrieve_data(dataset: Datasets) -> Scenario:
@@ -162,7 +164,8 @@ def solve_scenario(dataset: Datasets, power_flow_model: PowerFlowModel, pricing_
         return PriceAnalysis(zonal_scenario, allocation, pricing, configuration, scenario)
 
 
-def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowModel,
+def solve_and_analyse_scenario(dataset: Datasets, market_model: MarketModels,
+                               power_flow_model: PowerFlowModel,
                                pricing_algorithm: PricingAlgorithms,
                                redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD):
     """Computes allocation and pricing for some scenario and performs several analyses.
@@ -179,23 +182,27 @@ def solve_and_analyse_scenario(dataset: Datasets, power_flow_model: PowerFlowMod
     Returns:
         PricingAnalysis object
     """
-    price_analysis = solve_scenario(dataset, power_flow_model, pricing_algorithm, redispatch_algorithm)
-    is_pypsa_dataset = dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]
-    base_scenario = None
+    if market_model == MarketModels.EU_model:
+        print("EU Model")
 
-    if is_pypsa_dataset:
-        isDCOPF = isinstance(power_flow_model, DCOPF)
-        scenario_to_analyse = (price_analysis.scenario if isDCOPF
-                               else price_analysis.base_scenario)
-        base_scenario = None if isDCOPF else price_analysis.base_scenario
-        zonal_config = (power_flow_model.zonal_configuration if
-                        isinstance(power_flow_model, Zonal_NTC) else "")
+    elif market_model == MarketModels.US_model:
+        price_analysis = solve_scenario(dataset, power_flow_model, pricing_algorithm, redispatch_algorithm)
+        is_pypsa_dataset = dataset in [Datasets.PyPSAEurLarge, Datasets.PyPSAEurSmall]
+        base_scenario = None
 
-        scenario_to_analyse.analyse_scenario()  # analyse base scenario
-        scenario_to_analyse.plot_network(zonal_config)  # plot underlying network
+        if is_pypsa_dataset:
+            isDCOPF = isinstance(power_flow_model, DCOPF)
+            scenario_to_analyse = (price_analysis.scenario if isDCOPF
+                                   else price_analysis.base_scenario)
+            base_scenario = None if isDCOPF else price_analysis.base_scenario
+            zonal_config = (power_flow_model.zonal_configuration if
+                            isinstance(power_flow_model, Zonal_NTC) else "")
 
-    return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
-                           price_analysis.configuration, power_flow_model, base_scenario)
+            scenario_to_analyse.analyse_scenario()  # analyse base scenario
+            scenario_to_analyse.plot_network(zonal_config)  # plot underlying network
+
+        return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
+                               price_analysis.configuration, power_flow_model, base_scenario)
 
 
 def apply_all_algorithms(dataset: Datasets):
