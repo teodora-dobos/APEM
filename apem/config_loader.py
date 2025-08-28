@@ -1,8 +1,8 @@
 import json
 from typing import Dict, Any
 
-from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.enums import Datasets, MarketModels, PricingAlgorithms, RedispatchAlgorithms
 
 

@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apem.execution_chain import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
+from apem import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
 
 
 class Test_DCOPF_IEEERTS_PricingAlgorithm(unittest.TestCase):

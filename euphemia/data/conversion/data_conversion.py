@@ -1,4 +1,3 @@
-import os
 from collections import defaultdict
 from typing import Tuple, List
 
@@ -7,8 +6,8 @@ import hashlib
 import json
 import numpy as np
 
-from apem.data.parsing.scenario import Scenario
-from apem.utils.paths import ensure_dir
+from apem import Scenario
+from apem.US_market_model.utils.paths import ensure_dir
 
 from euphemia.utils.paths import EUPHEMIA_ROOT
 

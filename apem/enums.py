@@ -1,25 +1,25 @@
 from enum import Enum
 
-from apem.data.parsing.parse_arpa import ParseARPA
-from apem.data.parsing.parse_ieee_rts import ParseIEEERTS
-from apem.data.parsing.parse_pjm import ParsePJM
-from apem.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
-from apem.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
-from apem.market_models.US_model import US_model
-from apem.market_models.EU_model import EU_model
-from apem.pricing.algorithms.elmp import ELMP
-from apem.pricing.algorithms.ip import IP
-from apem.pricing.algorithms.join import Join
-from apem.pricing.algorithms.min_mwp import MinMWP
-from apem.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
-from apem.allocation.algorithms.zonal_clearing.redispatch.min_vol import MinVolRD
-from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
-from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.US_market_model.data.parsing.parse_arpa import ParseARPA
+from apem.US_market_model.data.parsing.parse_ieee_rts import ParseIEEERTS
+from apem.US_market_model.data.parsing.parse_pjm import ParsePJM
+from apem.US_market_model.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
+from apem.US_market_model.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
+from apem.market_models import US_model
+from apem.market_models import EU_model
+from apem.US_market_model.pricing.algorithms.elmp import ELMP
+from apem.US_market_model.pricing.algorithms.ip import IP
+from apem.US_market_model.pricing.algorithms.join import Join
+from apem.US_market_model.pricing.algorithms.min_mwp import MinMWP
+from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
+from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_vol import MinVolRD
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 
 
 class MarketModels(Enum):
-    US_model = US_model()
-    EU_model = EU_model()
+    US_model = US_model
+    EU_model = EU_model
 
 
 # Only for apply_all_algorithms in execution_chain.py

@@ -35,10 +35,10 @@
     ],
     "verbosity": true,
     "scenario": {
-        "dataset": "ARPA",
-        "market_model": "EU_model",
+        "dataset": "PyPSAEurSmall",
+        "market_model": "US_model",
         "power_flow_model": {
-            "type": "DCOPF"
+            "type": "Zonal_NTC"
         },
         "pricing_algorithm": "IP",
         "redispatch_algorithm": "MinCostRD"
