@@ -51,9 +51,9 @@ The most important section is `scenario`, which defines the dataset, market mode
 
 ```jsonc
 "scenario": {
+    "market_model": "EU_model",    // choose from _available_market_models
     "US_dataset": "ARPA",          // choose from _available_US_datasets
     "EU_dataset": "GME",           // choose from _available_EU_datasets
-    "market_model": "EU_model",    // choose from _available_market_models
     "power_flow_model": {
         "type": "DCOPF"            // choose from _available_power_flow_models
     },
