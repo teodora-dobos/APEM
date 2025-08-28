@@ -9,3 +9,13 @@ class MarketModel(ABC):
     @abstractmethod
     def __str__(self):
         pass
+
+
+class US_model(MarketModel):
+    def __str__(self):
+        return 'US_model'
+
+
+class EU_model(MarketModel):
+    def __str__(self):
+        return 'EU_model'
