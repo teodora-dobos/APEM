@@ -45,14 +45,42 @@
 ## Usage
 **Note:** Make sure to always activate your virtual environment before running the code!
 
-After setting up the repository, you can run the code by executing the [main.py](./main.py) file with different configurations for the
-- **datasets** (currently: ARPA-E, IEEE RTS, PJM, PyPSAEurLarge, and PyPSAEurSmall),
-- **power flow models** (currently: DCOPF and Zonal_NTC),
-- **pricing algorithms** (currently: ELMP, IP, Join, and Min_MWP), and
-- **redispatch algorithms** (optional - only take effect for Zonal_NTC; currently: MinCostRD (default) and MinVolRD).
+Before running the code, update the [`config.json`](./config.json) file to create a configuration that will be run.
 
-It is advised to start working with the tuple (PyPSAEurSmall, DCOPF, IP).
+The most important section is `scenario`, which defines the dataset, market model, power flow model, pricing, and redispatch algorithm.
 
+```jsonc
+"scenario": {
+    "US_dataset": "ARPA",          // choose from _available_US_datasets
+    "EU_dataset": "GME",           // choose from _available_EU_datasets
+    "market_model": "EU_model",    // choose from _available_market_models
+    "power_flow_model": {
+        "type": "DCOPF"            // choose from _available_power_flow_models
+    },
+    "cut_type": "price based",     // choose from _available_cut_types
+    "pricing_algorithm": "IP",     // choose from _available_pricing_algorithms
+    "redispatch_algorithm": "MinCostRD"  // choose from _available_redispatch_algorithms 
+}
+```
+
+### Available options
+
+- **Market models**: `US_model`, `EU_model`
+- **Datasets**
+  - US: `IEEE_RTS`, `PJM`, `PyPSAEurSmall`, `PyPSAEurLarge`, `ARPA`
+  - EU: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`, `PyPSAEurSmall`, `PyPSAEurLarge`, `PJM`
+- **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC`
+- **Cut types** (only for `EU_model`): `price based`, `combinatorial benders`, `no good`
+- **Pricing algorithms** (only for `US_model`): `ELMP`, `IP`, `MinMWP`, `Join`
+- **Redispatch algorithms** (only for `US_model/Zonal_NTC`):  
+  `MinCostRD`, `MinVolRD`
+- **Zonal configurations**:  
+  `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE4-refined`, `zonal_DE5`
+
+Other global settings like solver tolerances and runtime limits can be adjusted under `"solver_configuration"`. Zonal-specific settings are under `"zonal_configuration"`.
+
+---
+To run the configuration, execute:
 ```bash
 python main.py
 ```

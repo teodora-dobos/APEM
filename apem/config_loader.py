@@ -1,9 +1,11 @@
 import json
 from typing import Dict, Any
 
-from apem.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
-from apem.enums import Datasets, PricingAlgorithms, RedispatchAlgorithms
+from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
+from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
+from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.enums import US_Datasets, MarketModels, PricingAlgorithms, RedispatchAlgorithms
 
 
 class ConfigLoader:
@@ -22,13 +24,25 @@ class ConfigLoader:
         return {k: v for k, v in self.raw_config.items() if not k.startswith('_')}
 
     def _validate_config(self):
-        # Validate dataset
-        if self.raw_config['scenario']['dataset'] not in [d.name for d in Datasets]:
-            raise ValueError(f"Invalid dataset: {self.raw_config['scenario']['dataset']}")
+        # Validate US dataset
+        if self.raw_config['scenario']['US_dataset'] not in [d.name for d in US_Datasets]:
+            raise ValueError(f"Invalid US_dataset: {self.raw_config['scenario']['US_dataset']}")
+
+        # Validate EU dataset
+        if self.raw_config['scenario']['EU_dataset'] not in [d.name for d in EU_Datasets]:
+            raise ValueError(f"Invalid dataset: {self.raw_config['scenario']['EU_dataset']}")
+
+        # Validate market model
+        if self.raw_config['scenario']['market_model'] not in ["US_model", "EU_model"]:
+            raise ValueError(f"Invalid market model: {self.raw_config['scenario']['market_model']}")
 
         # Validate power flow model
         if self.raw_config['scenario']['power_flow_model']['type'] not in ["DCOPF", "Zonal_NTC"]:
             raise ValueError(f"Invalid power flow model: {self.raw_config['scenario']['power_flow_model']['type']}")
+
+        # Validate cut type
+        if self.raw_config['scenario']['cut_type'] not in [c.value for c in CutTypes]:
+            raise ValueError(f"Invalid cut type: {self.raw_config['scenario']['cut_type']}")
 
         # Validate pricing algorithm
         if self.raw_config['scenario']['pricing_algorithm'] not in [p.name for p in PricingAlgorithms]:
@@ -46,8 +60,14 @@ class ConfigLoader:
             if not 0 <= zonal_config['factor'] <= 1:
                 raise ValueError(f"Invalid zonal factor: {zonal_config['factor']}. Must be between 0 and 1.")
 
-    def get_dataset(self) -> Datasets:
-        return Datasets[self.config['scenario']['dataset']]
+    def get_US_dataset(self) -> US_Datasets:
+        return US_Datasets[self.config['scenario']['US_dataset']]
+
+    def get_EU_dataset(self) -> EU_Datasets:
+        return EU_Datasets[self.config['scenario']['EU_dataset']]
+
+    def get_market_model(self) -> MarketModels:
+        return MarketModels[self.config['scenario']['market_model']]
 
     def get_power_flow_model(self):
         model_type = self.config['scenario']['power_flow_model']['type']
@@ -55,6 +75,9 @@ class ConfigLoader:
             zonal_config = self.config['zonal_configuration']
             return Zonal_NTC(zonal_configuration=zonal_config['type'], factor=zonal_config['factor'])
         return DCOPF()
+
+    def get_cut_type(self) -> CutTypes:
+        return CutTypes(self.config['scenario']['cut_type'])
 
     def get_pricing_algorithm(self) -> PricingAlgorithms:
         return PricingAlgorithms[self.config['scenario']['pricing_algorithm']]

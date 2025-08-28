@@ -1,10 +1,25 @@
 {
-    "_available_datasets": [
+    "_available_US_datasets": [
         "IEEE_RTS",
         "PJM",
         "PyPSAEurSmall",
         "PyPSAEurLarge",
         "ARPA"
+    ],
+    "_available_EU_datasets": [
+        "Generated Small",
+        "Generated Large",
+        "OMIE",
+        "GME",
+        "IEEE_RTS",
+        "ARPA",
+        "PyPSAEurSmall",
+        "PyPSAEurLarge",
+        "PJM"
+    ],
+    "_available_market_models": [
+        "US_model",
+        "EU_model"
     ],
     "_available_power_flow_models": [
         "DCOPF",
@@ -15,6 +30,11 @@
         "IP",
         "MinMWP",
         "Join"
+    ],
+    "_available_cut_types": [
+        "price based",
+        "combinatorial benders",
+        "no good"
     ],
     "_available_redispatch_algorithms": [
         "MinCostRD",
@@ -31,10 +51,13 @@
     ],
     "verbosity": true,
     "scenario": {
-        "dataset": "PyPSAEurLarge",
+        "market_model": "EU_model",
+        "US_dataset": "ARPA",
+        "EU_dataset": "GME",
         "power_flow_model": {
-            "type": "Zonal_NTC"
+            "type": "DCOPF"
         },
+        "cut_type": "price based",
         "pricing_algorithm": "IP",
         "redispatch_algorithm": "MinCostRD"
     },
