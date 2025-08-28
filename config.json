@@ -52,7 +52,7 @@
     "scenario": {
         "US_dataset": "PyPSAEurSmall",
         "EU_dataset": "ARPA",
-        "market_model": "EU_model",
+        "market_model": "US_model",
         "power_flow_model": {
             "type": "DCOPF"
         },

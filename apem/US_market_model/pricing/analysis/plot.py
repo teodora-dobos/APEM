@@ -29,7 +29,7 @@ def plot_price_heatmap(file_heatmap: str, scenario: Scenario, avg_prices: dict =
 
     # Define power flow model and create results directory, if not exists
     power_flow_model = "Zonal_NTC" if zonal_config else "DCOPF"
-    results_directory = os.path.join("results", f"{scenario.name}_results", power_flow_model)
+    results_directory = os.path.join("US_results", f"{scenario.name}_results", power_flow_model)
     os.makedirs(results_directory, exist_ok=True)
 
     # Load average prices, if not provided

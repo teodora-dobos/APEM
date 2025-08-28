@@ -16,7 +16,7 @@ def save_results(testing_data_set):
     PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "../..", ".."))
 
     modified_string = re.sub(r'(?<!^)(?=[A-Z][a-z])', '_', testing_data_set)
-    base_path = os.path.join(PROJECT_ROOT, "results", f"{modified_string}_results", "DCOPF")
+    base_path = os.path.join(PROJECT_ROOT, "US_results", f"{modified_string}_results", "DCOPF")
 
     result_files = {
         'ELMP': os.path.join("ELMP_results", "ELMP_stats.txt"),
@@ -61,7 +61,7 @@ def save_results(testing_data_set):
 
     df1 = pd.DataFrame(data, columns=headers)
     df1 = df1.applymap(lambda x: str(x).replace('.', ',') if isinstance(x, (float, int)) else x)
-    txt_file_path = f"results/{modified_string}_results/DCOPF/allocation_results/DCOPF_stats.txt"
+    txt_file_path = f"US_results/{modified_string}_results/DCOPF/allocation_results/DCOPF_stats.txt"
 
     if os.path.exists(txt_file_path):
         with open(txt_file_path, 'r', encoding='utf-8') as txt_file:

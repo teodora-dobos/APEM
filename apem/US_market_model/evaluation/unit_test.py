@@ -20,7 +20,7 @@ def unit_test_pricing_stats(testing_data_set, precise_output):
         precise_output (int): Set to 1 for detailed output in the terminal.
     """
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
-    base_path = os.path.join('../..', 'results', f'{modified_string}_results', 'DCOPF')
+    base_path = os.path.join('../..', 'US_results', f'{modified_string}_results', 'DCOPF')
 
     result_files = ['ELMP_results/ELMP_stats.txt',
                     'IP_results/IP_stats.txt',
@@ -104,7 +104,7 @@ def unit_test_pricing_csv(testing_data_set, precise_output):
         precise_output (int): Set to 1 for detailed output in the terminal.
     """
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
-    base_path = os.path.join('../..', 'results', f'{modified_string}_results', 'DCOPF')
+    base_path = os.path.join('../..', 'US_results', f'{modified_string}_results', 'DCOPF')
 
     csv_files = ['ELMP_results/ELMP_prices.csv',
                  'IP_results/IP_prices.csv',
@@ -176,7 +176,7 @@ def unit_test_allocation_stats(testing_data_set, precise_output):
         precise_output (int): Set to 1 for detailed output in the terminal.
     """
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
-    base_path = os.path.join('../..', 'results', f'{modified_string}_results', 'DCOPF')
+    base_path = os.path.join('../..', 'US_results', f'{modified_string}_results', 'DCOPF')
 
     result_files = ['allocation_results/DCOPF_stats.txt']
 
@@ -262,7 +262,7 @@ def unit_test_allocation_csv(testing_data_set, precise_output):
         precise_output (int): Set to 1 for detailed output in the terminal.
     """
     modified_string = re.sub(r'([A-Z])([a-z])([a-z])', r'_\1\2\3', testing_data_set)
-    base_path = os.path.join('../..', 'results', f'{modified_string}_results', 'DCOPF')
+    base_path = os.path.join('../..', 'US_results', f'{modified_string}_results', 'DCOPF')
 
     csv_files = ['allocation_results/DCOPF.csv']
 

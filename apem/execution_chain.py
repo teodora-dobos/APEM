@@ -44,7 +44,7 @@ def _solve_allocation_problem(scenario: Scenario, power_flow_model: PowerFlowMod
         print(f"Starting allocation problem for {scenario} using {power_flow_model}...")
 
     zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, Zonal_NTC) else ""
-    base_path = f"results/{scenario}_results/{power_flow_model}"
+    base_path = f"US_results/{scenario}_results/{power_flow_model}"
     path = base_path + "/" + zonal_part + "allocation_results"
     os.makedirs(path, exist_ok=True)
 
@@ -61,7 +61,7 @@ def _solve_redispatch_problem(scenario: Scenario, power_flow_model: PowerFlowMod
     redispatch_algorithm = redispatch_algorithm.value
 
     zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, Zonal_NTC) else ""
-    base_path = f"results/{scenario}_results/{power_flow_model}"
+    base_path = f"US_results/{scenario}_results/{power_flow_model}"
     path = base_path + "/" + zonal_part + "allocation_results/redispatch"
     os.makedirs(path, exist_ok=True)
 
@@ -76,7 +76,7 @@ def _solve_pricing_problem(scenario: Scenario, allocation: Allocation, pricing_a
     pricing_algorithm = pricing_algorithm.value
 
     zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, Zonal_NTC) else ""
-    path = f"results/{scenario}_results/{power_flow_model}/{zonal_part}{pricing_algorithm}_results"
+    path = f"US_results/{scenario}_results/{power_flow_model}/{zonal_part}{pricing_algorithm}_results"
     os.makedirs(path, exist_ok=True)
 
     pricing = pricing_algorithm.compute_prices(allocation, scenario, configuration,
@@ -89,7 +89,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
                     pf_model_value,
                     base_scenario: Optional[Scenario] = None) -> PriceAnalysis:
     """Performs several analyses.
-    
+
     Args:
         scenario (Scenario): dataset for which the price analysis is to be performed
         allocation (Allocation): precomputed allocation
@@ -100,7 +100,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
     Returns:
         PricingAnalysis object
     """
-    path = f"results/{scenario}_results"
+    path = f"US_results/{scenario}_results"
     os.makedirs(path, exist_ok=True)
 
     analysis = PriceAnalysis(scenario, allocation, pricing, configuration, base_scenario)

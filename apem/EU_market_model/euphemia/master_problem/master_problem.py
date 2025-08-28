@@ -7,15 +7,18 @@ from gurobipy import GRB
 import re
 import pandas as pd
 import time
+from pathlib import Path
 
 import apem.EU_market_model.euphemia.cutting_strategies.price_based as price_based_cutting
 import apem.EU_market_model.euphemia.cutting_strategies.combinatorial_benders as combinatorial_benders_cutting
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig
-from apem.EU_market_model.euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
+from apem.EU_market_model.euphemia.model.setup_model import add_objective, add_market_constraints, \
+    add_network_constraints
 from apem.EU_market_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
 from apem.EU_market_model.euphemia.reinsertions.prmic_prb_reinsertion import PRMIC_PRB_reinsertion
-from apem.EU_market_model.euphemia.utils.calculations import calculate_flexible_order_active_period, calculate_block_demand_surplus
+from apem.EU_market_model.euphemia.utils.calculations import calculate_flexible_order_active_period, \
+    calculate_block_demand_surplus
 from apem.EU_market_model.euphemia.utils.extraction import get, parse_step_order_ids
 from apem.EU_market_model.euphemia.utils.paths import EUPHEMIA_ROOT
 
@@ -94,17 +97,20 @@ class MasterProblem:
         self.disable_reinsertion = config.disable_reinsertion
         self.calculate_corrected_welfare = config.calculate_corrected_welfare
 
+        PROJECT_ROOT = Path(__file__).resolve().parents[4]
+        RESULTS_ROOT = PROJECT_ROOT / "EU_results/euphemia"
+
         self.paths = {
-            "alloc": f"euphemia_results/{self.config.dataset}/allocation",
-            "prices": f"euphemia_results/{self.config.dataset}/prices",
-            "pab": f"euphemia_results/{self.config.dataset}/pab",
-            "block_inm_threshold": f"euphemia_results/{self.config.dataset}/block_inm_threshold",
-            "complex_mic": f"euphemia_results/{self.config.dataset}/complex_mic",
-            "complex_mic_inm_threshold": f"euphemia_results/{self.config.dataset}/complex_mic_inm_threshold",
-            "scalable_mic": f"euphemia_results/{self.config.dataset}/scalable_mic",
-            "scalable_mic_inm_threshold": f"euphemia_results/{self.config.dataset}/scalable_mic_inm_threshold",
-            "debug": f"euphemia_results/{self.config.dataset}/debug",
-            "evaluation": f"euphemia_results/{self.config.dataset}/evaluation",
+            "alloc": str(RESULTS_ROOT / self.config.dataset / "allocation"),
+            "prices": str(RESULTS_ROOT / self.config.dataset / "prices"),
+            "pab": str(RESULTS_ROOT / self.config.dataset / "pab"),
+            "block_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "block_inm_threshold"),
+            "complex_mic": str(RESULTS_ROOT / self.config.dataset / "complex_mic"),
+            "complex_mic_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "complex_mic_inm_threshold"),
+            "scalable_mic": str(RESULTS_ROOT / self.config.dataset / "scalable_mic"),
+            "scalable_mic_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "scalable_mic_inm_threshold"),
+            "debug": str(RESULTS_ROOT / self.config.dataset / "debug"),
+            "evaluation": str(RESULTS_ROOT / self.config.dataset / "evaluation"),
         }
 
         for attr, path in self.paths.items():

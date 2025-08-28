@@ -56,7 +56,7 @@ class Scenario:
             res_supply_proportion = round(res_sellers['max_prod'].sum() / supply, 2)
 
         # Define and create results directory, if not exists
-        results_directory = f"./results/{self.name}_results"
+        results_directory = f"./US_results/{self.name}_results"
         os.makedirs(results_directory, exist_ok=True)
 
         # Write contents to scenario.txt file
@@ -97,7 +97,7 @@ class Scenario:
 
         # Define power flow model and create results directory, if not exists
         power_flow_model = "Zonal_NTC" if zonal_config else "DCOPF"
-        results_directory = os.path.join("results", f"{self.name}_results", power_flow_model)
+        results_directory = os.path.join("US_results", f"{self.name}_results", power_flow_model)
         os.makedirs(results_directory, exist_ok=True)
 
         # Get nodes and edges from the network
