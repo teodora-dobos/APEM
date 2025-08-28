@@ -11,7 +11,7 @@ import time
 import apem.EU_market_model.euphemia.cutting_strategies.price_based as price_based_cutting
 from apem.EU_market_model import euphemia as no_good_cutting
 import apem.EU_market_model.euphemia.cutting_strategies.combinatorial_benders as combinatorial_benders_cutting
-from apem.EU_market_model.euphemia.enums.cut_types import CutType
+from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig
 from apem.EU_market_model.euphemia.model.setup_model import add_objective, add_market_constraints, add_network_constraints
 from apem.EU_market_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
@@ -156,7 +156,7 @@ class MasterProblem:
                 file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
                 with open(file_path, 'a', buffering=1) as file:
                     file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                    if self.cutting_strategy == CutType.PB:
+                    if self.cutting_strategy == CutTypes.PB:
                         file.write(
                             f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
                     file.write(f"Iterations: {self.iteration}\n")
@@ -201,7 +201,7 @@ class MasterProblem:
                     file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
                     with open(file_path, 'a', buffering=1) as file:
                         file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                        if self.cutting_strategy == CutType.PB:
+                        if self.cutting_strategy == CutTypes.PB:
                             file.write(
                                 f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
                         file.write(f"No solution in iteration limit of {self.max_iterations}\n")
@@ -260,15 +260,15 @@ class MasterProblem:
                 if price_subproblem.pricing_model.Status == GRB.INFEASIBLE:
                     print("Price subproblem is infeasible")
 
-                    if self.cutting_strategy == CutType.CB:
+                    if self.cutting_strategy == CutTypes.CB:
                         combinatorial_benders_cutting.add_combinatorial_benders_cut(self=self,
                                                                                     callback_model=callback_model,
                                                                                     price_subproblem=price_subproblem)
 
-                    elif self.cutting_strategy == CutType.NG:
+                    elif self.cutting_strategy == CutTypes.NG:
                         no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
 
-                    elif self.cutting_strategy == CutType.PB:
+                    elif self.cutting_strategy == CutTypes.PB:
                         price_based_cutting.handle_price_based_cutting(self=self, callback_model=callback_model)
 
     def add_acceptance_variables_to_dataframe(self) -> None:

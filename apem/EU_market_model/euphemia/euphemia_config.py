@@ -1,4 +1,4 @@
-from apem.EU_market_model.euphemia.enums.cut_types import CutType
+from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
 
 
@@ -18,7 +18,7 @@ class EuphemiaConfig:
         self.delta_load_gradient = 5000  # Parameter how much paradoxically accepted load gradient must be OTM
         self.epsilon = 1e-4  # Epsilon for Gurobi float values
         self.max_iterations = 50  # Iteration Limit
-        self.cutting_strategy = CutType.CB  # Cutting strategy to be used
+        self.cutting_strategy = CutTypes.CB  # Cutting strategy to be used
         self.calculate_corrected_welfare = False  # Deduct surplus of inelastic demand from welfare (Only works for 24 periods!)
 
         self.delta_PAB = 50  # currently not in use

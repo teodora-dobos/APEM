@@ -20,6 +20,11 @@
         "MinMWP",
         "Join"
     ],
+    "_available_cut_types": [
+        "price based",
+        "combinatorial benders",
+        "no good"
+    ],
     "_available_redispatch_algorithms": [
         "MinCostRD",
         "MinVolRD"
@@ -35,11 +40,13 @@
     ],
     "verbosity": true,
     "scenario": {
-        "dataset": "PyPSAEurSmall",
+        "US_dataset": "PyPSAEurSmall",
+        "EU_dataset": "ARPA",
         "market_model": "EU_model",
         "power_flow_model": {
-            "type": "Zonal_NTC"
+            "type": "DCOPF"
         },
+        "cut_type": "price based",
         "pricing_algorithm": "IP",
         "redispatch_algorithm": "MinCostRD"
     },
