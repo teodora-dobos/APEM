@@ -3,7 +3,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from apem import solve_scenario, Datasets, PowerFlowModels, PricingAlgorithms
+from apem.execution_chain import solve_scenario, US_Datasets, EU_Datasets, PowerFlowModels, PricingAlgorithms
 
 
 class Test_Zonal_NTC_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):
@@ -24,25 +24,25 @@ class Test_Zonal_NTC_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):
 
     def test_PyPSAEurSmall_Zonal_NTC_IP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP)
+            solve_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_Zonal_NTC_IP: {e}")
 
     def test_PyPSAEurSmall_Zonal_NTC_ELMP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.ELMP)
+            solve_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_Zonal_NTC_ELMP: {e}")
 
     def test_PyPSAEurSmall_Zonal_NTC_Join(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.Join)
+            solve_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_Zonal_NTC_Join: {e}")
 
     def test_PyPSAEurSmall_Zonal_NTC_MinMWP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC, PricingAlgorithms.MinMWP)
+            solve_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurSmall_Zonal_NTC_MinMWP: {e}")
 
@@ -65,25 +65,25 @@ class Test_Zonal_NTC_PyPSAEurLarge_PricingAlgorithm(unittest.TestCase):
 
     def test_PyPSAEurLarge_Zonal_NTC_IP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC, PricingAlgorithms.IP)
+            solve_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.IP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_Zonal_NTC_IP: {e}")
 
     def test_PyPSAEurLarge_Zonal_NTC_ELMP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC, PricingAlgorithms.ELMP)
+            solve_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.ELMP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_Zonal_NTC_ELMP: {e}")
 
     def test_PyPSAEurLarge_Zonal_NTC_Join(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC, PricingAlgorithms.Join)
+            solve_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.Join)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_Zonal_NTC_Join: {e}")
 
     def test_PyPSAEurLarge_Zonal_NTC_MinMWP(self):
         try:
-            solve_scenario(Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC, PricingAlgorithms.MinMWP)
+            solve_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.Zonal_NTC.value, PricingAlgorithms.MinMWP)
         except Exception as e:
             self.fail(f"Exception raised in test_PyPSAEurLarge_Zonal_NTC_MinMWP: {e}")
 
