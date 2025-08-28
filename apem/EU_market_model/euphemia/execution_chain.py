@@ -4,19 +4,19 @@ from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig
 from apem.EU_market_model.euphemia.master_problem.master_problem import MasterProblem
 
 
-def solve_euphemia(dataset: EU_Datasets, cutting_strategy: CutTypes):
+def solve_euphemia(dataset: EU_Datasets, cut_type: CutTypes):
     """
     Solves an Euphemia scenario.
     Args:
         dataset (Datasets): Used dataset.
-        cutting_strategy (CutTypes): Cutting strategy to be used in the solver.
+        cut_type (CutTypes): Cutting strategy to be used in the solver.
 
     Returns:
 
     """
     config = EuphemiaConfig()
     config.set_dataset(dataset)
-    config.cutting_strategy = cutting_strategy
+    config.cutting_strategy = cut_type
     euphemia = MasterProblem(config)
     euphemia.run()
 

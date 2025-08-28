@@ -9,7 +9,6 @@ import pandas as pd
 import time
 
 import apem.EU_market_model.euphemia.cutting_strategies.price_based as price_based_cutting
-from apem.EU_market_model import euphemia as no_good_cutting
 import apem.EU_market_model.euphemia.cutting_strategies.combinatorial_benders as combinatorial_benders_cutting
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig

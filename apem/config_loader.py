@@ -29,7 +29,7 @@ class ConfigLoader:
             raise ValueError(f"Invalid US_dataset: {self.raw_config['scenario']['US_dataset']}")
 
         # Validate EU dataset
-        if self.raw_config['scenario']['EU_dataset'] not in [d.name for d in US_Datasets]:
+        if self.raw_config['scenario']['EU_dataset'] not in [d.name for d in EU_Datasets]:
             raise ValueError(f"Invalid dataset: {self.raw_config['scenario']['EU_dataset']}")
 
         # Validate market model

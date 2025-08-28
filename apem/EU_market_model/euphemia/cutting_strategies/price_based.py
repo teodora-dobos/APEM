@@ -3,7 +3,7 @@ import gurobipy as gp
 import re
 
 from apem.EU_market_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
-from apem.EU_market_model import euphemia as no_good_cutting
+import apem.EU_market_model.euphemia.cutting_strategies.no_good as no_good_cutting
 
 
 def handle_price_based_cutting(self, callback_model) -> None:

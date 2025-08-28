@@ -1,10 +1,20 @@
 {
-    "_available_datasets": [
+    "_available_US_datasets": [
         "IEEE_RTS",
         "PJM",
         "PyPSAEurSmall",
         "PyPSAEurLarge",
         "ARPA"
+    ],
+    "_available_EU_datasets": [
+        "Generated Small",
+        "Generated Large",
+        "OMIE",
+        "IEEE_RTS",
+        "ARPA",
+        "PyPSAEurSmall",
+        "PyPSAEurLarge",
+        "PJM"
     ],
     "_available_market_models": [
         "US_model",
