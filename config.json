@@ -51,11 +51,11 @@
     ],
     "verbosity": true,
     "scenario": {
-        "market_model": "EU_model",
-        "US_dataset": "ARPA",
+        "market_model": "US_model",
+        "US_dataset": "PyPSASmall",
         "EU_dataset": "GME",
         "power_flow_model": {
-            "type": "DCOPF"
+            "type": "Zonal_NTC"
         },
         "cut_type": "price based",
         "pricing_algorithm": "IP",
