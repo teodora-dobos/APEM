@@ -23,7 +23,7 @@ class MinCostRD(RedispatchAlgorithm):
         dcopf = DCOPF()
         return dcopf.solve(scenario=nodal_scenario, configuration=configuration,
                            results_file=path + '/min_cost.csv', stats_file=path + '/min_cost_obj.txt',
-                           redispatch=True, min_cost=True, zonal_allocation=zonal_allocation)
+                           redispatch_type='min-cost', zonal_allocation=zonal_allocation)
 
     def __str__(self):
         return 'MinCostRD'

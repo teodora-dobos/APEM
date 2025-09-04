@@ -1,12 +1,9 @@
-# from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost_2 import MinCostRD2
-# from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_vol import MinVolRD
 from typing import Optional, Union, Any, Dict
 
 import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
 
-# from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
 from apem.US_market_model.allocation.allocation import Allocation, SellersAllocation
 from apem.US_market_model.allocation.analysis.stats import compute_stats
 from apem.US_market_model.allocation.configuration import Configuration
@@ -14,7 +11,6 @@ from apem.US_market_model.allocation.error import Error
 from apem.US_market_model.allocation.power_flow_model import PowerFlowModel
 from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.utils.extraction import preprocess_as_dict
-from apem.enums import RedispatchAlgorithms
 
 
 class DCOPF(PowerFlowModel):
@@ -22,7 +18,7 @@ class DCOPF(PowerFlowModel):
     Implementation of the Direct Current Optimal Power Flow Model. The class is also used for computing redispatch.
     """
 
-    def add_redispatch_constraints_objective(self, rd_type: RedispatchAlgorithms, model: Any, scenario: Scenario,
+    def add_redispatch_constraints_objective(self, rd_type: str, model: Any, scenario: Scenario,
                                              y_stl: Dict, u_st: Dict, seller_cost_dict: Dict,
                                              seller_no_load_cost_dict: Dict, zonal_allocation: SellersAllocation):
         df_sellers = scenario.df_sellers
@@ -30,7 +26,7 @@ class DCOPF(PowerFlowModel):
         blocks_sellers = scenario.blocks_sellers
         sellers = df_sellers['seller'].unique().tolist()
 
-        if rd_type in [RedispatchAlgorithms.MinCostRD, RedispatchAlgorithms.MinVolRD]:
+        if rd_type in ['min-cost', 'min-vol']:
             diff_stl = model.addVars(sellers, periods, blocks_sellers, lb=0, name='diff_y_stl')
             u_diff_st = model.addVars(sellers, periods, lb=0, name=f'diff_u_st')
 
@@ -43,7 +39,7 @@ class DCOPF(PowerFlowModel):
                 y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls] <= diff_stl[s, t, ls]
                 for s in sellers for t in periods for ls in blocks_sellers)
 
-            if rd_type == MinCostRD:
+            if rd_type == 'min-cost':
                 model.setObjective(
                     gp.quicksum(
                         seller_cost_dict[ls][s, t] * diff_stl[s, t, ls]
@@ -63,7 +59,7 @@ class DCOPF(PowerFlowModel):
                     u_st[s, t] - zonal_allocation.u_st[s, t] <= u_diff_st[s, t] for s in sellers for t in periods
                 )
 
-            elif rd_type == MinVolRD:
+            elif rd_type == 'min-vol':
                 model.setObjective(
                     gp.quicksum(
                         diff_stl[s, t, ls]
@@ -72,14 +68,14 @@ class DCOPF(PowerFlowModel):
                     GRB.MINIMIZE
                 )
 
-        elif rd_type == MinCostRD2:
+        elif rd_type == 'min-cost2':
             pass
 
         return model
 
     def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None,
-              redispatch_type: Optional[RedispatchAlgorithms] = None,
+              redispatch_type: Optional[str] = None,
               zonal_allocation: Optional[SellersAllocation] = None) -> Union[Allocation, Error]:
         """
         Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
@@ -351,10 +347,9 @@ class DCOPF(PowerFlowModel):
                     compute_stats(stats_file, scenario, configuration, allocation, model)
                 else:
                     f = open(stats_file, 'w+')
-                    # if min_cost:
-                    #     f.write(f'Redispatch costs: {obj}')
-                    # else:
-                    #     f.write(f'Redispatch volumes: {obj}')
+                    if redispatch_type:
+                        f.write(f'Redispatch objective: {obj}')
+
                     f.close()
 
             return allocation
