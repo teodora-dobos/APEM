@@ -6,13 +6,14 @@ from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.allocation.configuration import Configuration
 from apem.US_market_model.allocation.error import Error
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.redispatch_algorithm import RedispatchAlgorithm
+from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.redispatch_algorithm import \
+    RedispatchAlgorithm
 
 
 class MinAbsVolRD(RedispatchAlgorithm):
     """
-    Computes a redispatch solution that minimizes the total redispatch volumes, i.e., the upward and downward
-    deviations from the zonal solution. Assumes that all generators can be redispatched.
+    Computes a redispatch solution that minimizes the total absolute redispatch volumes.
+    Assumes that all generators can be redispatched.
     """
 
     def compute_redispatch(self, nodal_scenario: Scenario, zonal_allocation: SellersAllocation,

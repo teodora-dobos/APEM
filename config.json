@@ -37,9 +37,9 @@
         "no good"
     ],
     "_available_redispatch_algorithms": [
-        "MinCostRD",
-        "MinVolRD",
-        "MinCostRD2"
+        "MinAbsCostRD",
+        "MinAbsVolRD",
+        "MinCostRD"
     ],
     "_available_zonal_configurations": [
         "national",

@@ -6,16 +6,17 @@ from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.allocation.configuration import Configuration
 from apem.US_market_model.allocation.error import Error
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.redispatch_algorithm import RedispatchAlgorithm
+from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.redispatch_algorithm import \
+    RedispatchAlgorithm
 
 
 class MinCostRD(RedispatchAlgorithm):
     """
-    TODO in line with RD 2.0
-    Computes a redispatch solution that minimizes the total redispatch costs, i.e., the reimbursements to the
-    redispatched units. Assumes that:
+    Computes a redispatch solution that minimizes the total redispatch costs. Assumes that:
     - all generators can be redispatched
-    - that the reimbursements are based on the production costs
+    - redispatch costs are based on the production costs from the zonal clearing stage
+    - negative (downward) redispatch decreases the objective value
+    - positive (upward) redispatch increases the objective value
     """
 
     def compute_redispatch(self, nodal_scenario: Scenario, zonal_allocation: SellersAllocation,
