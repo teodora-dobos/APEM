@@ -11,6 +11,9 @@ from apem.US_market_model.allocation.error import Error
 from apem.US_market_model.allocation.power_flow_model import PowerFlowModel
 from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.utils.extraction import preprocess_as_dict
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from apem.enums import RedispatchAlgorithms
 
 
 class DCOPF(PowerFlowModel):
@@ -18,10 +21,46 @@ class DCOPF(PowerFlowModel):
     Implementation of the Direct Current Optimal Power Flow Model. The class is also used for computing redispatch.
     """
 
-    def add_redispatch_constraints_objective(self, rd_type: str, model: Any, scenario: Scenario,
+    def add_redispatch_constraints_objective(self, rd_type: "RedispatchAlgorithms", model: Any, scenario: Scenario,
                                              y_stl: Dict, u_st: Dict, seller_cost_dict: Dict,
                                              seller_no_load_cost_dict: Dict, zonal_allocation: SellersAllocation,
-                                             constrain_units: bool = False, threshold: float = 0.001):
+                                             constrain_units: bool = False, threshold: float = 0.001) -> gp.Model:
+        """
+        Include redispatch constraints and objective in the DCOPF model.
+
+        Parameters
+        ----------
+        rd_type : {"MinAbsCostRD", "MinAbsVolRD", "MinCostRD"}
+            Objective flavor:
+              - MinAbsCostRD: minimize absolute cost deviations relative to zonal_allocation.
+              - MinAbsVolRD:  minimize absolute volume deviations relative to zonal_allocation.
+              - MinCostRD:    minimize (signed) redispatch cost relative to zonal_allocation.
+        model : gurobipy.Model
+            The working model.
+        scenario : Scenario
+            Holds df_sellers, periods, blocks_sellers.
+        y_stl : Dict[(s,t,ls) -> Var]
+            Decision vars for seller s, period t, block ls.
+        u_st : Dict[(s,t) -> Var]
+            Commitment/on-off vars for seller s, period t.
+        seller_cost_dict : Dict[ls -> Dict[(s,t) -> float]]
+            Marginal cost per block (by (s,t)) for each ls.
+        seller_no_load_cost_dict : Dict[(s,t) -> float]
+            No-load/startup-like (fixed) cost per (s,t).
+        zonal_allocation : SellersAllocation
+            Reference allocation with attributes y_stl[(s,t,ls)] and u_st[(s,t)].
+        constrain_units : bool, default False
+            If True and seller's max_prod < threshold, force u_st == zonal u_st.
+        threshold : float, default 1e-3
+            Small production threshold for unit fixing.
+
+        Returns
+        -------
+        gurobipy.Model
+            The updated model.
+        """
+
+        rd_type = getattr(rd_type, "name", None) or str(rd_type)
         df_sellers = scenario.df_sellers
         periods = scenario.periods
         blocks_sellers = scenario.blocks_sellers
