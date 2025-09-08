@@ -56,9 +56,10 @@ class TransmissionNetworkAllocation:
     The results of an allocation that relate to the transmission network.
     """
 
-    def __init__(self, f_vwt, alpha_vt, network, periods):
+    def __init__(self, f_vwt, alpha_vt, slack_vt, network, periods):
         self.f_vwt = f_vwt
         self.alpha_vt = alpha_vt
+        self.slack_vt = slack_vt
         self.network = network
         self.periods = periods
 
@@ -87,7 +88,7 @@ class Allocation:
     from the optimizer.
     """
 
-    def __init__(self, welfare, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, power_flow_model, runtime,
+    def __init__(self, welfare, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, slack_vt, power_flow_model, runtime,
                  num_vars, num_constrs, MIP_gap, num_cont_vars, num_bin_vars, dataset):
         self.welfare = welfare
         self.runtime = runtime
@@ -100,7 +101,7 @@ class Allocation:
         self.dataset = dataset
         self.BuyersAllocation = BuyersAllocation(x_bt, x_btl, dataset.df_buyers, dataset.blocks_buyers)
         self.SellersAllocation = SellersAllocation(y_st, y_stl, u_st, phi_st, dataset.df_sellers)
-        self.TransmissionNetworkAllocation = TransmissionNetworkAllocation(f_vwt, alpha_vt, dataset.network,
+        self.TransmissionNetworkAllocation = TransmissionNetworkAllocation(f_vwt, alpha_vt, slack_vt, dataset.network,
                                                                            dataset.periods)
 
     @property
