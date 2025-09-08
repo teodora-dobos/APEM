@@ -349,7 +349,7 @@ class DCOPF(PowerFlowModel):
             error = Error(status)
             return error
 
-    def add_redispatch_constraints_objective(self, rd_type: str, model: Any, scenario: Scenario,
+    def add_redispatch_constraints_objective(self, redispatch_type: str, model: Any, scenario: Scenario,
                                              y_stl: Dict, u_st: Dict, seller_cost_dict: Dict,
                                              seller_no_load_cost_dict: Dict, zonal_allocation: SellersAllocation,
                                              redispatch_constraint_units: bool = False,
@@ -357,22 +357,20 @@ class DCOPF(PowerFlowModel):
         """
         Include redispatch constraints and objective in the DCOPF model.
 
-        :param rd_type: {"MinAbsCostRD", "MinAbsVolRD", "MinCostRD"}.
-            - MinAbsCostRD: minimize absolute cost deviations relative to ``zonal_allocation``.
-            - MinAbsVolRD: minimize absolute volume deviations relative to ``zonal_allocation``.
-            - MinCostRD: minimize (signed) redispatch cost relative to ``zonal_allocation``.
-        :param model: gurobipy.Model. The working optimization model.
-        :param scenario: Scenario. Holds ``df_sellers``, ``periods``, and ``blocks_sellers``.
-        :param y_stl: Dict[(s, t, ls) -> Var]. Decision variables for seller ``s``, period ``t``, block ``ls``.
-        :param u_st: Dict[(s, t) -> Var]. Commitment (on/off) variables for seller ``s`` in period ``t``.
-        :param seller_cost_dict: Dict[ls -> Dict[(s, t) -> float]]. Marginal cost per block (by (s, t)) for each ``ls``.
-        :param seller_no_load_cost_dict: Dict[(s, t) -> float]. No-load/startup-like (fixed) cost per (s, t).
-        :param zonal_allocation: SellersAllocation. Reference allocation with attributes
-            ``y_stl[(s,t,ls)]`` and ``u_st[(s,t)]``.
-        :param redispatch_constraint_units: bool. If True and a seller's ``max_prod`` < ``redispatch_threshold``,
-            force ``u_st == zonal_allocation.u_st``.
-        :param redispatch_threshold: float. Production threshold for filtering which units can be redispatched.
-        :return: gurobipy.Model. The updated model.
+        :param redispatch_type: {"MinAbsCostRD", "MinAbsVolRD", "MinCostRD"}.
+            - MinAbsCostRD: minimize absolute cost deviations relative to zonal_allocation
+            - MinAbsVolRD: minimize absolute volume deviations relative to zonal_allocation
+            - MinCostRD: minimize (signed) redispatch cost relative to zonal_allocation
+        :param model: The working optimization model
+        :param scenario: Holds df_sellers, periods, and blocks_sellers
+        :param y_stl: Decision variables for seller s, period t, block ls
+        :param u_st: Commitment (on/off) variables for seller s in period t
+        :param seller_cost_dict: Marginal cost per block (by (s, t)) for each ls
+        :param seller_no_load_cost_dict: No-load/startup-like (fixed) cost per (s, t)
+        :param zonal_allocation: Reference allocation
+        :param redispatch_constraint_units: If True and a seller's max_prod < redispatch_threshold, set u_st == zonal_allocation.u_st
+        :param redispatch_threshold: Production threshold for filtering which units can be redispatched
+        :return: updated model
         """
 
         df_sellers = scenario.df_sellers
@@ -380,7 +378,7 @@ class DCOPF(PowerFlowModel):
         blocks_sellers = scenario.blocks_sellers
         sellers = df_sellers['seller'].unique().tolist()
 
-        if rd_type in ['MinAbsCostRD', 'MinAbsVolRD']:
+        if redispatch_type in ['MinAbsCostRD', 'MinAbsVolRD']:
             diff_stl = model.addVars(sellers, periods, blocks_sellers, lb=0, name='diff_y_stl')
             u_diff_st = model.addVars(sellers, periods, lb=0, name=f'diff_u_st')
 
@@ -393,7 +391,7 @@ class DCOPF(PowerFlowModel):
                 y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls] <= diff_stl[s, t, ls]
                 for s in sellers for t in periods for ls in blocks_sellers)
 
-            if rd_type == 'MinAbsCostRD':
+            if redispatch_type == 'MinAbsCostRD':
                 model.setObjective(
                     gp.quicksum(
                         seller_cost_dict[ls][s, t] * diff_stl[s, t, ls]
@@ -413,7 +411,7 @@ class DCOPF(PowerFlowModel):
                     u_st[s, t] - zonal_allocation.u_st[s, t] <= u_diff_st[s, t] for s in sellers for t in periods
                 )
 
-            elif rd_type == 'MinAbsVolRD':
+            elif redispatch_type == 'MinAbsVolRD':
                 model.setObjective(
                     gp.quicksum(
                         diff_stl[s, t, ls]
@@ -422,7 +420,7 @@ class DCOPF(PowerFlowModel):
                     GRB.MINIMIZE
                 )
 
-        elif rd_type == 'MinCostRD':
+        elif redispatch_type == 'MinCostRD':
             if redispatch_constraint_units:
                 seller_period_max_prod = {
                     (row.seller, row.period): row.max_prod
