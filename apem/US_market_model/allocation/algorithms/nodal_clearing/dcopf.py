@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional, Union, Any, Dict
 
 import gurobipy as gp
@@ -27,10 +28,9 @@ class DCOPF(PowerFlowModel):
         Include redispatch constraints and objective in the DCOPF model.
 
         :param rd_type: {"MinAbsCostRD", "MinAbsVolRD", "MinCostRD"}.
-            Objective type:
-              - MinAbsCostRD: minimize absolute cost deviations relative to ``zonal_allocation``.
-              - MinAbsVolRD: minimize absolute volume deviations relative to ``zonal_allocation``.
-              - MinCostRD: minimize (signed) redispatch cost relative to ``zonal_allocation``.
+            - MinAbsCostRD: minimize absolute cost deviations relative to ``zonal_allocation``.
+            - MinAbsVolRD: minimize absolute volume deviations relative to ``zonal_allocation``.
+            - MinCostRD: minimize (signed) redispatch cost relative to ``zonal_allocation``.
         :param model: gurobipy.Model. The working optimization model.
         :param scenario: Scenario. Holds ``df_sellers``, ``periods``, and ``blocks_sellers``.
         :param y_stl: Dict[(s, t, ls) -> Var]. Decision variables for seller ``s``, period ``t``, block ``ls``.
@@ -393,13 +393,20 @@ class DCOPF(PowerFlowModel):
             if stats_file:
                 if not redispatch_type:
                     compute_stats(stats_file, scenario, configuration, allocation, model)
-                    print("Objective: ", abs(obj))
+                    print(f"\nDCOPF Objective: {obj}\n")
                 else:
                     f = open(stats_file, 'w+')
                     f.write(f'Redispatch objective: {obj}')
-                    print(f'Redispatch objective: {obj}')
+                    print(f'\n{redispatch_type} objective: {obj}\n')
 
                     f.close()
+
+                    redispatch_file = Path(stats_file).with_name(
+                        f"{redispatch_type}_{redispatch_constraint_units}_{redispatch_threshold}_adjustments.csv")
+
+                    self.zonal_vs_final_allocation_comparison(zonal_allocation=zonal_allocation,
+                                                              final_allocation=allocation.SellersAllocation,
+                                                              file=str(redispatch_file))
 
             return allocation
 
@@ -419,6 +426,42 @@ class DCOPF(PowerFlowModel):
             print(f'{self} allocation error with code {status}')
             error = Error(status)
             return error
+
+    def zonal_vs_final_allocation_comparison(self, zonal_allocation: SellersAllocation,
+                                             final_allocation: SellersAllocation, file: str):
+        """
+        Create a CSV file comparing the zonal allocation and the final allocation obtained after redispatch.
+        """
+        rows = []
+
+        # u_st
+        for (s, t), v_z in zonal_allocation.u_st.items():
+            rows.append({
+                "var": "u_st", "seller": s, "period": t, "block": None,
+                "zonal": v_z, "final": final_allocation.u_st[(s, t)]
+            })
+
+        # y_st
+        for (s, t), v_z in zonal_allocation.y_st.items():
+            rows.append({
+                "var": "y_st", "seller": s, "period": t, "block": None,
+                "zonal": v_z, "final": final_allocation.y_st[(s, t)]
+            })
+
+        # y_stl
+        for (s, t, ls), v_z in zonal_allocation.y_stl.items():
+            rows.append({
+                "var": "y_stl", "seller": s, "period": t, "block": ls,
+                "zonal": v_z, "final": final_allocation.y_stl[(s, t, ls)]
+            })
+
+        df = pd.DataFrame(rows)
+        df["diff"] = df["final"] - df["zonal"]
+        df = df.sort_values(["var", "seller", "period", "block"]).reset_index(drop=True)
+
+        p = Path(file)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(p, index=False)
 
     def __str__(self):
         return 'DCOPF'

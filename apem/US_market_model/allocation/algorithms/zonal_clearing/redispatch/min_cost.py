@@ -24,7 +24,8 @@ class MinCostRD(RedispatchAlgorithm):
                            redispatch_threshold: float) -> Union[Allocation, Error]:
         dcopf = DCOPF()
         return dcopf.solve(scenario=nodal_scenario, configuration=configuration,
-                           results_file=path + '/min_cost.csv', stats_file=path + '/min_cost_obj.txt',
+                           results_file=path + f'/{self.__str__()}_{redispatch_constraint_units}_{redispatch_threshold}_results.csv',
+                           stats_file=path + f'/{self.__str__()}_{redispatch_constraint_units}_{redispatch_threshold}_obj.txt',
                            redispatch_type=self.__str__(), zonal_allocation=zonal_allocation,
                            redispatch_constraint_units=redispatch_constraint_units,
                            redispatch_threshold=redispatch_threshold)
