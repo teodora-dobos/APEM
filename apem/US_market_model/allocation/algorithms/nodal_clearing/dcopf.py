@@ -386,6 +386,7 @@ class DCOPF(PowerFlowModel):
         :param scenario: Holds df_sellers, periods, and blocks_sellers
         :param y_stl: Decision variables for seller s, period t, block ls
         :param u_st: Commitment (on/off) variables for seller s in period t
+        :param abs_slack: Absolute values of the slack variables used in the node balance constraints
         :param seller_cost_dict: Marginal cost per block (by (s, t)) for each ls
         :param seller_no_load_cost_dict: No-load/startup-like (fixed) cost per (s, t)
         :param zonal_allocation: Reference allocation
