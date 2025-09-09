@@ -132,8 +132,8 @@ class DCOPF(PowerFlowModel):
                 GRB.MAXIMIZE
             )
         else:
-            self.add_redispatch_constraints_objective(redispatch_type, model, scenario, y_stl, u_st, seller_cost_dict,
-                                                      seller_no_load_cost_dict, zonal_allocation,
+            self.add_redispatch_constraints_objective(redispatch_type, model, scenario, y_stl, u_st, abs_slack,
+                                                      seller_cost_dict, seller_no_load_cost_dict, zonal_allocation,
                                                       redispatch_constraint_units, redispatch_threshold)
 
         # 1
@@ -296,6 +296,7 @@ class DCOPF(PowerFlowModel):
             alpha_vt = {(v, t): alpha_vt[v, t].X for v in nodes for t in periods}
             phi_st = {(s, t): phi_st[s, t].X for s in sellers for t in periods}
             slack_vt = {(v, t): slack[v, t].X for v in nodes for t in periods}
+            abs_slack_vt = {(v, t): abs_slack[v, t].X for v in nodes for t in periods}
 
             if results_file:
                 results = []
@@ -344,8 +345,8 @@ class DCOPF(PowerFlowModel):
                                                     periods=periods, blocks_sellers=blocks_sellers, sellers=sellers,
                                                     file=str(redispatch_vols_file))
 
-            if any(x > 1e-9 for x in slack_vt.values()):
-                nonzero = {(v, t): val for (v, t), val in slack_vt.items() if abs(val) > 1e-9}
+            if any(x > 1e-5 for x in abs_slack_vt.values()):
+                nonzero = {(v, t): val for (v, t), val in slack_vt.items() if abs(val) > 1e-5}
                 print('-' * 50)
                 print(f'Nonzero slack detected at the following (node, period) pairs: {nonzero}')
                 print('-' * 50)
@@ -370,7 +371,7 @@ class DCOPF(PowerFlowModel):
             return error
 
     def add_redispatch_constraints_objective(self, redispatch_type: str, model: Any, scenario: Scenario,
-                                             y_stl: Dict, u_st: Dict, seller_cost_dict: Dict,
+                                             y_stl: Dict, u_st: Dict, abs_slack: Any, seller_cost_dict: Dict,
                                              seller_no_load_cost_dict: Dict, zonal_allocation: SellersAllocation,
                                              redispatch_constraint_units: bool = False,
                                              redispatch_threshold: float = 0.001) -> gp.Model:
@@ -419,7 +420,9 @@ class DCOPF(PowerFlowModel):
                     ) +
                     gp.quicksum(
                         seller_no_load_cost_dict[s, t] * u_diff_st[s, t]
-                        for s in sellers for t in periods),
+                        for s in sellers for t in periods)
+                    +
+                    M * gp.quicksum(abs_slack[v, t] for v in scenario.network.nodes for t in periods),
                     GRB.MINIMIZE
                 )
 
@@ -436,7 +439,8 @@ class DCOPF(PowerFlowModel):
                     gp.quicksum(
                         diff_stl[s, t, ls]
                         for s in sellers for t in periods for ls in blocks_sellers
-                    ),
+                    ) +
+                    M * gp.quicksum(abs_slack[v, t] for v in scenario.network.nodes for t in periods),
                     GRB.MINIMIZE
                 )
 
@@ -457,7 +461,9 @@ class DCOPF(PowerFlowModel):
                 ) +
                 gp.quicksum(
                     seller_no_load_cost_dict[s, t] * (u_st[s, t] - zonal_allocation.u_st[s, t])
-                    for s in sellers for t in periods),
+                    for s in sellers for t in periods)
+                +
+                M * gp.quicksum(abs_slack[v, t] for v in scenario.network.nodes for t in periods),
                 GRB.MINIMIZE
             )
 
