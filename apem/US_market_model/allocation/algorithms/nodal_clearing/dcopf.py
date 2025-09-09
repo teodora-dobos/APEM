@@ -13,6 +13,8 @@ from apem.US_market_model.allocation.power_flow_model import PowerFlowModel
 from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.utils.extraction import preprocess_as_dict
 
+M = 10 ** 15
+
 
 class DCOPF(PowerFlowModel):
     """
@@ -102,6 +104,10 @@ class DCOPF(PowerFlowModel):
         alpha_vt = model.addVars(nodes, periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='alpha_vt')
         f_vwt = model.addVars([(v, w, t) for v in nodes for w in list(network.neighbors(v)) for t in periods],
                               lb=-GRB.INFINITY, ub=GRB.INFINITY, name='f_vwt')
+        slack = model.addVars([(v, t) for v in nodes for t in periods], lb=-GRB.INFINITY, ub=GRB.INFINITY,
+                              name='slack_vt')
+        abs_slack = model.addVars([(v, t) for v in nodes for t in periods], lb=0, ub=GRB.INFINITY,
+                                  name='abs_slack_vt')
 
         if not redispatch_type:
             model.setObjective(
@@ -121,7 +127,8 @@ class DCOPF(PowerFlowModel):
                     seller_no_load_cost_dict[s, t] * u_st[s, t]
                     for s in sellers
                     for t in periods
-                ),
+                )
+                - M * gp.quicksum(abs_slack[v, t] for v in nodes for t in periods),
                 GRB.MAXIMIZE
             )
         else:
@@ -256,6 +263,7 @@ class DCOPF(PowerFlowModel):
                 f_vwt[v, w, t]
                 for w in list(network.neighbors(v))
             )
+             + slack[v, t]
              == 0
              for t in periods
              for v in nodes),
@@ -266,6 +274,11 @@ class DCOPF(PowerFlowModel):
             alpha_vt[r_star, t] == 0
             for t in periods
         )
+
+        # linearize abs_slack = abs(slack)
+        for v in nodes:
+            for t in periods:
+                model.addGenConstrAbs(abs_slack[v, t], slack[v, t])
 
         model.optimize()
 
@@ -282,6 +295,7 @@ class DCOPF(PowerFlowModel):
             f_vwt = {(v, w, t): f_vwt[v, w, t].X for v in nodes for w in list(network.neighbors(v)) for t in periods}
             alpha_vt = {(v, t): alpha_vt[v, t].X for v in nodes for t in periods}
             phi_st = {(s, t): phi_st[s, t].X for s in sellers for t in periods}
+            slack_vt = {(v, t): slack[v, t].X for v in nodes for t in periods}
 
             if results_file:
                 results = []
@@ -291,7 +305,7 @@ class DCOPF(PowerFlowModel):
                 df = pd.DataFrame(results, columns=["variable", "value"])
                 df.to_csv(results_file, index=False)
 
-            allocation = Allocation(obj, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, self,
+            allocation = Allocation(obj, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, slack_vt, self,
                                     model.Runtime, model.NumVars, model.NumConstrs, model.MIPGap,
                                     model.NumVars - model.NumBinVars, model.NumBinVars, scenario)
             if stats_file:
@@ -329,6 +343,12 @@ class DCOPF(PowerFlowModel):
                                                     final_allocation=allocation.SellersAllocation,
                                                     periods=periods, blocks_sellers=blocks_sellers, sellers=sellers,
                                                     file=str(redispatch_vols_file))
+
+            if any(x > 1e-9 for x in slack_vt.values()):
+                nonzero = {(v, t): val for (v, t), val in slack_vt.items() if abs(val) > 1e-9}
+                print('-' * 50)
+                print(f'Nonzero slack detected at the following (node, period) pairs: {nonzero}')
+                print('-' * 50)
 
             return allocation
 
