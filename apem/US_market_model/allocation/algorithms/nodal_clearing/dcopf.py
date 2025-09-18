@@ -25,7 +25,7 @@ class DCOPF(PowerFlowModel):
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None,
               redispatch_type: Optional[str] = None, zonal_allocation: Optional[SellersAllocation] = None,
               redispatch_constraint_units: bool = False,
-              redispatch_threshold: float = 0.001) -> Union[Allocation, Error]:
+              redispatch_threshold: float = 0.001, shadow_prices: bool = False) -> Union[Allocation, Error]:
         """
         Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix B).
@@ -41,6 +41,7 @@ class DCOPF(PowerFlowModel):
         :param zonal_allocation: zonal allocation for which a redispatch solution should be computed
         :param redispatch_constraint_units: True if all units can be used for redispatch, False otherwise
         :param redispatch_threshold: production threshold for filtering what units can be redispatched
+        :param shadow_prices: whether shadow prices for the computed allocation should be calculated
         :return: Allocation object if the problem can be solved optimally or an Error object otherwise
         """
         if configuration.relaxation:
@@ -278,7 +279,12 @@ class DCOPF(PowerFlowModel):
         # linearize abs_slack = abs(slack)
         for v in nodes:
             for t in periods:
-                model.addGenConstrAbs(abs_slack[v, t], slack[v, t])
+                model.addConstr(abs_slack[v, t] >= slack[v, t])
+                model.addConstr(abs_slack[v, t] >= -slack[v, t])
+
+        # for v in nodes:
+        #     for t in periods:
+        #         model.addGenConstrAbs(abs_slack[v, t], slack[v, t])
 
         model.optimize()
 
@@ -306,15 +312,25 @@ class DCOPF(PowerFlowModel):
                 df = pd.DataFrame(results, columns=["variable", "value"])
                 df.to_csv(results_file, index=False)
 
-            allocation = Allocation(obj, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, slack_vt, self,
-                                    model.Runtime, model.NumVars, model.NumConstrs, model.MIPGap,
-                                    model.NumVars - model.NumBinVars, model.NumBinVars, scenario)
+            allocation = Allocation(welfare=obj, x_bt=x_bt, y_st=y_st, x_btl=x_btl, y_stl=y_stl, f_vwt=f_vwt,
+                                    alpha_vt=alpha_vt, u_st=u_st, phi_st=phi_st, slack_vt=slack_vt,
+                                    power_flow_model=self, runtime=model.Runtime, num_vars=model.NumVars,
+                                    num_constrs=model.NumConstrs, MIP_gap=model.MIPGap if model.IsMIP else 0.0,
+                                    num_cont_vars=model.NumVars - model.NumBinVars, num_bin_vars=model.NumBinVars,
+                                    dataset=scenario)
             if stats_file:
                 if not redispatch_type:
                     compute_stats(stats_file, scenario, configuration, allocation, model)
                     print('-' * 50)
                     print(f"DCOPF Objective: {obj}")
                     print('-' * 50)
+
+                    if shadow_prices:
+                        duals = model.getAttr("Pi", model.getConstrs())
+                        for c, pi in zip(model.getConstrs(), duals):
+                            if "supply_demand" in c.ConstrName:
+                                print(f"{c.ConstrName}: dual = {pi}")
+
                 else:
                     f = open(stats_file, 'w+')
                     f.write(f'Redispatch objective: {obj}')
