@@ -159,7 +159,8 @@ def solve_and_analyse_scenario(US_dataset: US_Datasets, EU_dataset: EU_Datasets,
                                power_flow_model: PowerFlowModel, cut_type: CutTypes,
                                pricing_algorithm: PricingAlgorithms,
                                redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD,
-                               redispatch_constraint_units: bool = False, redispatch_threshold: float = 0):
+                               redispatch_constraint_units: bool = False, redispatch_threshold: float = 0,
+                               alpha: float = 0):
     """Computes allocation and pricing for some scenario and performs several analyses.
 
     Args:
@@ -170,8 +171,9 @@ def solve_and_analyse_scenario(US_dataset: US_Datasets, EU_dataset: EU_Datasets,
         cut_type: cutting strategy used in the EU market model
         pricing_algorithm (PricingAlgorithms): pricing algorithm used for the pricing computations (US market model)
         redispatch_algorithm (RedispatchAlgorithms): redispatch algorithm used for solving the redispatch problem (US market model)
-        redispatch_constraint_units (bool): True if not all units should be used for redisptch
+        redispatch_constraint_units (bool): True if not all units should be used for redispatch
         redispatch_threshold (float): capacity threshold (MW) for selecting what units can be used for redispatch
+        alpha (float): used for markup pricing
 
     Raises:
         ValueError: power flow model 'Zonal_NTC' can only be used together with the PyPSA datasets
@@ -180,21 +182,37 @@ def solve_and_analyse_scenario(US_dataset: US_Datasets, EU_dataset: EU_Datasets,
         solve_euphemia(EU_dataset, cut_type)
 
     elif market_model == MarketModels.US_model:
-        price_analysis = solve_US_scenario(US_dataset, power_flow_model, pricing_algorithm, redispatch_algorithm,
-                                           redispatch_constraint_units, redispatch_threshold)
-        is_pypsa_dataset = US_dataset in [US_Datasets.PyPSAEurLarge, US_Datasets.PyPSAEurSmall]
-        base_scenario = None
+        if pricing_algorithm != PricingAlgorithms.Markup:
+            price_analysis = solve_US_scenario(US_dataset, power_flow_model, pricing_algorithm, redispatch_algorithm,
+                                               redispatch_constraint_units, redispatch_threshold)
+            is_pypsa_dataset = US_dataset in [US_Datasets.PyPSAEurLarge, US_Datasets.PyPSAEurSmall]
+            base_scenario = None
 
-        if is_pypsa_dataset:
-            isDCOPF = isinstance(power_flow_model, DCOPF)
-            scenario_to_analyse = (price_analysis.scenario if isDCOPF
-                                   else price_analysis.base_scenario)
-            base_scenario = None if isDCOPF else price_analysis.base_scenario
-            zonal_config = (power_flow_model.zonal_configuration if
-                            isinstance(power_flow_model, Zonal_NTC) else "")
+            if is_pypsa_dataset:
+                isDCOPF = isinstance(power_flow_model, DCOPF)
+                scenario_to_analyse = (price_analysis.scenario if isDCOPF
+                                       else price_analysis.base_scenario)
+                base_scenario = None if isDCOPF else price_analysis.base_scenario
+                zonal_config = (power_flow_model.zonal_configuration if
+                                isinstance(power_flow_model, Zonal_NTC) else "")
 
-            scenario_to_analyse.analyse_scenario()  # analyse base scenario
-            scenario_to_analyse.plot_network(zonal_config)  # plot underlying network
+                scenario_to_analyse.analyse_scenario()  # analyse base scenario
+                scenario_to_analyse.plot_network(zonal_config)  # plot underlying network
 
-        return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
-                               price_analysis.configuration, power_flow_model, base_scenario)
+            return analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
+                                   price_analysis.configuration, power_flow_model, base_scenario)
+
+        else:
+            scenario = _retrieve_data(US_dataset)
+            configuration = _create_configuration()
+
+            zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, Zonal_NTC) else ""
+            base_path = f"US_results/{scenario}_results/{power_flow_model}"
+            path = base_path + "/" + zonal_part
+            os.makedirs(path, exist_ok=True)
+
+            allocation, pricing = pricing_algorithm.Markup.value.compute_prices(scenario, configuration,
+                                                                                file_prices=path + f"/{pricing_algorithm.value}_results.csv",
+                                                                                alpha=alpha)
+            price_analysis = PriceAnalysis(scenario=scenario, allocation=allocation, pricing=pricing,
+                                           configuration=configuration, base_scenario=scenario)

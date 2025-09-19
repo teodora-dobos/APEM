@@ -11,6 +11,7 @@ from apem.US_market_model.pricing.algorithms.elmp import ELMP
 from apem.US_market_model.pricing.algorithms.ip import IP
 from apem.US_market_model.pricing.algorithms.join import Join
 from apem.US_market_model.pricing.algorithms.min_mwp import MinMWP
+from apem.US_market_model.pricing.algorithms.markup import Markup
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_abs_cost import MinAbsCostRD
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_abs_vol import MinAbsVolRD
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
@@ -33,6 +34,7 @@ class PricingAlgorithms(Enum):
     IP = IP()
     MinMWP = MinMWP()
     Join = Join()
+    Markup = Markup()
 
 
 class RedispatchAlgorithms(Enum):

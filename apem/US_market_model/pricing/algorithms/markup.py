@@ -1,4 +1,5 @@
-from typing import Optional, Union
+import os
+from typing import Optional, Union, Tuple
 
 import numpy as np
 import pandas as pd
@@ -10,12 +11,11 @@ from apem.US_market_model.allocation.error import Error
 from apem.US_market_model.data.parsing.scenario import Scenario
 from apem.US_market_model.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.US_market_model.pricing.analysis.pricing import Pricing
-from apem.enums import US_Datasets
 
 
 class Markup(PricingAlgorithm):
     def compute_prices(self, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None,
-                       alpha: Optional[float] = 0) -> Union[Pricing, Error]:
+                       alpha: Optional[float] = 0) -> Union[Tuple[Allocation, Pricing], Error]:
         # first stage -> compute prices
         dcopf = DCOPF()
 
@@ -27,10 +27,19 @@ class Markup(PricingAlgorithm):
 
         configuration.relaxation = True
 
-        initial_allocation = dcopf.solve(modified_scenario, configuration, results_file=f'markup_phase1.csv',
-                                         stats_file='markup_phase1_stats.txt', shadow_prices=True, alpha=alpha)
+        base_dir = os.path.dirname(file_prices) if file_prices else "."
+        phase_dir = os.path.splitext(file_prices)[0] if file_prices else base_dir
 
-        seller_prices_file = 'markup_phase1.txt'.split(".", 1)[0] + f'_seller_prices_{alpha}.csv'
+        os.makedirs(base_dir, exist_ok=True)
+        os.makedirs(phase_dir, exist_ok=True)
+
+        results_file = os.path.join(phase_dir, f"alpha{alpha}_phase1_allocation.csv")
+        stats_file = os.path.join(phase_dir, f"alpha{alpha}_phase1_stats.txt")
+
+        initial_allocation = dcopf.solve(modified_scenario, configuration, results_file=results_file,
+                                         stats_file=stats_file, shadow_prices=True, alpha=alpha)
+
+        seller_prices_file = os.path.splitext(results_file)[0] + f"_seller_prices_alpha{alpha}.csv"
         seller_prices = pd.read_csv(seller_prices_file)
         p_vt = dict(zip(zip(seller_prices["node"], seller_prices["period"]), seller_prices["price"]))
 
@@ -48,43 +57,45 @@ class Markup(PricingAlgorithm):
                                                    seller, period] > threshold else 0
 
             configuration.relaxation = False
-            final_allocation = dcopf.solve(scenario, configuration, results_file=f'markup_phase2_{threshold}.csv',
-                                           stats_file=f'markup_phase2_stats_{threshold}.txt', u_fixed=u_fixed)
-            if type(final_allocation) == Allocation:
-                if final_allocation.welfare > best_welfare:
-                    best_welfare = final_allocation.welfare
+
+            phase2_results = os.path.join(phase_dir, f"alpha{alpha}_phase2_threshold{threshold}_allocation.csv")
+            phase2_stats = os.path.join(phase_dir, f"alpha{alpha}_phase2_threshold{threshold}_stats.txt")
+
+            phase2_allocation = dcopf.solve(
+                scenario, configuration,
+                results_file=phase2_results,
+                stats_file=phase2_stats,
+                u_fixed=u_fixed
+            )
+
+            if type(phase2_allocation) == Allocation:
+                if phase2_allocation.welfare > best_welfare:
+                    best_welfare = phase2_allocation.welfare
                     best_threshold = threshold
 
         if best_threshold != -1:
             u_fixed = {}
             for seller, period in initial_allocation.SellersAllocation.u_st:
                 u_fixed[seller, period] = 1 if initial_allocation.SellersAllocation.u_st[
-                                                   seller, period] > threshold else 0
+                                                   (seller, period)] > best_threshold else 0
 
-            dcopf.solve(scenario, configuration, results_file=f'final_markup_phase2_{best_threshold}.csv',
-                        stats_file=f'final_markup_phase2_stats_{best_threshold}.txt', u_fixed=u_fixed)
+            final_results = os.path.join(phase_dir, f"alpha{alpha}_final_phase2_threshold{best_threshold}.csv")
+            final_stats = os.path.join(phase_dir, f"alpha{alpha}_final_phase2_stats_threshold{best_threshold}.txt")
+
+            final_allocation = dcopf.solve(
+                scenario, configuration,
+                results_file=final_results,
+                stats_file=final_stats,
+                u_fixed=u_fixed
+            )
 
             print(f"Best allocation found with threshold = {best_threshold}, welfare: {best_welfare}")
 
-        return pricing
+            return final_allocation, pricing
+
+        print(f'Could not run markup pricing - second stage infeasible')
+        error = Error(-1)
+        return error
 
     def __str__(self):
         return 'Markup'
-
-
-markup = Markup()
-
-scenario = US_Datasets.IEEE_RTS.value.parse_data()
-configuration = Configuration(
-    MIP_gap=1e-4,
-    optimality_tol=1e-6,
-    time_limit=3600,
-    work_limit=3600,
-    threads=0,
-    presparsify=-1,
-    strict_supply_demand_eq=True,
-    relaxation=False,
-    output_flag=0,
-    verbosity=True
-)
-markup.compute_prices(scenario=scenario, configuration=configuration, alpha=0.01)

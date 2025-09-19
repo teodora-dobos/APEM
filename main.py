@@ -14,7 +14,8 @@ def main():
         pricing_algorithm=config.get_pricing_algorithm(),
         redispatch_algorithm=config.get_redispatch_algorithm(),
         redispatch_constraint_units=config.get_redispatch_constraint_units(),
-        redispatch_threshold=config.get_redispatch_threshold()
+        redispatch_threshold=config.get_redispatch_threshold(),
+        alpha=config.get_alpha()
     )
 
 

@@ -61,6 +61,10 @@ class ConfigLoader:
         if self.raw_config['scenario']['redispatch_threshold'] < 0:
             raise ValueError(f"Invalid redispatch threshold: {self.raw_config['scenario']['redispatch_threshold']}")
 
+        # Validate alpha for markup pricing
+        if not 0 <= self.raw_config['scenario']['alpha'] < 1:
+            raise ValueError(f"Invalid alpha: {self.raw_config['scenario']['alpha']}")
+
         # Validate zonal configuration if using Zonal_NTC
         if self.raw_config['scenario']['power_flow_model']['type'] == "Zonal_NTC":
             zonal_config = self.raw_config['zonal_configuration']
@@ -99,6 +103,9 @@ class ConfigLoader:
 
     def get_redispatch_threshold(self) -> float:
         return self.config['scenario']['redispatch_threshold']
+
+    def get_alpha(self) -> float:
+        return self.config['scenario']['alpha']
 
     def get_solver_configuration(self) -> Dict[str, Any]:
         return self.config['solver_configuration']

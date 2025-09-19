@@ -1,4 +1,5 @@
 import csv
+import os
 from pathlib import Path
 from typing import Optional, Union, Any, Dict
 import re
@@ -26,9 +27,8 @@ class DCOPF(PowerFlowModel):
     def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None,
               redispatch_type: Optional[str] = None, zonal_allocation: Optional[SellersAllocation] = None,
-              redispatch_constraint_units: bool = False,
-              redispatch_threshold: float = 0.001, shadow_prices: bool = False,
-              alpha: float = 0) -> Union[Allocation, Error]:
+              redispatch_constraint_units: bool = False, redispatch_threshold: float = 0.001,
+              shadow_prices: bool = False, alpha: float = 0) -> Union[Allocation, Error]:
         """
         Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix B).
@@ -329,8 +329,13 @@ class DCOPF(PowerFlowModel):
                     print(f"DCOPF Objective: {obj}")
                     print('-' * 50)
 
-                    seller_prices_file = results_file.split(".", 1)[0] + f'_seller_prices_{alpha}.csv'
-                    buyer_prices_file = results_file.split(".", 1)[0] + f'_buyer_prices_{alpha}.csv'
+                    root, _ = os.path.splitext(results_file)
+                    dirpath = os.path.dirname(root)
+                    if dirpath:
+                        os.makedirs(dirpath, exist_ok=True)
+
+                    seller_prices_file = f"{root}_seller_prices_alpha{alpha}.csv"
+                    buyer_prices_file = f"{root}_buyer_prices_alpha{alpha}.csv"
 
                     if shadow_prices:
                         print("Computing shadow prices...")

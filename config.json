@@ -29,7 +29,8 @@
         "ELMP",
         "IP",
         "MinMWP",
-        "Join"
+        "Join",
+        "Markup"
     ],
     "_available_cut_types": [
         "price based",
@@ -53,16 +54,17 @@
     "verbosity": true,
     "scenario": {
         "market_model": "US_model",
-        "US_dataset": "PyPSAEurSmall",
+        "US_dataset": "ARPA",
         "EU_dataset": "GME",
         "power_flow_model": {
-            "type": "Zonal_NTC"
+            "type": "DCOPF"
         },
         "cut_type": "price based",
-        "pricing_algorithm": "IP",
+        "pricing_algorithm": "Markup",
         "redispatch_algorithm": "MinCostRD",
         "redispatch_constraint_units": false,
-        "redispatch_threshold": 0.001
+        "redispatch_threshold": 0.001,
+        "alpha": 0.01
     },
     "solver_configuration": {
         "MIP_gap": 1e-4,

@@ -61,7 +61,8 @@ The most important section is `scenario`, which defines the dataset, market mode
     "pricing_algorithm": "IP",     // choose from _available_pricing_algorithms
     "redispatch_algorithm": "MinCostRD",  // choose from _available_redispatch_algorithms 
     "redispatch_constraint_units": false, // controls whether some units should not be redispatched
-    "redispatch_threshold": 0.001 // in MW, controls what units can be redispatched
+    "redispatch_threshold": 0.001, // in MW, controls what units can be redispatched
+    "alpha": 0.01 // markup used for markup pricing, should be between 0 and 1
 }
 ```
 
