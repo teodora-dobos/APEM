@@ -60,7 +60,7 @@
             "type": "DCOPF"
         },
         "cut_type": "price based",
-        "pricing_algorithm": "Markup",
+        "pricing_algorithm": "IP",
         "redispatch_algorithm": "MinCostRD",
         "redispatch_constraint_units": false,
         "redispatch_threshold": 0.001,
