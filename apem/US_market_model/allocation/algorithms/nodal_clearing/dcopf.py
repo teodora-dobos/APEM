@@ -1,5 +1,7 @@
+import csv
 from pathlib import Path
 from typing import Optional, Union, Any, Dict
+import re
 
 import gurobipy as gp
 import pandas as pd
@@ -25,7 +27,8 @@ class DCOPF(PowerFlowModel):
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None,
               redispatch_type: Optional[str] = None, zonal_allocation: Optional[SellersAllocation] = None,
               redispatch_constraint_units: bool = False,
-              redispatch_threshold: float = 0.001, shadow_prices: bool = False) -> Union[Allocation, Error]:
+              redispatch_threshold: float = 0.001, shadow_prices: bool = False,
+              alpha: float = 0) -> Union[Allocation, Error]:
         """
         Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
         (Appendix B).
@@ -42,6 +45,7 @@ class DCOPF(PowerFlowModel):
         :param redispatch_constraint_units: True if all units can be used for redispatch, False otherwise
         :param redispatch_threshold: production threshold for filtering what units can be redispatched
         :param shadow_prices: whether shadow prices for the computed allocation should be calculated
+        :param alpha: used for markup pricing
         :return: Allocation object if the problem can be solved optimally or an Error object otherwise
         """
         if configuration.relaxation:
@@ -325,11 +329,38 @@ class DCOPF(PowerFlowModel):
                     print(f"DCOPF Objective: {obj}")
                     print('-' * 50)
 
+                    seller_prices_file = results_file.split(".", 1)[0] + f'_seller_prices_{alpha}.csv'
+                    buyer_prices_file = results_file.split(".", 1)[0] + f'_buyer_prices_{alpha}.csv'
+
                     if shadow_prices:
+                        print("Computing shadow prices...")
                         duals = model.getAttr("Pi", model.getConstrs())
+                        rows_seller = []
+                        rows_buyer = []
+
                         for c, pi in zip(model.getConstrs(), duals):
                             if "supply_demand" in c.ConstrName:
-                                print(f"{c.ConstrName}: dual = {pi}")
+                                match = re.search(r"\[(\d+),(\d+)\]", c.ConstrName)
+                                if match:
+                                    period, node = match.groups()
+                                    rows_seller.append([int(node), int(period), round(-pi, 2)])
+                                    rows_buyer.append([int(node), int(period), (1 + alpha) * round(-pi, 2)])
+
+                        # Sort by node, then period
+                        rows_seller.sort(key=lambda x: (x[0], x[1]))
+                        rows_buyer.sort(key=lambda x: (x[0], x[1]))
+
+                        # seller prices
+                        with open(seller_prices_file, mode="w", newline="") as f:
+                            writer = csv.writer(f)
+                            writer.writerow(["node", "period", "price"])
+                            writer.writerows(rows_seller)
+
+                        # buyer prices
+                        with open(buyer_prices_file, mode="w", newline="") as f:
+                            writer = csv.writer(f)
+                            writer.writerow(["node", "period", "price"])
+                            writer.writerows(rows_buyer)
 
                 else:
                     f = open(stats_file, 'w+')
