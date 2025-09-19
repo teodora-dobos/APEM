@@ -43,7 +43,7 @@ class Markup(PricingAlgorithm):
         seller_prices = pd.read_csv(seller_prices_file)
         p_vt = dict(zip(zip(seller_prices["node"], seller_prices["period"]), seller_prices["price"]))
 
-        pricing = Pricing(node_prices=p_vt)
+        pricing = Pricing(node_prices=p_vt, used_algorithm='Markup')
 
         # second stage -> find feasible allocation
         # try out multiple thresholds

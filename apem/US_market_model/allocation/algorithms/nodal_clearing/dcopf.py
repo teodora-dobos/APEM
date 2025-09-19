@@ -286,10 +286,6 @@ class DCOPF(PowerFlowModel):
                 model.addConstr(abs_slack[v, t] >= slack[v, t])
                 model.addConstr(abs_slack[v, t] >= -slack[v, t])
 
-        # for v in nodes:
-        #     for t in periods:
-        #         model.addGenConstrAbs(abs_slack[v, t], slack[v, t])
-
         model.optimize()
 
         status = model.Status

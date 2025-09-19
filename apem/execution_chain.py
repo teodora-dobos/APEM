@@ -95,6 +95,7 @@ def analyse_results(scenario: Scenario, allocation: Allocation, pricing: Pricing
         scenario (Scenario): dataset for which the price analysis is to be performed
         allocation (Allocation): precomputed allocation
         pricing (Pricing): precomputed pricing
+        configuration: configuration for Gurobi
         pf_model_value (DCOPF | Zonal_NTC): power flow model information
         base_scenario (Scenario, optional): nodal base scenario for zonal pricing, defaults to None
         
@@ -216,3 +217,6 @@ def solve_and_analyse_scenario(US_dataset: US_Datasets, EU_dataset: EU_Datasets,
                                                                                 alpha=alpha)
             price_analysis = PriceAnalysis(scenario=scenario, allocation=allocation, pricing=pricing,
                                            configuration=configuration, base_scenario=scenario)
+
+            analyse_results(price_analysis.scenario, price_analysis.allocation, price_analysis.pricing,
+                            price_analysis.configuration, power_flow_model)

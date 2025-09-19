@@ -17,19 +17,21 @@ from apem.US_market_model.pricing.analysis.pricing import Pricing, GLOCS, LLOCS,
 
 class PriceAnalysis:
 
-    def __init__(self, scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration, base_scenario: Optional[Scenario] = None):
+    def __init__(self, scenario: Scenario, allocation: Allocation, pricing: Pricing, configuration: Configuration,
+                 base_scenario: Optional[Scenario] = None):
         self.scenario = scenario
         self.allocation = allocation
         self.pricing = pricing
         self.configuration = configuration
-        self.base_scenario = base_scenario # used only for zonal_NTC
+        self.base_scenario = base_scenario  # used only for zonal_NTC
 
     def compute_glocs(self, file_glocs: str = "", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
         if pricing.status == 1:
             if not pricing.glocs:
                 elmp = ELMP()
-                elmp_results = elmp.compute_prices(self.allocation, self.scenario, self.configuration, fixed_prices=pricing)
+                elmp_results = elmp.compute_prices(self.allocation, self.scenario, self.configuration,
+                                                   fixed_prices=pricing)
                 if elmp_results.status == 1:
                     pricing.glocs = elmp_results.glocs
                 else:
@@ -77,7 +79,8 @@ class PriceAnalysis:
         if pricing.status == 1:
             if not pricing.mwps:
                 min_mwp = MinMWP()
-                min_mwp_results = min_mwp.compute_prices(self.allocation, self.scenario, self.configuration, fixed_prices=pricing)
+                min_mwp_results = min_mwp.compute_prices(self.allocation, self.scenario, self.configuration,
+                                                         fixed_prices=pricing)
                 if min_mwp_results.status == 1:
                     pricing.mwps = min_mwp_results.mwps
                 else:
@@ -190,6 +193,6 @@ class PriceAnalysis:
 
         if self.scenario.name in ["PyPSA_Eur_Large", "PyPSA_Eur_Small"]:
             nodal_scenario = self.base_scenario if zonal_config else self.scenario
-                
+
             plot_price_heatmap(f"{path}/{self.pricing.used_algorithm}_heatmap.png", nodal_scenario,
                                avg_prices, zonal_config)
