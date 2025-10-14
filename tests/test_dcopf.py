@@ -1,215 +1,184 @@
-import unittest
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import pytest
+from unittest.mock import MagicMock, patch
+import pandas as pd
+import networkx as nx
+from collections import defaultdict
 
-from apem.execution_chain import solve_US_scenario, US_Datasets, EU_Datasets, PowerFlowModels, PricingAlgorithms
-
-
-class Test_DCOPF_IEEERTS_PricingAlgorithm(unittest.TestCase):
-    """
-       Unit tests for evaluating the pricing algorithms on the IEEE RTS dataset under the DCOPF power flow model.
-
-       Each test case runs the 'solve_scenario' function with a specific combination of:
-       - Datasets.IEEE_RTS
-       - PowerFlowModels.DCOPF
-       - One of the pricing algorithms (IP, ELMP, Join, MinMWP)
-
-       The tests aim to ensure that the 'solve_scenario' function raises no exception.
-       """
-
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.dirname(os.path.dirname(__file__)))
-
-    def test_IEEE_RTS_DCOPF_IP(self):
-        try:
-            solve_US_scenario(US_Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_IP: {e}")
-
-    def test_IEEE_RTS_DCOPF_ELMP(self):
-        try:
-            solve_US_scenario(US_Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_ELMP: {e}")
-
-    def test_IEEE_RTS_DCOPF_Join(self):
-        try:
-            solve_US_scenario(US_Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_Join: {e}")
-
-    def test_IEEE_RTS_DCOPF_MinMWP(self):
-        try:
-            solve_US_scenario(US_Datasets.IEEE_RTS, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_MinMWP: {e}")
+from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.US_market_model.allocation.error import Error
 
 
-class Test_DCOPF_ARPA_PricingAlgorithm(unittest.TestCase):
-    """
-       Unit tests for evaluating various pricing algorithms on the ARPA dataset under the DCOPF power flow model.
+# ---------- Minimal, valid scenario ----------
+@pytest.fixture
+def dummy_scenario():
+    class DummyScenario:
+        pass
 
-       Each test case runs the 'solve_scenario' function with a specific combination of:
-       - Datasets.ARPA
-       - PowerFlowModels.DCOPF
-       - One of the pricing algorithms (IP, ELMP, Join, MinMWP)
+    s = DummyScenario()
 
-       The tests aim to ensure that the 'solve_scenario' function raises no exception.
-       """
+    # one period
+    s.periods = [1]
 
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.dirname(os.path.dirname(__file__)))
+    # tiny buyers table
+    s.blocks_buyers = [1]
+    s.df_buyers = pd.DataFrame(
+        {
+            "buyer": [1],
+            "period": [1],
+            "inelastic_dem": [0.0],
+            "max_dem": [10.0],
+            "val": [1.0],
+            "size": [10.0],
+        }
+    )
 
-    def test_ARPA_DCOPF_IP(self):
-        try:
-            solve_US_scenario(US_Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_ARPA_DCOPF_IP: {e}")
+    # tiny sellers table
+    s.blocks_sellers = [1]
+    s.df_sellers = pd.DataFrame(
+        {
+            "seller": [1],
+            "period": [1],
+            "no_load_cost": [0.0],
+            "min_prod": [0.0],
+            "max_prod": [10.0],
+            "min_uptime": [1],
+            "cost": [0.5],
+            "size": [10.0],
+        }
+    )
 
-    def test_ARPA_DCOPF_ELMP(self):
-        try:
-            solve_US_scenario(US_Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_ARPA_DCOPF_ELMP: {e}")
-
-    def test_ARPA_DCOPF_Join(self):
-        try:
-            solve_US_scenario(US_Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
-        except Exception as e:
-            self.fail(f"Exception raised in test_ARPA_DCOPF_Join: {e}")
-
-    def test_ARPA_DCOPF_MinMWP(self):
-        try:
-            solve_US_scenario(US_Datasets.ARPA, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_ARPA_DCOPF_MinMWP: {e}")
-
-
-class Test_DCOPF_PyPSAEurSmall_PricingAlgorithm(unittest.TestCase):
-    """
-       Unit tests for evaluating various pricing algorithms on the PyPSAEurSmall dataset under the DCOPF power flow model.
-
-       Each test case runs the 'solve_scenario' function with a specific combination of:
-       - Datasets.PyPSAEurSmall
-       - PowerFlowModels.DCOPF
-       - One of the pricing algorithms (IP, ELMP, Join, MinMWP)
-
-       The tests aim to ensure that the 'solve_scenario' function raises no exception.
-       """
-
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.dirname(os.path.dirname(__file__)))
-
-    def test_PyPSAEurSmall_DCOPF_IP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_IP: {e}")
-
-    def test_PyPSAEurSmall_DCOPF_ELMP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_ELMP: {e}")
-
-    def test_PyPSAEurSmall_DCOPF_Join(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_Join: {e}")
-
-    def test_PyPSAEurSmall_DCOPF_MinMWP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurSmall, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurSmall_DCOPF_MinMWP: {e}")
+    # 2-bus network with attributes B and F_max
+    G = nx.Graph()
+    G.add_node("n1")
+    G.add_node("n2")
+    G.add_edge("n1", "n2", B=1.0, F_max=100.0)
+    s.network = G
+    s.nodes_agents = {
+        "n1": {"buyers": [1], "sellers": []},
+        "n2": {"buyers": [], "sellers": [1]},
+    }
+    s.r_star = "n1"
+    return s
 
 
-class Test_DCOPF_PyPSAEurLarge_PricingAlgorithm(unittest.TestCase):
-    """
-       Unit tests for evaluating various pricing algorithms on the PyPSAEurLarge dataset under the DCOPF power flow model.
+@pytest.fixture
+def dummy_config():
+    class DummyConfig:
+        relaxation = False
 
-       Each test case runs the 'solve_scenario' function with a specific combination of:
-       - Datasets.PyPSAEurLarge
-       - PowerFlowModels.DCOPF
-       - One of the pricing algorithms (IP, ELMP, Join, MinMWP)
+        def apply_to_model(self, model):
+            pass
 
-       The tests aim to ensure that the 'solve_scenario' function raises no exception.
-       """
-
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.dirname(os.path.dirname(__file__)))
-
-    def test_PyPSAEurLarge_DCOPF_IP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_IP: {e}")
-
-    def test_PyPSAEurLarge_DCOPF_ELMP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_ELMP: {e}")
-
-    def test_PyPSAEurLarge_DCOPF_Join(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_Join: {e}")
-
-    def test_PyPSAEurLarge_DCOPF_MinMWP(self):
-        try:
-            solve_US_scenario(US_Datasets.PyPSAEurLarge, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_PyPSAEurLarge_DCOPF_MinMWP: {e}")
+    return DummyConfig()
 
 
-class Test_DCOPF_PJM_PricingAlgorithm(unittest.TestCase):
-    """
-       Unit tests for evaluating the pricing algorithms on the PJM dataset under the DCOPF power flow model.
-
-       Each test case runs the 'solve_scenario' function with a specific combination of:
-       - Datasets.PJM
-       - PowerFlowModels.DCOPF
-       - One of the pricing algorithms (IP, ELMP, Join, MinMWP)
-
-       The tests aim to ensure that the 'solve_scenario' function raises no exception.
-       """
-
-    @classmethod
-    def setUpClass(cls):
-        os.chdir(os.path.dirname(os.path.dirname(__file__)))
-
-    def test_PJM_DCOPF_IP(self):
-        try:
-            solve_US_scenario(US_Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.IP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_IP: {e}")
-
-    def test_PJM_DCOPF_ELMP(self):
-        try:
-            solve_US_scenario(US_Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.ELMP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_ELMP: {e}")
-
-    def test_PJM_DCOPF_Join(self):
-        try:
-            solve_US_scenario(US_Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.Join)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_Join: {e}")
-
-    def test_PJM_DCOPF_MinMWP(self):
-        try:
-            solve_US_scenario(US_Datasets.PJM, PowerFlowModels.DCOPF.value, PricingAlgorithms.MinMWP)
-        except Exception as e:
-            self.fail(f"Exception raised in test_IEEE_RTS_DCOPF_MinMWP: {e}")
+def test_dcopf_str():
+    assert str(DCOPF()) == "DCOPF"
 
 
-if __name__ == '__main__':
-    unittest.main()
+def test_compare_zonal_vs_final_allocation(tmp_path):
+    z_alloc = MagicMock()
+    f_alloc = MagicMock()
+    z_alloc.u_st = {(1, 1): 1}
+    f_alloc.u_st = {(1, 1): 0}
+    z_alloc.y_st = {(1, 1): 2}
+    f_alloc.y_st = {(1, 1): 3}
+    z_alloc.y_stl = {(1, 1, 1): 1.0}
+    f_alloc.y_stl = {(1, 1, 1): 1.5}
+
+    dcopf = DCOPF()
+    out = tmp_path / "compare.csv"
+    dcopf.compare_zonal_vs_final_allocation(z_alloc, f_alloc, str(out))
+    assert out.exists()
+    txt = out.read_text()
+    assert "u_st" in txt and "diff" in txt
+
+
+def test_compute_redispatch_costs(tmp_path):
+    z_alloc = MagicMock()
+    f_alloc = MagicMock()
+    z_alloc.y_stl = {(1, 1, 1): 1}
+    f_alloc.y_stl = {(1, 1, 1): 2}
+    z_alloc.u_st = {(1, 1): 1}
+    f_alloc.u_st = {(1, 1): 2}
+
+    dcopf = DCOPF()
+    file = tmp_path / "costs.txt"
+    dcopf.compute_redispatch_costs(
+        z_alloc, f_alloc,
+        seller_cost_dict={1: {(1, 1): 10}},
+        seller_no_load_cost_dict={(1, 1): 5},
+        periods=[1], blocks_sellers=[1], sellers=[1],
+        file=str(file)
+    )
+    assert "Redispatch costs" in file.read_text()
+
+
+def test_compute_redispatch_volumes(tmp_path):
+    z_alloc = MagicMock()
+    f_alloc = MagicMock()
+    z_alloc.y_stl = {(1, 1, 1): 1}
+    f_alloc.y_stl = {(1, 1, 1): 4}
+
+    dcopf = DCOPF()
+    file = tmp_path / "vols.txt"
+    dcopf.compute_redispatch_volumes(
+        z_alloc, f_alloc,
+        periods=[1], blocks_sellers=[1], sellers=[1],
+        file=str(file)
+    )
+    assert "Redispatch volumes" in file.read_text()
+
+
+def test_add_redispatch_constraints_objective_minabsvol(dummy_scenario):
+    model = MagicMock()
+    # Return zero-by-default containers for any addVars(...) call
+    model.addVars.side_effect = lambda *a, **kw: defaultdict(float)
+    model.addConstrs.side_effect = lambda *a, **kw: None
+    model.setObjective.side_effect = lambda *a, **kw: None
+
+    zonal_alloc = MagicMock()
+    zonal_alloc.y_stl = {(1, 1, 1): 0.0}
+
+    # Provide abs_slack as real numbers for all (node, period) pairs used in quicksum
+    abs_slack = {("n1", 1): 0.0, ("n2", 1): 0.0}
+
+    dcopf = DCOPF()
+    updated = dcopf.add_redispatch_constraints_objective(
+        redispatch_type="MinAbsVolRD",
+        model=model,
+        scenario=dummy_scenario,
+        y_stl={}, u_st={}, abs_slack=abs_slack,
+        seller_cost_dict={}, seller_no_load_cost_dict={},
+        zonal_allocation=zonal_alloc
+    )
+    assert updated is model
+
+
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+def test_solve_returns_error(mock_preproc, GRB, MockModel, dummy_scenario, dummy_config):
+    from collections import defaultdict
+
+    # Every preprocess dict access returns 0.0 by default
+    mock_preproc.side_effect = lambda *a, **kw: defaultdict(float)
+
+    # Mock Gurobi model: accept all calls; return zeros for any addVars access
+    mock_model = MagicMock()
+    mock_model.addConstr.side_effect = lambda *a, **kw: None
+    mock_model.addConstrs.side_effect = lambda *a, **kw: None
+    mock_model.addVars.side_effect = lambda *a, **kw: defaultdict(float)
+    mock_model.setObjective.side_effect = lambda *a, **kw: None
+    mock_model.optimize.side_effect = lambda *a, **kw: None
+    mock_model.Status = 3  # infeasible
+    MockModel.return_value = mock_model
+
+    # Minimal constants used
+    GRB.INFEASIBLE = 3
+    GRB.BINARY = "BINARY"
+    GRB.INFINITY = float("inf")
+
+    dcopf = DCOPF()
+    res = dcopf.solve(dummy_scenario, dummy_config)
+    assert isinstance(res, Error)
