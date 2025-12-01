@@ -3,7 +3,8 @@
 *.txt
 apem-venv/
 !requirements.txt
-results/
+US_results/
+EU_results/
 stats/
 launch.json
 
