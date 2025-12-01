@@ -320,6 +320,9 @@ def create_allocation_from_zonal_results(zonal_results: dict, network: pypsa.Net
         for snapshot, price in price_series.items():
             alpha_vt[(zone_str, snapshot_to_period[snapshot])] = price
 
+    # No slack variables in zonal FBMC; default to zero slack
+    slack_vt = {(v, t): 0.0 for v in zonal_scenario.network.nodes for t in periods}
+
     # Seller data (y_st, u_st, phi_st) - no aggregation needed
     y_st, u_st, phi_st = {}, {}, {}
     gen_name_to_seller_id = pd.Series(zonal_scenario.df_sellers.seller.values,
@@ -382,6 +385,7 @@ def create_allocation_from_zonal_results(zonal_results: dict, network: pypsa.Net
         alpha_vt=alpha_vt,
         u_st=u_st,
         phi_st=phi_st,
+        slack_vt=slack_vt,
         power_flow_model=power_flow_model,
         runtime=model.Runtime,
         num_vars=model.NumVars,

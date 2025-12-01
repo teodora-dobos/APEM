@@ -236,6 +236,9 @@ def create_allocation_from_nodal_results(nodal_results, network, scenario, power
     total_production_cost = model.ObjVal - (C_NSE * total_nse)
     welfare = value_of_served_energy - total_production_cost
 
+    # FBMC MILP does not include slack variables; assume zero slack
+    slack_vt = {(v, t): 0.0 for v in scenario.network.nodes for t in periods}
+
     # --- 6. Instantiate and return the Allocation object ---
     allocation = Allocation(
         welfare=welfare,
@@ -247,6 +250,7 @@ def create_allocation_from_nodal_results(nodal_results, network, scenario, power
         alpha_vt=alpha_vt,
         u_st=u_st,
         phi_st=phi_st,
+        slack_vt=slack_vt,
         power_flow_model=power_flow_model,
         runtime=model.Runtime,
         num_vars=model.NumVars,

@@ -139,17 +139,12 @@ class PriceAnalysis:
 
     def plot_price_heatmap(self, file_heatmap: str = "") -> None:
         prices = self.pricing.node_prices
-        zonal_config = (
-            self.pricing.power_flow_model.zonal_configuration
-            if isinstance(self.pricing.power_flow_model, (Zonal_NTC, ZonalFBMC))
-            else ""
-        )
         plot_price_heatmap(
             file_heatmap=file_heatmap,
             scenario=self.scenario,
             avg_prices=prices,
-            zonal_config=zonal_config,
-            power_flow_model=str(self.pricing.power_flow_model),
+            zonal_config="",
+            power_flow_model="DCOPF",
         )
 
     def plot_supply_demand(self, file_plot: str = "") -> None:
