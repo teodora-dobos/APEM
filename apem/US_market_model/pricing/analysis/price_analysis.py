@@ -180,7 +180,15 @@ class PriceAnalysis:
         if self.scenario.name != "ARPA":
             plot_supply_demand(dir_stats, self.scenario)
 
-        zonal_config = pf_model_value.zonal_configuration if isinstance(pf_model_value, (Zonal_NTC, ZonalFBMC)) else ""
+        if isinstance(pf_model_value, ZonalFBMC):
+            base_case = getattr(pf_model_value, "base_case_type", "")
+            zonal_config = f"{pf_model_value.zonal_configuration}_{base_case}" if base_case else pf_model_value.zonal_configuration
+        elif isinstance(pf_model_value, Zonal_NTC):
+            factor = getattr(pf_model_value, "factor", None)
+            factor_str = f"_f{factor}" if factor is not None else ""
+            zonal_config = f"{pf_model_value.zonal_configuration}{factor_str}"
+        else:
+            zonal_config = ""
         zonal_path = zonal_config + "/" if zonal_config else ""
 
         path = f"{dir_stats}/{pf_model_value}/{zonal_path}{self.pricing.used_algorithm}_results"

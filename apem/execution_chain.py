@@ -40,13 +40,48 @@ def _create_configuration() -> Configuration:
     )
 
 
+def _zonal_part(power_flow_model: PowerFlowModel) -> str:
+    """Encodes zonal configuration (and influencing params) into the result path."""
+    if isinstance(power_flow_model, ZonalFBMC):
+        base_case = getattr(power_flow_model, "base_case_type", "")
+        suffix = f"{power_flow_model.zonal_configuration}"
+        if base_case:
+            suffix += f"_{base_case}"
+        return f"{suffix}/"
+    if isinstance(power_flow_model, Zonal_NTC):
+        factor = getattr(power_flow_model, "factor", None)
+        factor_str = f"_f{factor}" if factor is not None else ""
+        return f"{power_flow_model.zonal_configuration}{factor_str}/"
+    return ""
+
+
+def _write_run_metadata(dataset: US_Datasets, scenario: Scenario, power_flow_model: PowerFlowModel,
+                        pricing_algorithm: PricingAlgorithms, redispatch_algorithm: RedispatchAlgorithms,
+                        zonal_part: str) -> None:
+    """Persist a quick summary of the run configuration alongside results."""
+    base_dir = f"US_results/{scenario}_results"
+    os.makedirs(base_dir, exist_ok=True)
+    meta_path = os.path.join(base_dir, "run_config.txt")
+    with open(meta_path, "w") as f:
+        f.write(f"dataset={dataset.name}\n")
+        f.write(f"power_flow_model={power_flow_model}\n")
+        if zonal_part:
+            f.write(f"zonal_path={zonal_part.rstrip('/')}\n")
+        if isinstance(power_flow_model, ZonalFBMC):
+            f.write(f"base_case={getattr(power_flow_model, 'base_case_type', '')}\n")
+        if isinstance(power_flow_model, Zonal_NTC):
+            f.write(f"factor={getattr(power_flow_model, 'factor', '')}\n")
+        f.write(f"pricing_algorithm={pricing_algorithm.name}\n")
+        f.write(f"redispatch_algorithm={redispatch_algorithm.name}\n")
+
+
 def _solve_US_allocation_problem(
     scenario: Scenario, power_flow_model: PowerFlowModel, configuration: Configuration, u_fixed: Optional[dict] = None
 ):
     if configuration.verbosity:
         print(f"Starting allocation problem for {scenario} using {power_flow_model}...")
 
-    zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
+    zonal_part = _zonal_part(power_flow_model)
     base_path = f"US_results/{scenario}_results/{power_flow_model}"
     path = base_path + "/" + zonal_part + "allocation_results"
     os.makedirs(path, exist_ok=True)
@@ -74,7 +109,7 @@ def _solve_US_redispatch_problem(
         print(f"Starting redispatch problem using {redispatch_algorithm}...")
     redispatch_algorithm = redispatch_algorithm.value
 
-    zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
+    zonal_part = _zonal_part(power_flow_model)
     base_path = f"US_results/{scenario}_results/{power_flow_model}"
     path = base_path + "/" + zonal_part + "allocation_results/redispatch"
     os.makedirs(path, exist_ok=True)
@@ -102,7 +137,7 @@ def _solve_US_pricing_problem(
 
     pricing_algorithm = pricing_algorithm.value
 
-    zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
+    zonal_part = _zonal_part(power_flow_model)
     path = f"US_results/{scenario}_results/{power_flow_model}/{zonal_part}{pricing_algorithm}_results"
     os.makedirs(path, exist_ok=True)
 
@@ -144,6 +179,8 @@ def solve_US_scenario(
     """Computes allocation and pricing for some scenario."""
     scenario = _retrieve_data(dataset)
     configuration = _create_configuration()
+    zonal_part = _zonal_part(power_flow_model)
+    _write_run_metadata(dataset, scenario, power_flow_model, pricing_algorithm, redispatch_algorithm, zonal_part)
 
     if isinstance(power_flow_model, (DCOPF, NodalFBMC)):
         allocation = _solve_US_allocation_problem(scenario, power_flow_model, configuration)

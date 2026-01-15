@@ -202,9 +202,11 @@ class ZonalFBMC(PowerFlowModel):
                                                               p_bus_expected, nodal_ptdf)
 
             if stats_file and zonal_results.get('model'):
+                os.makedirs(os.path.dirname(stats_file), exist_ok=True)
                 compute_stats(stats_file, scenario, configuration, allocation, zonal_results['model'])
 
             if results_file:
+                os.makedirs(os.path.dirname(results_file), exist_ok=True)
                 self._save_zonal_results(zonal_results, results_file)
 
             return zonal_scenario, allocation

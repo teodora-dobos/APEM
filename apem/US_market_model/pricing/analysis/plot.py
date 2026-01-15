@@ -49,8 +49,23 @@ def plot_price_heatmap(
 
     # Handle zonal mapping, if applicable
     if zonal_config:
-        # Load csv file with node-to-zone mapping
-        df_zones = pd.read_csv(os.path.join(results_directory, zonal_config, "node_to_zone.csv"), dtype={"node": str, "zone": str})
+        # Load csv file with node-to-zone mapping, with fallback if base_case suffix was added
+        node_to_zone_path = os.path.join(results_directory, zonal_config, "node_to_zone.csv")
+        if not os.path.exists(node_to_zone_path):
+            # try stripping base_case or factor suffixes
+            fallback_config = zonal_config
+            for sep in ["_",]:
+                if sep in fallback_config:
+                    trimmed = fallback_config.rsplit(sep, 1)[0]
+                    alt_path = os.path.join(results_directory, trimmed, "node_to_zone.csv")
+                    if os.path.exists(alt_path):
+                        node_to_zone_path = alt_path
+                        break
+        if not os.path.exists(node_to_zone_path):
+            print(f"plot_price_heatmap: node_to_zone.csv not found for {zonal_config}, skipping heatmap.")
+            return
+
+        df_zones = pd.read_csv(node_to_zone_path, dtype={"node": str, "zone": str})
 
         # Filter nodes that are in the networkx graph
         df_zones = df_zones[df_zones["node"].isin(nodes)]
