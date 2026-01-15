@@ -28,6 +28,7 @@ def compute_stats(stats_file: str, scenario: Scenario, configuration: Configurat
     for block in scenario.blocks_sellers:
         seller_cost_dict[block] = preprocess_as_dict(scenario.df_sellers, ['seller', 'period'], 'cost', block)
 
+    welfare_total = 0
     for t in scenario.periods:
         welfare_per = gp.quicksum(
             buyer_val_dict[lb][b, t] * allocation.BuyersAllocation.x_btl[b, t, lb]
@@ -41,9 +42,11 @@ def compute_stats(stats_file: str, scenario: Scenario, configuration: Configurat
             seller_no_load_cost_dict[s, t] * allocation.SellersAllocation.u_st[s, t]
             for s in sellers
         )
+        welfare_total += welfare_per
         f.write(f"Welfare period {t}: {welfare_per}\n")
 
-    f.write(f"\nTotal welfare: {allocation.welfare}\n")
+    # Report total as the sum of per-period welfare
+    f.write(f"\nTotal welfare: {welfare_total}\n")
 
     total_inelastic_demand = scenario.df_buyers['inelastic_dem'].sum()
 

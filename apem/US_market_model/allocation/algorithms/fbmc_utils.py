@@ -71,6 +71,32 @@ def fix_missing_generator_timeseries(network):
     return network
 
 
+def _get_node_coords(nodes_agents: dict) -> dict:
+    """
+    Return a mapping node -> (lon, lat). If coordinates are missing, generate synthetic
+    ones along a line to avoid hard dependency on geodata.
+    """
+    coords = {}
+    missing = []
+    for node, data in nodes_agents.items():
+        lon = data.get("longitude")
+        lat = data.get("latitude")
+        if lon is None or lat is None:
+            missing.append(node)
+        else:
+            coords[node] = (lon, lat)
+
+    if missing:
+        # simple deterministic layout along x-axis for missing coords
+        for idx, node in enumerate(missing):
+            coords[node] = (float(idx), 0.0)
+        print(
+            f"Warning: missing latitude/longitude for {len(missing)} node(s); using synthetic coordinates. "
+            "Results are still computed, but geographic plots may be meaningless."
+        )
+    return coords
+
+
 def create_pypsa_network_from_scenario(scenario: Scenario) -> pypsa.Network:
     """
     Builds a PyPSA Network object from a Scenario object.
@@ -87,12 +113,10 @@ def create_pypsa_network_from_scenario(scenario: Scenario) -> pypsa.Network:
     snapshots = pd.Index(scenario.periods, name='snapshot')
     n.set_snapshots(snapshots)
 
-    # 3. Add Buses (Nodes) with coordinates
-    for node, data in scenario.nodes_agents.items():
-        n.add("Bus",
-              name=node,
-              x=data['longitude'],
-              y=data['latitude'])
+    # 3. Add Buses (Nodes) with coordinates (real or synthetic)
+    node_coords = _get_node_coords(scenario.nodes_agents)
+    for node, (lon, lat) in node_coords.items():
+        n.add("Bus", name=node, x=lon, y=lat)
 
     # 4. Add Transmission Lines (Edges)
     for i, (u, v, data) in enumerate(scenario.network.edges(data=True)):
@@ -108,46 +132,52 @@ def create_pypsa_network_from_scenario(scenario: Scenario) -> pypsa.Network:
               r=0)  # Assume resistance is zero
 
     # 5. Add Generators (from Sellers)
+    generator_col = "generator" if "generator" in scenario.df_sellers.columns else "seller"
+
     # Get static attributes for each unique generator
-    static_gen_data = scenario.df_sellers.drop_duplicates(subset='generator').set_index('generator')
+    static_gen_data = scenario.df_sellers.drop_duplicates(subset=generator_col).set_index(generator_col)
 
     # Calculate nominal power (p_nom) as the maximum possible output across all periods
-    p_nom = scenario.df_sellers.groupby('generator')['max_prod'].max()
+    p_nom = scenario.df_sellers.groupby(generator_col)["max_prod"].max()
 
     for gen_name, row in static_gen_data.iterrows():
-        n.add("Generator",
-              name=gen_name,
-              bus=row['node'],
-              carrier=row['carrier'],
-              marginal_cost=row['cost1'],
-              start_up_cost=row['no_load_cost'],
-              p_nom=p_nom.get(gen_name, 0))
+        n.add(
+            "Generator",
+            name=gen_name,
+            bus=row["node"],
+            carrier=row.get("carrier", "unknown"),
+            marginal_cost=row.get("cost1", 0),
+            start_up_cost=row.get("no_load_cost", 0),
+            p_nom=p_nom.get(gen_name, 0),
+        )
 
     # Add time-varying generator attributes (p_max_pu)
     if not n.generators.empty:
-        p_max_pu_t = scenario.df_sellers.pivot(index='period', columns='generator', values='max_prod')
+        p_max_pu_t = scenario.df_sellers.pivot(index="period", columns=generator_col, values="max_prod")
         # Normalize by p_nom to get per-unit values
         p_max_pu_t = p_max_pu_t / n.generators.p_nom
         n.generators_t.p_max_pu = p_max_pu_t.reindex(index=snapshots, columns=n.generators.index).fillna(0)
 
-        p_min_pu_t = scenario.df_sellers.pivot(index='period', columns='generator', values='min_prod')
+        p_min_pu_t = scenario.df_sellers.pivot(index="period", columns=generator_col, values="min_prod")
         p_min_pu_t = p_min_pu_t / n.generators.p_nom
         n.generators_t.p_min_pu = p_min_pu_t.reindex(index=snapshots, columns=n.generators.index).fillna(0)
 
     # 6. Add Loads (from Buyers)
     # PyPSA typically has one load per bus. We'll aggregate buyers by bus if necessary.
     # The provided data has one buyer per node, which simplifies this.
-    bus_demand = scenario.df_buyers.groupby(['period', 'node'])['max_dem'].sum().unstack(level='node')
-    bus_demand = bus_demand.reindex(index=snapshots, columns=n.buses.index).fillna(0)
+    if scenario.df_buyers.empty:
+        bus_demand = pd.DataFrame(index=snapshots)
+    else:
+        bus_demand = scenario.df_buyers.groupby(["period", "node"])["max_dem"].sum().unstack(level="node")
+        bus_demand = bus_demand.reindex(index=snapshots, columns=n.buses.index).fillna(0)
 
     # Add Load components
     for bus_name in bus_demand.columns:
         if bus_demand[bus_name].sum() > 0:  # Only add loads where there is demand
-            n.add("Load",
-                  name=bus_name,  # Name the load after its bus for simplicity
-                  bus=bus_name)
+            n.add("Load", name=bus_name, bus=bus_name)
 
     # Attach the time-series demand data
-    n.loads_t.p_set = bus_demand.rename_axis(None, axis=1)
+    if not bus_demand.empty:
+        n.loads_t.p_set = bus_demand.rename_axis(None, axis=1)
 
     return n

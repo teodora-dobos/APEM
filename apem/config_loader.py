@@ -4,7 +4,6 @@ from typing import Any, Dict
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.US_market_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.enums import MarketModels, PricingAlgorithms, RedispatchAlgorithms, US_Datasets
@@ -104,8 +103,6 @@ class ConfigLoader:
         if model_type == "Zonal_FBMC":
             zonal_config = self.config["zonal_configuration"]
             return ZonalFBMC(zonal_configuration=zonal_config["type"], base_case_type=zonal_config["base_case"])
-        if model_type == "Nodal_FBMC":
-            return NodalFBMC()
         if model_type == "DCOPF":
             return DCOPF()
         raise ValueError(f"Invalid power flow model: {model_type}")

@@ -182,9 +182,13 @@ def solve_US_scenario(
     zonal_part = _zonal_part(power_flow_model)
     _write_run_metadata(dataset, scenario, power_flow_model, pricing_algorithm, redispatch_algorithm, zonal_part)
 
-    if isinstance(power_flow_model, (DCOPF, NodalFBMC)):
+    if isinstance(power_flow_model, DCOPF):
         allocation = _solve_US_allocation_problem(scenario, power_flow_model, configuration)
+        if isinstance(allocation, Error):
+            raise RuntimeError(f"{power_flow_model} allocation failed with status {allocation.status}.")
         pricing = _solve_US_pricing_problem(scenario, allocation, pricing_algorithm, power_flow_model, configuration)
+        if isinstance(pricing, Error) or getattr(pricing, "status", 0) != 1:
+            raise RuntimeError(f"{power_flow_model} pricing failed with status {getattr(pricing, 'status', 'unknown')}.")
         return PriceAnalysis(scenario, allocation, pricing, configuration)
 
     if dataset not in [US_Datasets.PyPSAEurLarge, US_Datasets.PyPSAEurSmall]:

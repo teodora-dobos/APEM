@@ -27,7 +27,7 @@ class MarketModels(Enum):
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
-    NodalFBMC = NodalFBMC()
+    # NodalFBMC = NodalFBMC()
     Zonal_NTC = Zonal_NTC(zonal_configuration="zonal_DE4-refined", factor=0.8)
     ZonalFBMC = ZonalFBMC(zonal_configuration="zonal_DE4-refined", base_case_type="BC2")
 
