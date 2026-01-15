@@ -250,9 +250,7 @@ def solve_and_analyse_scenario(
             is_dcopf_like = isinstance(power_flow_model, (DCOPF, NodalFBMC))
             scenario_to_analyse = price_analysis.scenario if is_dcopf_like else price_analysis.base_scenario
             base_scenario = None if is_dcopf_like else price_analysis.base_scenario
-            zonal_config = (
-                power_flow_model.zonal_configuration if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
-            )
+            zonal_config = _zonal_part(power_flow_model).rstrip("/") if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
 
             scenario_to_analyse.analyse_scenario()  # analyse base scenario
             scenario_to_analyse.plot_network(power_flow_model, zonal_config)  # plot underlying network
@@ -269,7 +267,7 @@ def solve_and_analyse_scenario(
     scenario = _retrieve_data(US_dataset)
     configuration = _create_configuration()
 
-    zonal_part = f"{power_flow_model.zonal_configuration}/" if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
+    zonal_part = _zonal_part(power_flow_model)
     base_path = f"US_results/{scenario}_results/{power_flow_model}"
     path = base_path + "/" + zonal_part
     os.makedirs(path, exist_ok=True)

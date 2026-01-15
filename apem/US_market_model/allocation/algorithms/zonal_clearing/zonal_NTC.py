@@ -52,8 +52,9 @@ class Zonal_NTC(PowerFlowModel):
             df_sellers.loc[df_sellers['node'] == node, 'node'] = zone
             df_buyers.loc[df_buyers['node'] == node, 'node'] = zone
 
-        # save node_to_zone assignment as .csv file
-        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC/{self.zonal_configuration}"
+        # save node_to_zone assignment as .csv file (include factor for consistency with result paths)
+        factor_str = f"_f{self.factor}" if self.factor is not None else ""
+        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC/{self.zonal_configuration}{factor_str}"
         os.makedirs(results_path, exist_ok=True)
         node_to_zone_df = pd.DataFrame(list(node_to_zone.items()), columns=['node', 'zone'])
         node_to_zone_df.to_csv(os.path.join(results_path, "node_to_zone.csv"), index=False)
