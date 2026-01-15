@@ -5,8 +5,8 @@ Current matrix (adjust in code if needed):
 - Datasets: IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
 - Models per dataset:
   * DCOPF: all datasets
-  * Zonal_NTC: PyPSA datasets only (default zonal_DE4-refined, factor 0.8)
-  * Zonal_FBMC: PyPSA datasets only, base cases BC1–BC4 (zonal_DE4-refined)
+  * Zonal_NTC: PyPSA datasets only (default zonal_DE4, factor 0.8)
+  * Zonal_FBMC: PyPSA datasets only, base cases BC1–BC4 (zonal_DE4)
 
 Defaults: IP pricing, MinCostRD redispatch, MPLCONFIGDIR set to a local cache if unset.
 """
@@ -90,11 +90,11 @@ def main():
 
         if dataset in pypsa_datasets:
             # Zonal NTC with default factor from enums/config
-            runs.append((dataset, Zonal_NTC(zonal_configuration="zonal_DE4-refined", factor=0.8)))
+            runs.append((dataset, Zonal_NTC(zonal_configuration="zonal_DE4", factor=0.8)))
 
             # Zonal FBMC with multiple base cases
             for bc in base_cases:
-                runs.append((dataset, ZonalFBMC(zonal_configuration="zonal_DE4-refined", base_case_type=bc)))
+                runs.append((dataset, ZonalFBMC(zonal_configuration="zonal_DE4", base_case_type=bc)))
 
     successes, failures = [], []
     for idx, (dataset, pf_model) in enumerate(runs, start=1):

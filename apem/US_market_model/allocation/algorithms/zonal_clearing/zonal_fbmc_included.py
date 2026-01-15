@@ -41,7 +41,7 @@ class ZonalFBMC(PowerFlowModel):
     def __init__(self, zonal_configuration: str, base_case_type: str = 'BC2'):
         """
         Initializes the ZonalFBMC model.
-        :param zonal_configuration: The name of the zonal configuration to use (e.g., 'zonal_DE4-refined').
+        :param zonal_configuration: The name of the zonal configuration to use (e.g., 'zonal_DE4').
         :param base_case_type: The type of base case to generate (e.g., 'BC1', 'BC4').
         """
         self.zonal_configuration = zonal_configuration
@@ -237,10 +237,8 @@ class ZonalFBMC(PowerFlowModel):
 
                 df = pd.DataFrame(results_data, columns=["variable", "value"])
                 df.to_csv(results_file, index=False)
-                print(f"Successfully saved {len(results_data)} variables to {results_file}")
 
             else:
-                # This logic for non-optimal cases remains the same
                 status_message = {
                     GRB.INF_OR_UNBD: "Model is infeasible or unbounded",
                     GRB.INFEASIBLE: "Model is infeasible",

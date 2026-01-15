@@ -72,19 +72,22 @@ class ConfigLoader:
         if not 0 <= self.raw_config["scenario"]["alpha"] < 1:
             raise ValueError(f"Invalid alpha: {self.raw_config['scenario']['alpha']}")
 
-        # Validate zonal configuration for zonal power flow models
-        if self.raw_config["scenario"]["power_flow_model"]["type"] in ["Zonal_NTC", "Zonal_FBMC"]:
+        # Validate zonal configuration when a zonal model is selected
+        pf_type = self.raw_config["scenario"]["power_flow_model"]["type"]
+        if pf_type in ["Zonal_NTC", "Zonal_FBMC"]:
             zonal_config = self.raw_config["zonal_configuration"]
             available_configs = self.raw_config.get("_available_zonal_configurations", [])
             if available_configs and zonal_config["type"] not in available_configs:
                 raise ValueError(f"Invalid zonal configuration type: {zonal_config['type']}")
-            if not 0 <= zonal_config["factor"] <= 1:
-                raise ValueError(f"Invalid zonal factor: {zonal_config['factor']}. Must be between 0 and 1.")
-            available_base_cases = self.raw_config.get("_available_base_cases", ["BC1"])
-            base_case = zonal_config.get("base_case", available_base_cases[0])
-            self.raw_config["zonal_configuration"]["base_case"] = base_case
-            if base_case not in available_base_cases:
-                raise ValueError(f"Invalid zonal base case: {base_case}.")
+            if pf_type == "Zonal_NTC":
+                if not 0 <= zonal_config["factor"] <= 1:
+                    raise ValueError(f"Invalid zonal factor: {zonal_config['factor']}. Must be between 0 and 1.")
+            if pf_type == "Zonal_FBMC":
+                available_base_cases = self.raw_config.get("_available_base_cases", ["BC1"])
+                base_case = zonal_config.get("base_case", available_base_cases[0])
+                self.raw_config["zonal_configuration"]["base_case"] = base_case
+                if base_case not in [c.value for c in FBMCBaseCases]:
+                    raise ValueError(f"Invalid FBMC base case: {base_case}.")
 
     def get_US_dataset(self) -> US_Datasets:
         return US_Datasets[self.config["scenario"]["US_dataset"]]

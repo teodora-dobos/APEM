@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional, Union
 
@@ -17,6 +18,10 @@ from apem.US_market_model.pricing.analysis.pricing import Pricing
 from apem.config_loader import ConfigLoader
 from apem.enums import MarketModels, PowerFlowModels, PricingAlgorithms, RedispatchAlgorithms, US_Datasets
 from apem.US_market_model.allocation.power_flow_model import PowerFlowModel
+
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
 
 def _retrieve_data(dataset: US_Datasets) -> Scenario:
@@ -79,7 +84,12 @@ def _solve_US_allocation_problem(
     scenario: Scenario, power_flow_model: PowerFlowModel, configuration: Configuration, u_fixed: Optional[dict] = None
 ):
     if configuration.verbosity:
-        print(f"Starting allocation problem for {scenario} using {power_flow_model}...")
+        extra = ""
+        if isinstance(power_flow_model, ZonalFBMC):
+            extra = f" base_case={getattr(power_flow_model, 'base_case_type', '')}"
+        if isinstance(power_flow_model, Zonal_NTC):
+            extra = f" factor={getattr(power_flow_model, 'factor', '')}"
+        logger.info("allocation start dataset=%s model=%s%s", scenario, power_flow_model, extra)
 
     zonal_part = _zonal_part(power_flow_model)
     base_path = f"US_results/{scenario}_results/{power_flow_model}"
@@ -106,7 +116,7 @@ def _solve_US_redispatch_problem(
     redispatch_threshold: float,
 ) -> Union[Allocation, Error]:
     if configuration.verbosity:
-        print(f"Starting redispatch problem using {redispatch_algorithm}...")
+        logger.info("redispatch start algo=%s model=%s dataset=%s", redispatch_algorithm, power_flow_model, scenario)
     redispatch_algorithm = redispatch_algorithm.value
 
     zonal_part = _zonal_part(power_flow_model)
@@ -133,7 +143,7 @@ def _solve_US_pricing_problem(
     prices=None,
 ) -> Pricing:
     if configuration.verbosity:
-        print(f"Starting pricing problem using {pricing_algorithm}...")
+        logger.info("pricing start algo=%s model=%s dataset=%s", pricing_algorithm, power_flow_model, scenario)
 
     pricing_algorithm = pricing_algorithm.value
 
