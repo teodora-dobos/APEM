@@ -1,7 +1,9 @@
+import logging
 from apem.execution_chain import solve_and_analyse_scenario
 
 from apem.config_loader import ConfigLoader
 
+logging.getLogger('gurobipy').setLevel(logging.ERROR)
 
 def main():
     config = ConfigLoader()

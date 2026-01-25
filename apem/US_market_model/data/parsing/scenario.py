@@ -87,7 +87,7 @@ class Scenario:
 
         f.close()
 
-    def plot_network(self, zonal_config: str = "") -> None:
+    def plot_network(self, power_flow_model, zonal_config: str = "") -> None:
         """
         Plots the electricity network for the underlying scenario.
         
@@ -96,9 +96,9 @@ class Scenario:
         """
 
         # Define power flow model and create results directory, if not exists
-        power_flow_model = "Zonal_NTC" if zonal_config else "DCOPF"
-        results_directory = os.path.join("US_results", f"{self.name}_results", power_flow_model)
+        results_directory = os.path.join("US_results", f"{self.name}_results", str(power_flow_model))
         os.makedirs(results_directory, exist_ok=True)
+        zone_results_directory = os.path.join(results_directory, zonal_config) if zonal_config else results_directory
 
         # Get nodes and edges from the network
         nodes = list(self.network.nodes)
@@ -125,9 +125,20 @@ class Scenario:
         geo_df["color"] = "black"  # default color
         
         if zonal_config:
-            # Load csv file with node-to-zone mapping
-            df_zones = pd.read_csv(os.path.join(results_directory, zonal_config, "node_to_zone.csv"),
-                                   dtype={"node": str, "zone": str})
+            # Load csv file with node-to-zone mapping, tolerate suffix variants
+            os.makedirs(zone_results_directory, exist_ok=True)
+            node_to_zone_path = os.path.join(zone_results_directory, "node_to_zone.csv")
+            if not os.path.exists(node_to_zone_path):
+                base_config = zonal_config.rsplit("_", 1)[0] if "_" in zonal_config else zonal_config
+                alt_dir = os.path.join(results_directory, base_config)
+                alt_path = os.path.join(alt_dir, "node_to_zone.csv")
+                if os.path.exists(alt_path):
+                    node_to_zone_path = alt_path
+            if not os.path.exists(node_to_zone_path):
+                print(f"plot_network: node_to_zone.csv not found for {zonal_config}, skipping plot.")
+                plt.close(fig)
+                return
+            df_zones = pd.read_csv(node_to_zone_path, dtype={"node": str, "zone": str})
 
             # Merge geo_df with df_zones on the 'node'
             geo_df = geo_df.merge(df_zones[["node", "zone"]], left_index=True, right_on="node", how="inner")

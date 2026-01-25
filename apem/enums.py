@@ -5,8 +5,7 @@ from apem.US_market_model.data.parsing.parse_ieee_rts import ParseIEEERTS
 from apem.US_market_model.data.parsing.parse_pjm import ParsePJM
 from apem.US_market_model.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
 from apem.US_market_model.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
-from apem.market_models import US_model
-from apem.market_models import EU_model
+from apem.market_models import EU_model, US_model
 from apem.US_market_model.pricing.algorithms.elmp import ELMP
 from apem.US_market_model.pricing.algorithms.ip import IP
 from apem.US_market_model.pricing.algorithms.join import Join
@@ -17,6 +16,9 @@ from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_ab
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.US_market_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc import BaseCaseGenerator
 
 
 class MarketModels(Enum):
@@ -26,7 +28,8 @@ class MarketModels(Enum):
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
-    Zonal_NTC = Zonal_NTC()
+    Zonal_NTC = Zonal_NTC(zonal_configuration="zonal_DE4", factor=0.8)
+    ZonalFBMC = ZonalFBMC(zonal_configuration="zonal_DE4", base_case_type="BC2")
 
 
 class PricingAlgorithms(Enum):
@@ -49,3 +52,11 @@ class US_Datasets(Enum):
     PyPSAEurSmall = ParsePyPSAEurSmall()
     PyPSAEurLarge = ParsePyPSAEurLarge()
     ARPA = ParseARPA()
+
+
+class FBMCBaseCases(Enum):
+    BC1 = "BC1"
+    BC2 = "BC2"
+    BC3_1 = "BC3.1"
+    BC3_2 = "BC3.2"
+    BC4 = "BC4"

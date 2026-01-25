@@ -7,7 +7,7 @@ from apem.config_loader import ConfigLoader
 def valid_config(tmp_path):
     """Create a temporary valid config.json file."""
     data = {
-        "_available_zonal_configurations": ["zonal_DE4-refined"],
+        "_available_zonal_configurations": ["zonal_DE4"],
         "scenario": {
             "market_model": "US_model",
             "US_dataset": "ARPA",
@@ -25,7 +25,7 @@ def valid_config(tmp_path):
             "optimality_tol": 1e-6,
             "time_limit": 3600
         },
-        "zonal_configuration": {"type": "zonal_DE4-refined", "factor": 0.8}
+        "zonal_configuration": {"type": "zonal_DE4", "factor": 0.8}
     }
     config_file = tmp_path / "config.json"
     config_file.write_text(json.dumps(data))

@@ -321,9 +321,6 @@ class DCOPF(PowerFlowModel):
             if stats_file:
                 if not redispatch_type:
                     compute_stats(stats_file, scenario, configuration, allocation, model)
-                    print('-' * 50)
-                    print(f"DCOPF Objective: {obj}")
-                    print('-' * 50)
 
                     root, _ = os.path.splitext(results_file)
                     dirpath = os.path.dirname(root)
@@ -567,10 +564,6 @@ class DCOPF(PowerFlowModel):
             seller_no_load_cost_dict[s, t] * (final_allocation.u_st[s, t] - zonal_allocation.u_st[s, t])
             for s in sellers for t in periods)
 
-        print('-' * 50)
-        print(f"Redispatch costs: {redispatch_costs}")
-        print('-' * 50)
-
         f = open(file, 'w+')
         f.write(f'Redispatch costs: {redispatch_costs}')
         f.close()
@@ -586,10 +579,6 @@ class DCOPF(PowerFlowModel):
             abs(final_allocation.y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls])
             for s in sellers for t in periods for ls in blocks_sellers
         )
-
-        print('-' * 50)
-        print(f"Redispatch volumes: {redispatch_volumes}")
-        print('-' * 50)
 
         f = open(file, 'w+')
         f.write(f'Redispatch volumes: {redispatch_volumes}')

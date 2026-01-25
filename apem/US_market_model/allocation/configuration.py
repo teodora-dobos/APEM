@@ -26,4 +26,5 @@ class Configuration:
         model.setParam('WorkLimit', self.work_limit)
         model.setParam('Threads', self.threads)
         model.setParam('Presparsify', self.presparsify)
-        model.setParam('OutputFlag', self.output_flag)        
+        model.setParam('OutputFlag', self.output_flag)
+        model.setParam('LogToConsole', self.output_flag)

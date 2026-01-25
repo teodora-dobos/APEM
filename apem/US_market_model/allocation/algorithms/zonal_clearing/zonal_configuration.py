@@ -1,7 +1,7 @@
 def node_zone_mapper(zonal_configuration: str, lat: float, lon: float) -> int:
     """
     Map a node to a specific zone based on its latitude and longitude coordinates.
-    Note: The configurations 'zonal_DE2-k', 'zonal_DE2-s', 'zonal_DE3', 'zonal_DE4' / 'zonal_DE4-refined' were
+    Note: The configurations 'zonal_DE2-k', 'zonal_DE2-s', 'zonal_DE3', 'zonal_DE4' were
     suggested by ACER for the BZR (see https://www.acer.europa.eu/sites/default/files/documents/Individual%20Decisions
     _annex/ACER%20Decision%2011-2022%20on%20alternative%20BZ%20configurations%20-%20Annex%20I.pdf).
 
@@ -37,18 +37,7 @@ def node_zone_mapper(zonal_configuration: str, lat: float, lon: float) -> int:
         else:
             return 2  # NORTH-EAST
 
-    elif zonal_configuration == 'zonal_DE4':  # DE4 (spectral)
-        if (lat > 53 and lon < 7.1) or (52.2 < lat < 54 and lon < 9) or (51.7 < lat < 53.3 and 7.4 < lon < 10.75) \
-                or (50.85 < lat < 52 and 8 < lon < 10):
-            return 1  # NORTH-WEST
-        elif (lon < 8.28) or (49.5 < lat < 50.2 and lon < 9.1):
-            return 2  # WEST
-        elif (lat > 50.35) or (lat > 50.2 and lon > 10):
-            return 3  # EAST
-        else:
-            return 4  # SOUTH
-
-    elif zonal_configuration == 'zonal_DE4-refined':  # DE4 (spectral, refined)
+    elif zonal_configuration == 'zonal_DE4':  # DE4 (spectral, refined)
         if ((47.20 <= lat <= 50.63 and 9.52 <= lon <= 12.97)  # Bavaria
                 or (47.55 <= lat <= 49.78 and 7.68 <= lon <= 9.66)
                 or (lat <= 48.9)):
