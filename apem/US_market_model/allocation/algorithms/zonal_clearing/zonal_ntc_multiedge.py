@@ -31,8 +31,9 @@ class Zonal_NTC_multiedge(PowerFlowModel):
         Convert a nodal scenario into a zonal one while keeping every
         cross‑zonal line as a separate edge.
         """
-        df_sellers = base_scenario.df_sellers
-        df_buyers = base_scenario.df_buyers
+        # Work on copies to avoid mutating the input nodal scenario in place.
+        df_sellers = base_scenario.df_sellers.copy()
+        df_buyers = base_scenario.df_buyers.copy()
 
         node_to_zone, zones = {}, {}
 

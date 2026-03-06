@@ -29,8 +29,9 @@ class Zonal_NTC_aggregated(PowerFlowModel):
         """
         Construct a zonal scenario based on a given nodal base scenario.
         """
-        df_sellers = base_scenario.df_sellers
-        df_buyers = base_scenario.df_buyers
+        # Work on copies to avoid mutating the input nodal scenario in place.
+        df_sellers = base_scenario.df_sellers.copy()
+        df_buyers = base_scenario.df_buyers.copy()
 
         node_to_zone, zones = {}, {}
         
