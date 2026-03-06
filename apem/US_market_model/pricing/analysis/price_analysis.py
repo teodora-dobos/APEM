@@ -3,7 +3,8 @@ from typing import Optional, Tuple
 import os
 import pandas as pd
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
 from apem.US_market_model.allocation.allocation import Allocation
 from apem.US_market_model.allocation.configuration import Configuration
@@ -29,7 +30,7 @@ class PriceAnalysis:
         self.allocation = allocation
         self.pricing = pricing
         self.configuration = configuration
-        self.base_scenario = base_scenario  # used only for zonal_NTC
+        self.base_scenario = base_scenario  # used only for zonal NTC models
 
     def compute_glocs(self, file_glocs: str = "", mode="w") -> Optional[GLOCS]:
         pricing = self.pricing
@@ -128,7 +129,7 @@ class PriceAnalysis:
 
         if file_avg:
             file = open(file_avg, mode)
-            file.write(f"Average price: {avg}\n\n")
+            file.write(f"Average price: {round(avg, 2)}\n\n")
             file.close()
 
         return avg
@@ -150,7 +151,7 @@ class PriceAnalysis:
         if file_avg:
             file = open(file_avg, mode)
             for period, price in avg_prices_dict.items():
-                file.write(f"Average price in period {period}: {price}\n")
+                file.write(f"Average price in period {period}: {round(price, 2)}\n")
             file.write("\n")
             file.close()
 
@@ -170,7 +171,7 @@ class PriceAnalysis:
         if file_avg:
             file = open(file_avg, mode)
             for node, price in avg_prices_dict.items():
-                file.write(f"Average price at node {node}: {price}\n")
+                file.write(f"Average price at node {node}: {round(price, 2)}\n")
             file.write("\n")
             file.close()
 
@@ -183,7 +184,7 @@ class PriceAnalysis:
         if isinstance(pf_model_value, ZonalFBMC):
             base_case = getattr(pf_model_value, "base_case_type", "")
             zonal_config = f"{pf_model_value.zonal_configuration}_{base_case}" if base_case else pf_model_value.zonal_configuration
-        elif isinstance(pf_model_value, Zonal_NTC):
+        elif isinstance(pf_model_value, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
             factor = getattr(pf_model_value, "factor", None)
             factor_str = f"_f{factor}" if factor is not None else ""
             zonal_config = f"{pf_model_value.zonal_configuration}{factor_str}"

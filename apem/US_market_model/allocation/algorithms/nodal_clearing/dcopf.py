@@ -67,7 +67,17 @@ class DCOPF(PowerFlowModel):
         blocks_buyers = scenario.blocks_buyers
         blocks_sellers = scenario.blocks_sellers
         r_star = scenario.r_star
-        nodes = network.nodes
+        nodes = list(network.nodes)
+        is_multigraph = network.is_multigraph()
+        if is_multigraph:
+            edge_list = list(network.edges(keys=True, data=True))
+        else:
+            edge_list = [(u, v, None, data) for u, v, data in network.edges(data=True)]
+        edge_indices = list(range(len(edge_list)))
+        incident_edges = {v: [] for v in nodes}
+        for idx, (u, v, _k, _d) in enumerate(edge_list):
+            incident_edges[u].append((idx, 1))
+            incident_edges[v].append((idx, -1))
         buyers = df_buyers['buyer'].unique().tolist()
         sellers = df_sellers['seller'].unique().tolist()
 
@@ -107,8 +117,8 @@ class DCOPF(PowerFlowModel):
 
         phi_st = model.addVars(sellers, periods, lb=0, ub=GRB.INFINITY, name='phi_st')
         alpha_vt = model.addVars(nodes, periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='alpha_vt')
-        f_vwt = model.addVars([(v, w, t) for v in nodes for w in list(network.neighbors(v)) for t in periods],
-                              lb=-GRB.INFINITY, ub=GRB.INFINITY, name='f_vwt')
+        f_et = model.addVars([(e, t) for e in edge_indices for t in periods],
+                             lb=-GRB.INFINITY, ub=GRB.INFINITY, name='f_et')
         slack = model.addVars([(v, t) for v in nodes for t in periods], lb=-GRB.INFINITY, ub=GRB.INFINITY,
                               name='slack_vt')
         abs_slack = model.addVars([(v, t) for v in nodes for t in periods], lb=0, ub=GRB.INFINITY,
@@ -233,45 +243,33 @@ class DCOPF(PowerFlowModel):
             for s in sellers
             for t in periods if t >= seller_min_uptime_dict[s, t] + 1
         )
-        # 12
+        # 12 & 13: thermal limits per edge
         model.addConstrs(
-            f_vwt[v, w, t] >= -network[v][w]['F_max']
-            for v in nodes
-            for w in list(network.neighbors(v))
-            for t in periods
+            (f_et[e, t] >= -edge_list[e][3]['F_max'] for e in edge_indices for t in periods)
         )
-        # 13
         model.addConstrs(
-            f_vwt[v, w, t] <= network[v][w]['F_max']
-            for v in nodes
-            for w in list(network.neighbors(v))
-            for t in periods
+            (f_et[e, t] <= edge_list[e][3]['F_max'] for e in edge_indices for t in periods)
         )
-        # 14
+
+        # 14: DC power flow per edge
         model.addConstrs(
-            (f_vwt[v, w, t] - network[v][w]['B'] * (alpha_vt[v, t] - alpha_vt[w, t]) == 0
-             for v in nodes
-             for w in list(network.neighbors(v))
-             for t in periods)
+            (
+                f_et[e, t] - edge_list[e][3]['B'] * (alpha_vt[edge_list[e][0], t] - alpha_vt[edge_list[e][1], t]) == 0
+                for e in edge_indices
+                for t in periods
+            )
         )
         # 15
         model.addConstrs(
-            (gp.quicksum(
-                y_st[s, t]
-                for s in nodes_agents[v]['sellers']
-            )
-             - gp.quicksum(
-                x_bt[b, t]
-                for b in nodes_agents[v]['buyers']
-            )
-             - gp.quicksum(
-                f_vwt[v, w, t]
-                for w in list(network.neighbors(v))
-            )
-             + slack[v, t]
-             == 0
-             for t in periods
-             for v in nodes),
+            (
+                gp.quicksum(y_st[s, t] for s in nodes_agents[v]['sellers'])
+                - gp.quicksum(x_bt[b, t] for b in nodes_agents[v]['buyers'])
+                - gp.quicksum(sign * f_et[e, t] for e, sign in incident_edges[v])
+                + slack[v, t]
+                == 0
+                for t in periods
+                for v in nodes
+            ),
             name='supply_demand'
         )
         # 16
@@ -298,11 +296,22 @@ class DCOPF(PowerFlowModel):
             y_st = {(s, t): y_st[s, t].X for s in sellers for t in periods}
             y_stl = {(s, t, ls): y_stl[s, t, ls].X for s in sellers for t in periods for ls in blocks_sellers}
             u_st = {(s, t): u_st[s, t].X for s in sellers for t in periods}
-            f_vwt = {(v, w, t): f_vwt[v, w, t].X for v in nodes for w in list(network.neighbors(v)) for t in periods}
+            raw_f = {(e, t): f_et[e, t].X for e in edge_indices for t in periods}
             alpha_vt = {(v, t): alpha_vt[v, t].X for v in nodes for t in periods}
             phi_st = {(s, t): phi_st[s, t].X for s in sellers for t in periods}
             slack_vt = {(v, t): slack[v, t].X for v in nodes for t in periods}
             abs_slack_vt = {(v, t): abs_slack[v, t].X for v in nodes for t in periods}
+
+            # Build flow dicts: aggregated by (v, w, t) for compatibility and per-edge with keys
+            f_vwt = {}
+            f_vwkt = {}
+            for e_idx, (u, v, k, _d) in enumerate(edge_list):
+                for t in periods:
+                    val = raw_f[e_idx, t]
+                    f_vwkt[(u, v, k, t)] = val
+                    f_vwkt[(v, u, k, t)] = -val
+                    f_vwt[(u, v, t)] = f_vwt.get((u, v, t), 0) + val
+                    f_vwt[(v, u, t)] = f_vwt.get((v, u, t), 0) - val
 
             if results_file:
                 results = []
@@ -317,7 +326,7 @@ class DCOPF(PowerFlowModel):
                                     power_flow_model=self, runtime=model.Runtime, num_vars=model.NumVars,
                                     num_constrs=model.NumConstrs, MIP_gap=model.MIPGap if model.IsMIP else 0.0,
                                     num_cont_vars=model.NumVars - model.NumBinVars, num_bin_vars=model.NumBinVars,
-                                    dataset=scenario)
+                                    dataset=scenario, f_vwkt=f_vwkt if is_multigraph else None)
             if stats_file:
                 if not redispatch_type:
                     compute_stats(stats_file, scenario, configuration, allocation, model)

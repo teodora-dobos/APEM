@@ -43,6 +43,7 @@ class ZonalFBMC(PowerFlowModel):
         Initializes the ZonalFBMC model.
         :param zonal_configuration: The name of the zonal configuration to use (e.g., 'zonal_DE4').
         :param base_case_type: The type of base case to generate (e.g., 'BC1', 'BC4').
+            Base-case definitions are documented in ``BaseCaseGenerator.generate`` in ``zonal_fbmc.py``.
         """
         self.zonal_configuration = zonal_configuration
         self.node_zone_mapper = node_zone_mapper

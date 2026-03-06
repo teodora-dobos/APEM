@@ -84,6 +84,7 @@ class ELMP(PricingAlgorithm):
         x_btl = allocation.BuyersAllocation.x_btl
         y_stl = allocation.SellersAllocation.y_stl
         f_vwt = allocation.TransmissionNetworkAllocation.f_vwt
+        f_vwkt = getattr(allocation.TransmissionNetworkAllocation, "f_vwkt", None)
         u_st = allocation.SellersAllocation.u_st
 
         epsilon_up_btl = model.addVars(buyers, periods, blocks_buyers, ub=GRB.INFINITY,
@@ -102,18 +103,59 @@ class ELMP(PricingAlgorithm):
         epsilon_up_st = model.addVars(sellers, periods, ub=GRB.INFINITY, name='epsilon_up_s_t')
 
         p_vt = model.addVars(nodes, periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='p_vt')
-        gamma_vwt = model.addVars([(v, w, t) for v in nodes for w in list(network.neighbors(v))
-                                   for t in periods],
-                                  lb=-GRB.INFINITY, ub=GRB.INFINITY, name='gamma_v_w_t')
+        # build directed multiedge list
+        is_multigraph = network.is_multigraph()
+        if is_multigraph:
+            undirected_edges = list(network.edges(keys=True, data=True))  # (u,v,k,data)
+        else:
+            undirected_edges = [(u, v, None, data) for u, v, data in network.edges(data=True)]
+
+        if is_multigraph:
+            if not f_vwkt:
+                if file_prices:
+                    write_prices_failure(file_prices, str(self), -2)
+                print(f'{self} pricing error with code -2: missing multigraph per-edge flows')
+                return Error(-2)
+            missing_flow_key = next(
+                (
+                    (u, v, k, t)
+                    for (u, v, k, _) in undirected_edges
+                    for t in periods
+                    if (u, v, k, t) not in f_vwkt
+                ),
+                None,
+            )
+            if missing_flow_key is not None:
+                if file_prices:
+                    write_prices_failure(file_prices, str(self), -2)
+                print(f'{self} pricing error with code -2: missing multigraph flow key {missing_flow_key}')
+                return Error(-2)
+
+        directed_edges = []
+        for idx, (u, v, k, data) in enumerate(undirected_edges):
+            directed_edges.append((idx, u, v, k, data))
+            directed_edges.append((idx, v, u, k, data))
+
+        # per-edge flows
+        flow_et = {}
+        for idx, (u, v, k, data) in enumerate(undirected_edges):
+            for t in periods:
+                if is_multigraph:
+                    base = f_vwkt[(u, v, k, t)]
+                else:
+                    base = f_vwt[(u, v, t)]
+                flow_et[(idx, u, v, t)] = base
+                flow_et[(idx, v, u, t)] = -base
+
+        gamma_et = model.addVars([(e, v, w, t) for (e, v, w, _, _) in directed_edges for t in periods],
+                                 lb=-GRB.INFINITY, ub=GRB.INFINITY, name='gamma_e_t')
         if fixed_prices:
             model.addConstrs(p_vt[v, t] == fixed_prices.node_prices[v, t] for v in nodes for t in periods)
 
-        epsilon_down_vwt = model.addVars(
-            [(v, w, t) for v in nodes for w in list(network.neighbors(v)) for t in periods],
-            lb=-GRB.INFINITY, ub=0, name='epsilon_down_v_w_t')
-        epsilon_up_vwt = model.addVars([(v, w, t) for v in nodes for w in list(network.neighbors(v))
-                                        for t in periods],
-                                       ub=GRB.INFINITY, name='epsilon_up_v_w_t')
+        epsilon_down_et = model.addVars([(e, v, w, t) for (e, v, w, _, _) in directed_edges for t in periods],
+                                        lb=-GRB.INFINITY, ub=0, name='epsilon_down_e_t')
+        epsilon_up_et = model.addVars([(e, v, w, t) for (e, v, w, _, _) in directed_edges for t in periods],
+                                      ub=GRB.INFINITY, name='epsilon_up_e_t')
 
         chi_up_st = model.addVars(sellers, periods, ub=GRB.INFINITY, name='chi_up_s_t')
         chi_down_st = model.addVars(sellers, periods, lb=-GRB.INFINITY, ub=0, name='chi_down_s_t')
@@ -126,16 +168,15 @@ class ELMP(PricingAlgorithm):
 
         lambda_b = model.addVars(buyers, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_b')
         lambda_s = model.addVars(sellers, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_s')
-        lambda_v_w_t = model.addVars([(v, w, t) for v in nodes for w in list(network.neighbors(v))
-                                      for t in periods],
-                                     lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_v_w_t')
+        lambda_et = model.addVars([(e, v, w, t) for (e, v, w, _, _) in directed_edges for t in periods],
+                                  lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_e_t')
 
         model.update()
 
         model.setObjective(
             gp.quicksum(lambda_b[b] for b in buyers)
             + gp.quicksum(lambda_s[s] for s in sellers)
-            + gp.quicksum(lambda_v_w_t[v, w, t] for v in nodes for w in list(network.neighbors(v)) for t in periods),
+            + gp.quicksum(lambda_et[e, v, w, t] for (e, v, w, _, _) in directed_edges for t in periods),
             GRB.MINIMIZE
         )
         # 1
@@ -190,52 +231,50 @@ class ELMP(PricingAlgorithm):
             for s in sellers
         )
         # 3
-        model.addConstrs(
-            lambda_v_w_t[v, w, t]
-            - epsilon_up_vwt[v, w, t] * network[v][w]['F_max']
-            - epsilon_down_vwt[v, w, t] * (-network[v][w]['F_max'])
-            + gamma_vwt[v, w, t] * f_vwt[v, w, t]
-            >= 0
-            for v in nodes
-            for w in list(network.neighbors(v))
-            for t in periods
-        )
+        for (e, v, w, k, data) in directed_edges:
+            for t in periods:
+                model.addConstr(
+                    lambda_et[e, v, w, t]
+                    - epsilon_up_et[e, v, w, t] * data['F_max']
+                    - epsilon_down_et[e, v, w, t] * (-data['F_max'])
+                    + gamma_et[e, v, w, t] * flow_et[(e, v, w, t)]
+                    >= 0
+                )
         # 4
-        model.addConstrs(
-            gp.quicksum(
-                network[w][v]['B'] * (p_vt[w, t] + gamma_vwt[w, v, t])
-                for w in nodes if v in list(network.neighbors(w))
-            )
-            - gp.quicksum(
-                network[v][w]['B'] * (p_vt[v, t] + gamma_vwt[v, w, t])
-                for w in list(network.neighbors(v))
-            )
-            == 0
-            for v in nodes if v != r_star
-            for t in periods
-        )
+        for v in nodes:
+            if v == r_star:
+                continue
+            for t in periods:
+                inflow = gp.quicksum(
+                    data['B'] * (p_vt[w, t] + gamma_et[e, w, v, t])
+                    for (e, w, v2, k, data) in directed_edges
+                    if v2 == v
+                )
+                outflow = gp.quicksum(
+                    data['B'] * (p_vt[v, t] + gamma_et[e, v, w, t])
+                    for (e, v2, w, k, data) in directed_edges
+                    if v2 == v
+                )
+                model.addConstr(inflow - outflow == 0)
         # 5
-        model.addConstrs(
-            r_t[t]
-            + gp.quicksum(
-                network[w][r_star]['B'] * (p_vt[w, t] + gamma_vwt[w, r_star, t])
-                for w in nodes if r_star in list(network.neighbors(w))
+        for t in periods:
+            inflow = gp.quicksum(
+                data['B'] * (p_vt[w, t] + gamma_et[e, w, r_star, t])
+                for (e, w, v2, k, data) in directed_edges
+                if v2 == r_star
             )
-            - gp.quicksum(
-                network[r_star][w]['B'] * (p_vt[r_star, t] + gamma_vwt[r_star, w, t])
-                for w in list(network.neighbors(r_star))
+            outflow = gp.quicksum(
+                data['B'] * (p_vt[r_star, t] + gamma_et[e, r_star, w, t])
+                for (e, v2, w, k, data) in directed_edges
+                if v2 == r_star
             )
-            == 0
-            for t in periods
-        )
+            model.addConstr(r_t[t] + inflow - outflow == 0)
         # 6
-        model.addConstrs(
-            -gamma_vwt[v, w, t] + epsilon_up_vwt[v, w, t] + epsilon_down_vwt[v, w, t]
-            == 0
-            for v in nodes
-            for w in list(network.neighbors(v))
-            for t in periods
-        )
+        for (e, v, w, k, data) in directed_edges:
+            for t in periods:
+                model.addConstr(
+                    -gamma_et[e, v, w, t] + epsilon_up_et[e, v, w, t] + epsilon_down_et[e, v, w, t] == 0
+                )
         # 7
         model.addConstrs(
             epsilon_up_btl[b, t, lb] + epsilon_down_btl[b, t, lb] - epsilon_bt[b, t]
@@ -351,19 +390,26 @@ class ELMP(PricingAlgorithm):
             glocs_buyers = round(sum(lambda_b[b].X for b in buyers), 2)
             glocs_sellers = round(sum(lambda_s[s].X for s in sellers), 2)
             glocs_network = round(
-                sum(lambda_v_w_t[v, w, t].X for v in nodes for w in network.neighbors(v) for t in periods), 2)
+                sum(lambda_et[e, v, w, t].X for (e, v, w, _, _) in directed_edges for t in periods), 2)
             glocs_per_buyer = {b: round(lambda_b[b].X, 2) for b in buyers}
             glocs_per_seller = {s: round(lambda_s[s].X, 2) for s in sellers}
-            glocs_per_line = {(v, w): round(sum(lambda_v_w_t[v, w, t].X for t in periods), 2)
-                              for v in nodes for w in list(network.neighbors(v))}
+            glocs_per_line = {}
+            for (e, v, w, _, _) in directed_edges:
+                glocs_per_line[(v, w, e)] = round(sum(lambda_et[e, v, w, t].X for t in periods), 2)
 
             p_vt = {(v, t): p_vt[v, t].X for v in nodes for t in periods}
-            gamma_vwt = {(v, w, t): gamma_vwt[v, w, t].X
-                         for v in nodes for w in list(network.neighbors(v)) for t in periods}
+            gamma_vwt = {}
+            gamma_vwkt = {}
+            for (e, v, w, k, _) in directed_edges:
+                for t in periods:
+                    gamma_val = gamma_et[e, v, w, t].X
+                    gamma_vwt[(v, w, t)] = gamma_vwt.get((v, w, t), 0) + gamma_val
+                    gamma_vwkt[(v, w, k, t)] = gamma_val
 
             pricing = Pricing(p_vt, gamma_vwt, str(self), runtime, num_vars, num_constrs,
                               glocs=GLOCS(total_glocs, glocs_buyers, glocs_sellers, glocs_network,
-                                          glocs_per_buyer, glocs_per_seller, glocs_per_line))
+                                          glocs_per_buyer, glocs_per_seller, glocs_per_line),
+                              line_congestion_prices_per_edge=gamma_vwkt)
 
             if file_prices:
                 write_prices(file_prices, pricing, scenario)
@@ -379,3 +425,4 @@ class ELMP(PricingAlgorithm):
 
     def __str__(self):
         return 'ELMP'
+

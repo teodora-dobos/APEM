@@ -256,7 +256,8 @@ def read_arpa_branches(path) -> nx.Graph:
 class ParseARPA(ParseData):
 
     def parse_data(self, day=None) -> Scenario:
-
+        global nodes_agents
+        nodes_agents = defaultdict(def_value_list)
         df_sellers = read_arpa_sellers(path)
         df_buyers = read_arpa_buyers(path)
         network = read_arpa_branches(path)

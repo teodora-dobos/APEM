@@ -1,3 +1,7 @@
+"""
+This implementation is based on: https://ieeexplore.ieee.org/abstract/document/9221922
+"""
+
 import pypsa
 import pandas as pd
 import numpy as np
@@ -138,7 +142,19 @@ class BaseCaseGenerator:
         return model, p_bus
 
     def generate(self, base_case_type: str):
-        """Generates a base case for expected nodal net positions (p_bus_expected)."""
+        """
+        Generate expected nodal net positions ``p_bus_expected`` used by Zonal FBMC.
+
+        Base-case variants:
+        - ``BC1``: Solve the standard nodal UC/DCOPF model and use its nodal injections directly.
+        - ``BC2``: Same nodal model as BC1, plus zero zonal net-position constraints for every zone and snapshot.
+        - ``BC3.1``: Same as BC1, but with all loads scaled by +20 percent before solving.
+        - ``BC3.2``: Same as BC1, but with random load perturbations in [-20 percent, +20 percent].
+          This variant is stochastic unless the caller sets a NumPy random seed beforehand.
+        - ``BC4``: Two-step approach:
+          1) Relax intrazonal line capacities (x10), solve nodal model, and derive zonal reference net positions.
+          2) Re-solve the original nodal model while fixing each zonal net position to that reference.
+        """
         if base_case_type == 'BC1':  # Same as nodal solution
             model, p_bus = self._create_base_nodal_model(self.network)
         elif base_case_type == 'BC2':  # Eq. (9)

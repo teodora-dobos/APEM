@@ -56,8 +56,9 @@ class TransmissionNetworkAllocation:
     The results of an allocation that relate to the transmission network.
     """
 
-    def __init__(self, f_vwt, alpha_vt, slack_vt, network, periods):
+    def __init__(self, f_vwt, alpha_vt, slack_vt, network, periods, f_vwkt=None):
         self.f_vwt = f_vwt
+        self.f_vwkt = f_vwkt or {}
         self.alpha_vt = alpha_vt
         self.slack_vt = slack_vt
         self.network = network
@@ -72,12 +73,18 @@ class TransmissionNetworkAllocation:
         result = {}
         for t in self.periods:
             result[t] = []
-            for line in self.network.edges:
-                v, w = line[0], line[1]
-                capacity = self.network[v][w]['F_max']
-                flow = self.f_vwt[v, w, t]
-                if capacity == flow:
-                    result[t].append(line)
+            if self.network.is_multigraph():
+                for v, w, k, data in self.network.edges(keys=True, data=True):
+                    flow = self.f_vwkt.get((v, w, k, t), self.f_vwt.get((v, w, t), 0))
+                    capacity = data['F_max']
+                    if abs(flow) >= capacity:
+                        result[t].append((v, w, k))
+            else:
+                for v, w, data in self.network.edges(data=True):
+                    flow = self.f_vwt[v, w, t]
+                    capacity = data['F_max']
+                    if abs(flow) >= capacity:
+                        result[t].append((v, w))
 
         return result
 
@@ -89,7 +96,7 @@ class Allocation:
     """
 
     def __init__(self, welfare, x_bt, y_st, x_btl, y_stl, f_vwt, alpha_vt, u_st, phi_st, slack_vt, power_flow_model, runtime,
-                 num_vars, num_constrs, MIP_gap, num_cont_vars, num_bin_vars, dataset):
+                 num_vars, num_constrs, MIP_gap, num_cont_vars, num_bin_vars, dataset, f_vwkt=None):
         self.welfare = welfare
         self.runtime = runtime
         self.MIP_gap = MIP_gap
@@ -102,7 +109,7 @@ class Allocation:
         self.BuyersAllocation = BuyersAllocation(x_bt, x_btl, dataset.df_buyers, dataset.blocks_buyers)
         self.SellersAllocation = SellersAllocation(y_st, y_stl, u_st, phi_st, dataset.df_sellers)
         self.TransmissionNetworkAllocation = TransmissionNetworkAllocation(f_vwt, alpha_vt, slack_vt, dataset.network,
-                                                                           dataset.periods)
+                                                                           dataset.periods, f_vwkt)
 
     @property
     def status(self):

@@ -14,7 +14,7 @@ from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_configurati
 from apem.US_market_model.data.parsing.scenario import Scenario
 
 
-class Zonal_NTC(PowerFlowModel):
+class Zonal_NTC_aggregated(PowerFlowModel):
     """
     Implementation of the Zonal NTC model. A zonal NTC model includes a simple graph with at most one line
     between any two nodes, where the nodes represent the zones. 
@@ -29,8 +29,9 @@ class Zonal_NTC(PowerFlowModel):
         """
         Construct a zonal scenario based on a given nodal base scenario.
         """
-        df_sellers = base_scenario.df_sellers
-        df_buyers = base_scenario.df_buyers
+        # Work on copies to avoid mutating the input nodal scenario in place.
+        df_sellers = base_scenario.df_sellers.copy()
+        df_buyers = base_scenario.df_buyers.copy()
 
         node_to_zone, zones = {}, {}
         
@@ -52,9 +53,15 @@ class Zonal_NTC(PowerFlowModel):
             df_sellers.loc[df_sellers['node'] == node, 'node'] = zone
             df_buyers.loc[df_buyers['node'] == node, 'node'] = zone
 
+        if not zones:
+            raise ValueError(
+                f"{self}: no nodes could be mapped to zones for zonal_configuration={self.zonal_configuration}. "
+                "Ensure nodes_agents includes latitude/longitude for network nodes."
+            )
+
         # save node_to_zone assignment as .csv file (include factor for consistency with result paths)
         factor_str = f"_f{self.factor}" if self.factor is not None else ""
-        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC/{self.zonal_configuration}{factor_str}"
+        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC_aggregated/{self.zonal_configuration}{factor_str}"
         os.makedirs(results_path, exist_ok=True)
         node_to_zone_df = pd.DataFrame(list(node_to_zone.items()), columns=['node', 'zone'])
         node_to_zone_df.to_csv(os.path.join(results_path, "node_to_zone.csv"), index=False)
@@ -67,12 +74,21 @@ class Zonal_NTC(PowerFlowModel):
             # for each interconnector between two zones set
             # its capacity to the sum of the capacities of the cross-zonal lines multiplied by self.factor and
             # its susceptance to the minimum susceptance of any cross-zonal line
-            for v in base_scenario.network.nodes:
-                for w in base_scenario.network.nodes:
-                    if node_to_zone[v] < node_to_zone[w] and (v, w) in base_scenario.network.edges():
-                        lines[node_to_zone[v], node_to_zone[w]]['F_max'] += base_scenario.network[v][w]['F_max']
-                        lines[node_to_zone[v], node_to_zone[w]]['B'] = min(lines[node_to_zone[v], node_to_zone[w]]['B'],
-                                                                        base_scenario.network[v][w]['B'])
+            for v, w, data in base_scenario.network.edges(data=True):
+                # skip lines touching nodes without zone assignment (e.g., missing coordinates)
+                if v not in node_to_zone or w not in node_to_zone:
+                    continue
+
+                zone_v = node_to_zone[v]
+                zone_w = node_to_zone[w]
+
+                # intra-zonal lines are not represented in the zonal network
+                if zone_v == zone_w:
+                    continue
+
+                z1, z2 = sorted((zone_v, zone_w))
+                lines[z1, z2]['F_max'] += data['F_max']
+                lines[z1, z2]['B'] = min(lines[z1, z2]['B'], data['B'])
 
             # add edges to the aggregated network, only if B no longer is set to inf (i.e., if at least one line between
             # the zones existed in the base scenario)
@@ -112,4 +128,8 @@ class Zonal_NTC(PowerFlowModel):
         return zonal_scenario, dcopf.solve(zonal_scenario, configuration, results_file, stats_file)
 
     def __str__(self):
-        return 'Zonal_NTC'
+        return 'Zonal_NTC_aggregated'
+
+
+# Backward compatibility alias
+Zonal_NTC = Zonal_NTC_aggregated

@@ -135,9 +135,10 @@ class Pricing:
     """
 
     def __init__(self, node_prices, line_congestion_prices=None, used_algorithm=None, runtime=None, num_vars=None,
-                 num_constrs=None, glocs=None, llocs=None, mwps=None):
+                 num_constrs=None, glocs=None, llocs=None, mwps=None, line_congestion_prices_per_edge=None):
         self._node_prices = node_prices
         self._line_congestion_prices = line_congestion_prices
+        self._line_congestion_prices_per_edge = line_congestion_prices_per_edge
         self.used_algorithm = used_algorithm
         self.runtime = runtime
         self.num_vars = num_vars
@@ -153,6 +154,10 @@ class Pricing:
     @property
     def line_congestion_prices(self):
         return self._line_congestion_prices
+
+    @property
+    def line_congestion_prices_per_edge(self):
+        return self._line_congestion_prices_per_edge
 
     @property
     def status(self):

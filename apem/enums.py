@@ -14,7 +14,8 @@ from apem.US_market_model.pricing.algorithms.markup import Markup
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_abs_cost import MinAbsCostRD
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_abs_vol import MinAbsVolRD
 from apem.US_market_model.allocation.algorithms.zonal_clearing.redispatch.min_cost import MinCostRD
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.US_market_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
@@ -28,7 +29,8 @@ class MarketModels(Enum):
 
 class PowerFlowModels(Enum):
     DCOPF = DCOPF()
-    Zonal_NTC = Zonal_NTC(zonal_configuration="zonal_DE4", factor=0.8)
+    Zonal_NTC_aggregated = Zonal_NTC_aggregated(zonal_configuration="zonal_DE4", factor=0.8)
+    Zonal_NTC_multiedge = Zonal_NTC_multiedge(zonal_configuration="zonal_DE4", factor=0.8)
     ZonalFBMC = ZonalFBMC(zonal_configuration="zonal_DE4", base_case_type="BC2")
 
 

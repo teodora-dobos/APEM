@@ -32,7 +32,7 @@ def plot_price_heatmap(
         return
 
     # Define power flow model and create results directory, if not exists
-    pf_model = power_flow_model or ("Zonal_NTC" if zonal_config else "DCOPF")
+    pf_model = power_flow_model or ("Zonal_NTC_aggregated" if zonal_config else "DCOPF")
     results_directory = os.path.join("US_results", f"{scenario.name}_results", pf_model)
     os.makedirs(results_directory, exist_ok=True)
 

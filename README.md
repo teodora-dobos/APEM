@@ -72,11 +72,11 @@ The most important section is `scenario`, which defines the dataset, market mode
 - **Datasets**
   - US: `IEEE_RTS`, `PJM`, `PyPSAEurSmall`, `PyPSAEurLarge`, `ARPA`
   - EU: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`, `PyPSAEurSmall`, `PyPSAEurLarge`, `PJM`
-- **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC`, `Zonal_FBMC` (base cases: `BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`)
+- **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, `Zonal_FBMC` (base cases: `BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`)
 - **Cut types** (only for `EU_model`): `price based`, `combinatorial benders`, `no good`
 - **Pricing algorithms** (only for `US_model`): `ELMP`, `IP`, `MinMWP`, `Join`
-- **Redispatch algorithms** (only for `US_model/Zonal_NTC`): `MinCostRD`, `MinAbsCostRD`, `MinAbsVolRD`
-- **Zonal configurations** (only for `US_model/Zonal_NTC` and `US_model/Zonal_FBMC`): `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE5`
+- **Redispatch algorithms** (only for `US_model/Zonal_NTC_aggregated`): `MinCostRD`, `MinAbsCostRD`, `MinAbsVolRD`
+- **Zonal configurations** (only for `US_model/Zonal_NTC_aggregated`, `US_model/Zonal_NTC_multiedge` and `US_model/Zonal_FBMC`): `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE5`
 
 Other global settings like solver tolerances and runtime limits can be adjusted under `"solver_configuration"`. Zonal-specific settings are under `"zonal_configuration"`.
 
