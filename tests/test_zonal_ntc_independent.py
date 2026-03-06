@@ -3,7 +3,7 @@ import networkx as nx
 import pytest
 from unittest.mock import MagicMock, patch
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge import (
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import (
     Zonal_NTC_multiedge,
 )
 from apem.US_market_model.data.parsing.scenario import Scenario
@@ -48,9 +48,9 @@ def base_scenario_with_parallel(tmp_path):
     )
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge.node_zone_mapper")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge.pd.DataFrame.to_csv")
+@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.node_zone_mapper")
+@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.os.makedirs")
+@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, mock_mapper, base_scenario_with_parallel):
     mock_mapper.side_effect = lambda config, lat, lon: "Z1" if lat < 50.5 else "Z2"
 
@@ -66,7 +66,7 @@ def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, 
     assert susceptances == [4.0, 5.0]
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge.DCOPF")
+@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.DCOPF")
 @patch.object(Zonal_NTC_multiedge, "create_zonal_scenario_NTC")
 def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario_with_parallel):
     mock_zonal = MagicMock()

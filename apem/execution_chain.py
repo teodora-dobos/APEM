@@ -8,8 +8,8 @@ from apem.EU_market_model.euphemia.execution_chain import solve_euphemia
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.US_market_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_aggregated import Zonal_NTC_aggregated
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_multiedge import Zonal_NTC_multiedge
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.US_market_model.allocation.allocation import SellersAllocation, Allocation
 from apem.US_market_model.allocation.configuration import Configuration
 from apem.US_market_model.allocation.error import Error

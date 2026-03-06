@@ -5,7 +5,8 @@ Current matrix:
 - Datasets: IEEE_RTS, PJM, PyPSAEurSmall, PyPSAEurLarge, ARPA
 - Models per dataset:
   * DCOPF: all datasets
-  * Zonal_NTC: PyPSA datasets only (default zonal_DE4, factor 0.8)
+  * Zonal_NTC_aggregated: PyPSA datasets only (default zonal_DE4, factor 0.8)
+  * Zonal_NTC_multiedge: PyPSA datasets only (default zonal_DE4, factor 0.8)
   * Zonal_FBMC: PyPSA datasets only, base cases BC1–BC4 (zonal_DE4)
 
 Defaults: IP pricing, MinCostRD redispatch, MPLCONFIGDIR set to a local cache if unset.
@@ -26,7 +27,8 @@ if str(ROOT) not in sys.path:
 from apem.execution_chain import solve_and_analyse_scenario
 from apem.enums import MarketModels, PricingAlgorithms, RedispatchAlgorithms, US_Datasets, FBMCBaseCases
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_aggregated import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
 from apem.US_market_model.data.parsing.scenario import Scenario
 
@@ -89,8 +91,9 @@ def main():
         runs.append((dataset, DCOPF()))
 
         if dataset in pypsa_datasets:
-            # Zonal NTC with default factor from enums/config
+            # Zonal NTC variants with default factor from enums/config
             runs.append((dataset, Zonal_NTC_aggregated(zonal_configuration="zonal_DE4", factor=0.8)))
+            runs.append((dataset, Zonal_NTC_multiedge(zonal_configuration="zonal_DE4", factor=0.8)))
 
             # Zonal FBMC with multiple base cases
             for bc in base_cases:
