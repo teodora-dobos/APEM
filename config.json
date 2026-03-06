@@ -24,8 +24,8 @@
     "_available_power_flow_models": [
         "DCOPF",
         "Zonal_FBMC",
-        "Zonal_NTC",
-        "Zonal_NTC_independent"
+        "Zonal_NTC_aggregated",
+        "Zonal_NTC_multiedge"
     ],
     "_available_pricing_algorithms": [
         "ELMP",
@@ -68,7 +68,7 @@
             "type": "DCOPF"
         },
         "cut_type": "price based",
-        "pricing_algorithm": "Join",
+        "pricing_algorithm": "ELMP",
         "redispatch_algorithm": "MinCostRD",
         "redispatch_constraint_units": false,
         "redispatch_threshold": 0.001,
