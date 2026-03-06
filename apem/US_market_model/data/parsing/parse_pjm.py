@@ -136,8 +136,8 @@ class ParsePJM(ParseData):
 
         :return: Scenario object
         """
-        # Reset parser state to keep repeated calls idempotent.
-        nodes_agents.clear()
+        global nodes_agents
+        nodes_agents = defaultdict(def_value_list)
         df_sellers = read_pjm_sellers()
         df_buyers = read_pjm_buyers()
         network = read_pjm_branches()
