@@ -8,8 +8,8 @@ from apem.EU_market_model.euphemia.execution_chain import solve_euphemia
 from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.US_market_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_independent import Zonal_NTC_independent
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC_aggregated
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_independent import Zonal_NTC_multiedge
 from apem.US_market_model.allocation.allocation import SellersAllocation, Allocation
 from apem.US_market_model.allocation.configuration import Configuration
 from apem.US_market_model.allocation.error import Error
@@ -54,7 +54,7 @@ def _zonal_part(power_flow_model: PowerFlowModel) -> str:
         if base_case:
             suffix += f"_{base_case}"
         return f"{suffix}/"
-    if isinstance(power_flow_model, (Zonal_NTC, Zonal_NTC_independent)):
+    if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
         factor = getattr(power_flow_model, "factor", None)
         factor_str = f"_f{factor}" if factor is not None else ""
         return f"{power_flow_model.zonal_configuration}{factor_str}/"
@@ -75,7 +75,7 @@ def _write_run_metadata(dataset: US_Datasets, scenario: Scenario, power_flow_mod
             f.write(f"zonal_path={zonal_part.rstrip('/')}\n")
         if isinstance(power_flow_model, ZonalFBMC):
             f.write(f"base_case={getattr(power_flow_model, 'base_case_type', '')}\n")
-        if isinstance(power_flow_model, (Zonal_NTC, Zonal_NTC_independent)):
+        if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
             f.write(f"factor={getattr(power_flow_model, 'factor', '')}\n")
         f.write(f"pricing_algorithm={pricing_algorithm.name}\n")
         f.write(f"redispatch_algorithm={redispatch_algorithm.name}\n")
@@ -88,7 +88,7 @@ def _solve_US_allocation_problem(
         extra = ""
         if isinstance(power_flow_model, ZonalFBMC):
             extra = f" base_case={getattr(power_flow_model, 'base_case_type', '')}"
-        if isinstance(power_flow_model, (Zonal_NTC, Zonal_NTC_independent)):
+        if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
             extra = f" factor={getattr(power_flow_model, 'factor', '')}"
         logger.info("allocation start dataset=%s model=%s%s", scenario, power_flow_model, extra)
 
@@ -261,7 +261,7 @@ def solve_and_analyse_scenario(
             is_dcopf_like = isinstance(power_flow_model, (DCOPF, NodalFBMC))
             scenario_to_analyse = price_analysis.scenario if is_dcopf_like else price_analysis.base_scenario
             base_scenario = None if is_dcopf_like else price_analysis.base_scenario
-            zonal_config = _zonal_part(power_flow_model).rstrip("/") if isinstance(power_flow_model, (Zonal_NTC, ZonalFBMC)) else ""
+            zonal_config = _zonal_part(power_flow_model).rstrip("/") if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge, ZonalFBMC)) else ""
 
             scenario_to_analyse.analyse_scenario()  # analyse base scenario
             scenario_to_analyse.plot_network(power_flow_model, zonal_config)  # plot underlying network

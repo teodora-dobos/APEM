@@ -71,10 +71,10 @@ def test_invalid_power_flow_model(valid_config):
 
 def test_zonal_config_used_only_for_zonal(valid_config):
     cfg = json.loads(valid_config.read_text())
-    cfg["scenario"]["power_flow_model"]["type"] = "Zonal_NTC"
+    cfg["scenario"]["power_flow_model"]["type"] = "Zonal_NTC_aggregated"
     loader_file = valid_config.parent / "zonal.json"
     loader_file.write_text(json.dumps(cfg))
 
     loader = ConfigLoader(str(loader_file))
     pf_model = loader.get_power_flow_model()
-    assert pf_model.__class__.__name__ == "Zonal_NTC"
+    assert pf_model.__class__.__name__ == "Zonal_NTC_aggregated"

@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_independent import (
-    Zonal_NTC_independent,
+    Zonal_NTC_multiedge,
 )
 from apem.US_market_model.data.parsing.scenario import Scenario
 
@@ -54,7 +54,7 @@ def base_scenario_with_parallel(tmp_path):
 def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, mock_mapper, base_scenario_with_parallel):
     mock_mapper.side_effect = lambda config, lat, lon: "Z1" if lat < 50.5 else "Z2"
 
-    ntc = Zonal_NTC_independent("zonal_DE3", factor=0.5)
+    ntc = Zonal_NTC_multiedge("zonal_DE3", factor=0.5)
     zonal_scenario = ntc.create_zonal_scenario_NTC(base_scenario_with_parallel)
 
     assert isinstance(zonal_scenario.network, nx.MultiGraph)
@@ -67,7 +67,7 @@ def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, 
 
 
 @patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC_independent.DCOPF")
-@patch.object(Zonal_NTC_independent, "create_zonal_scenario_NTC")
+@patch.object(Zonal_NTC_multiedge, "create_zonal_scenario_NTC")
 def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario_with_parallel):
     mock_zonal = MagicMock()
     mock_create.return_value = mock_zonal
@@ -79,7 +79,7 @@ def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario
     mock_dcopf.return_value = mock_dcopf_instance
 
     cfg = MagicMock()
-    ntc = Zonal_NTC_independent()
+    ntc = Zonal_NTC_multiedge()
     zonal_scenario, result = ntc.solve(base_scenario_with_parallel, cfg, results_file="r.csv")
 
     mock_create.assert_called_once_with(base_scenario=base_scenario_with_parallel)

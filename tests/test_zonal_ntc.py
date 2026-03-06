@@ -3,7 +3,7 @@ import pandas as pd
 import networkx as nx
 from unittest.mock import MagicMock, patch
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC
+from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC import Zonal_NTC_aggregated
 from apem.US_market_model.data.parsing.scenario import Scenario
 
 
@@ -50,8 +50,8 @@ def base_scenario(tmp_path):
 
 
 def test_str_repr():
-    ntc = Zonal_NTC("zonal_DE3", 0.8)
-    assert str(ntc) == "Zonal_NTC"
+    ntc = Zonal_NTC_aggregated("zonal_DE3", 0.8)
+    assert str(ntc) == "Zonal_NTC_aggregated"
     assert ntc.zonal_configuration == "zonal_DE3"
     assert pytest.approx(ntc.factor) == 0.8
 
@@ -64,7 +64,7 @@ def test_create_zonal_scenario(mock_to_csv, mock_makedirs, mock_mapper, base_sce
     # Make both nodes map to distinct zones
     mock_mapper.side_effect = lambda config, lat, lon: "Z1" if lat < 50.5 else "Z2"
 
-    ntc = Zonal_NTC("zonal_DE3", factor=0.5)
+    ntc = Zonal_NTC_aggregated("zonal_DE3", factor=0.5)
     zonal_scenario = ntc.create_zonal_scenario_NTC(base_scenario)
 
     # verify folder creation + CSV output called
@@ -90,7 +90,7 @@ def test_create_zonal_scenario_single_zone(mock_to_csv, mock_makedirs, mock_mapp
     """Case where all nodes map to the same zone (no edges)."""
     mock_mapper.return_value = "Z1"
 
-    ntc = Zonal_NTC("zonal_DE1", factor=0.9)
+    ntc = Zonal_NTC_aggregated("zonal_DE1", factor=0.9)
     zonal_scenario = ntc.create_zonal_scenario_NTC(base_scenario)
 
     assert list(zonal_scenario.network.nodes) == ["Z1"]
@@ -100,9 +100,9 @@ def test_create_zonal_scenario_single_zone(mock_to_csv, mock_makedirs, mock_mapp
 
 
 @patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_NTC.DCOPF")
-@patch.object(Zonal_NTC, "create_zonal_scenario_NTC")
+@patch.object(Zonal_NTC_aggregated, "create_zonal_scenario_NTC")
 def test_solve_calls_dcopf(mock_create, mock_dcopf, base_scenario):
-    """Ensure Zonal_NTC.solve delegates to DCOPF.solve."""
+    """Ensure Zonal_NTC_aggregated.solve delegates to DCOPF.solve."""
     mock_zonal = MagicMock()
     mock_create.return_value = mock_zonal
 
@@ -112,7 +112,7 @@ def test_solve_calls_dcopf(mock_create, mock_dcopf, base_scenario):
     mock_dcopf.return_value = mock_dcopf_instance
 
     cfg = MagicMock()
-    ntc = Zonal_NTC()
+    ntc = Zonal_NTC_aggregated()
     zonal_scenario, result = ntc.solve(base_scenario, cfg, results_file="r.csv")
 
     mock_create.assert_called_once_with(base_scenario=base_scenario)

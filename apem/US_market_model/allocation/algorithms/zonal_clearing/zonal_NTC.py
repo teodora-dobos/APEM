@@ -14,7 +14,7 @@ from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_configurati
 from apem.US_market_model.data.parsing.scenario import Scenario
 
 
-class Zonal_NTC(PowerFlowModel):
+class Zonal_NTC_aggregated(PowerFlowModel):
     """
     Implementation of the Zonal NTC model. A zonal NTC model includes a simple graph with at most one line
     between any two nodes, where the nodes represent the zones. 
@@ -54,7 +54,7 @@ class Zonal_NTC(PowerFlowModel):
 
         # save node_to_zone assignment as .csv file (include factor for consistency with result paths)
         factor_str = f"_f{self.factor}" if self.factor is not None else ""
-        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC/{self.zonal_configuration}{factor_str}"
+        results_path = f"US_results/{base_scenario.name}_results/Zonal_NTC_aggregated/{self.zonal_configuration}{factor_str}"
         os.makedirs(results_path, exist_ok=True)
         node_to_zone_df = pd.DataFrame(list(node_to_zone.items()), columns=['node', 'zone'])
         node_to_zone_df.to_csv(os.path.join(results_path, "node_to_zone.csv"), index=False)
@@ -112,4 +112,8 @@ class Zonal_NTC(PowerFlowModel):
         return zonal_scenario, dcopf.solve(zonal_scenario, configuration, results_file, stats_file)
 
     def __str__(self):
-        return 'Zonal_NTC'
+        return 'Zonal_NTC_aggregated'
+
+
+# Backward compatibility alias
+Zonal_NTC = Zonal_NTC_aggregated
