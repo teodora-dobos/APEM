@@ -41,7 +41,6 @@ class ConfigLoader:
             "DCOPF",
             "Zonal_NTC_aggregated",
             "Zonal_NTC_multiedge",
-            "Nodal_FBMC",
             "Zonal_FBMC",
         ]:
             raise ValueError(
