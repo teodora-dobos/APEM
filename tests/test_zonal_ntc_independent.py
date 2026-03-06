@@ -86,4 +86,3 @@ def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario
     mock_dcopf_instance.solve.assert_called_once()
     assert zonal_scenario is mock_zonal
     assert result is mock_alloc
-*** End Patch
