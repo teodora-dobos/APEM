@@ -115,7 +115,7 @@ class PriceAnalysis:
 
         if file_stats:
             f = open(file_stats, mode)
-            f.write(f"Runtime in seconds: {pricing.runtime}\n")
+            f.write(f"Runtime in seconds: {round(pricing.runtime, 2)}\n")
             f.write(f"Number of Variables: {pricing.num_vars}\n")
             f.write(f"Number of Constraints: {pricing.num_constrs}\n\n")
             f.close()
@@ -128,7 +128,7 @@ class PriceAnalysis:
 
         if file_avg:
             file = open(file_avg, mode)
-            file.write(f"Average price: {avg}\n\n")
+            file.write(f"Average price: {round(avg, 2)}\n\n")
             file.close()
 
         return avg
@@ -150,7 +150,7 @@ class PriceAnalysis:
         if file_avg:
             file = open(file_avg, mode)
             for period, price in avg_prices_dict.items():
-                file.write(f"Average price in period {period}: {price}\n")
+                file.write(f"Average price in period {period}: {round(price, 2)}\n")
             file.write("\n")
             file.close()
 
@@ -170,7 +170,7 @@ class PriceAnalysis:
         if file_avg:
             file = open(file_avg, mode)
             for node, price in avg_prices_dict.items():
-                file.write(f"Average price at node {node}: {price}\n")
+                file.write(f"Average price at node {node}: {round(price, 2)}\n")
             file.write("\n")
             file.close()
 
