@@ -1,28 +1,28 @@
 {
-    "_available_US_datasets": [
+    "_available_market_models": [
+        "US_model",
+        "EU_model"
+    ],
+    "_available_us_datasets": [
         "IEEE_RTS",
         "PJM",
         "PyPSAEurSmall",
         "PyPSAEurLarge",
         "ARPA"
     ],
-    "_available_EU_datasets": [
-        "Generated Small",
-        "Generated Large",
+    "_available_eu_datasets": [
+        "GENERATED_SMALL",
+        "GENERATED_LARGE",
         "OMIE",
         "GME",
         "IEEE_RTS",
         "ARPA"
     ],
-    "_available_market_models": [
-        "US_model",
-        "EU_model"
-    ],
     "_available_power_flow_models": [
         "DCOPF",
-        "Zonal_FBMC",
         "Zonal_NTC_aggregated",
-        "Zonal_NTC_multiedge"
+        "Zonal_NTC_multiedge",
+        "Zonal_FBMC"
     ],
     "_available_pricing_algorithms": [
         "ELMP",
@@ -31,15 +31,15 @@
         "Join",
         "Markup"
     ],
-    "_available_cut_types": [
-        "price based",
-        "combinatorial benders",
-        "no good"
-    ],
     "_available_redispatch_algorithms": [
         "MinAbsCostRD",
         "MinAbsVolRD",
         "MinCostRD"
+    ],
+    "_available_cut_types": [
+        "price based",
+        "combinatorial benders",
+        "no good"
     ],
     "_available_zonal_configurations": [
         "national",
@@ -56,73 +56,60 @@
         "BC3.2",
         "BC4"
     ],
-    "_available_euphemia_configuration_fields": [
-        "disable_reinsertion",
-        "calculate_corrected_welfare",
-        "price_lower_bound",
-        "price_upper_bound",
-        "beta_MIC",
-        "delta_load_gradient",
-        "delta_PAB",
-        "epsilon",
-        "max_iterations",
-        "reinsertion_max_iterations",
-        "big_m",
-        "lazy_constraints",
-        "output_flag",
-        "time_limit",
-        "mip_gap",
-        "threads",
-        "seed"
-    ],
-    "verbosity": true,
-    "scenario": {
-        "market_model": "EU_model",
-        "US_dataset": "PyPSAEurLarge",
-        "EU_dataset": "GME",
+    "run": {
+        "market_model": "US_model",
+        "verbosity": true
+    },
+    "us_model": {
+        "dataset": "PyPSAEurLarge",
         "power_flow_model": {
             "type": "DCOPF"
         },
-        "cut_type": "price based",
         "pricing_algorithm": "ELMP",
-        "redispatch_algorithm": "MinCostRD",
-        "redispatch_constraint_units": false,
-        "redispatch_threshold": 0.001,
-        "alpha": 0.01
+        "redispatch": {
+            "algorithm": "MinCostRD",
+            "constraint_units": false,
+            "threshold": 0.001,
+            "alpha": 0.01
+        },
+        "solver_configuration": {
+            "MIP_gap": 1e-4,
+            "optimality_tol": 1e-6,
+            "time_limit": 3600,
+            "work_limit": 3600,
+            "threads": 0,
+            "presparsify": -1,
+            "strict_supply_demand_eq": true,
+            "relaxation": false,
+            "output_flag": 0
+        },
+        "zonal_configuration": {
+            "type": "zonal_DE2-s",
+            "factor": 0.8,
+            "base_case": "BC4"
+        }
     },
-    "us_solver_configuration": {
-        "MIP_gap": 1e-4,
-        "optimality_tol": 1e-6,
-        "time_limit": 3600,
-        "work_limit": 3600,
-        "threads": 0,
-        "presparsify": -1,
-        "strict_supply_demand_eq": true,
-        "relaxation": false,
-        "output_flag": 0
-    },
-    "euphemia_configuration": {
-        "disable_reinsertion": true,
-        "calculate_corrected_welfare": false,
-        "price_lower_bound": -500,
-        "price_upper_bound": 4000,
-        "beta_MIC": 0.1,
-        "delta_load_gradient": 5000,
-        "delta_PAB": 50,
-        "epsilon": 1e-4,
-        "max_iterations": 50,
-        "reinsertion_max_iterations": 10,
-        "big_m": 1000000,
-        "lazy_constraints": 1,
-        "output_flag": 0,
-        "time_limit": 3600,
-        "mip_gap": 1e-4,
-        "threads": 0,
-        "seed": 0
-    },
-    "zonal_configuration": {
-        "type": "zonal_DE2-s",
-        "factor": 0.8,
-        "base_case": "BC4"
+    "eu_model": {
+        "dataset": "GME",
+        "cut_type": "price based",
+        "euphemia_configuration": {
+            "disable_reinsertion": true,
+            "calculate_corrected_welfare": false,
+            "price_lower_bound": -500,
+            "price_upper_bound": 4000,
+            "beta_MIC": 0.1,
+            "delta_load_gradient": 5000,
+            "delta_PAB": 50,
+            "epsilon": 1e-4,
+            "max_iterations": 50,
+            "reinsertion_max_iterations": 10,
+            "big_m": 1000000,
+            "lazy_constraints": 1,
+            "output_flag": 0,
+            "time_limit": 3600,
+            "mip_gap": 1e-4,
+            "threads": 0,
+            "seed": 0
+        }
     }
-} 
+}

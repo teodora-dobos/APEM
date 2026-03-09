@@ -45,24 +45,45 @@
 ## Usage
 **Note:** Make sure to always activate your virtual environment before running the code!
 
-Before running the code, update the [`config.json`](./config.json) file to create a configuration that will be run.
-
-The most important section is `scenario`, which defines the dataset, market model, power flow model, pricing, and redispatch algorithm.
+Before running the code, update the [`config.json`](./config.json) file.
+The config is model-scoped:
+- `run`: global run selection
+- `us_model`: US-model-specific settings
+- `eu_model`: EU-model-specific settings
+Only this model-scoped format is supported.
 
 ```jsonc
-"scenario": {
-    "market_model": "EU_model",    // choose from _available_market_models
-    "US_dataset": "ARPA",          // choose from _available_US_datasets
-    "EU_dataset": "GME",           // choose from _available_EU_datasets
-    "power_flow_model": {
-        "type": "DCOPF"            // choose from _available_power_flow_models
+{
+  "run": {
+    "market_model": "EU_model",  // US_model or EU_model
+    "verbosity": true
+  },
+  "us_model": {
+    "dataset": "ARPA",
+    "power_flow_model": { "type": "DCOPF" },
+    "pricing_algorithm": "IP",
+    "redispatch": {
+      "algorithm": "MinCostRD",
+      "constraint_units": false,
+      "threshold": 0.001,
+      "alpha": 0.01
     },
-    "cut_type": "price based",     // choose from _available_cut_types
-    "pricing_algorithm": "IP",     // choose from _available_pricing_algorithms
-    "redispatch_algorithm": "MinCostRD",  // choose from _available_redispatch_algorithms 
-    "redispatch_constraint_units": false, // controls whether some units should not be redispatched
-    "redispatch_threshold": 0.001, // in MW, controls what units can be redispatched
-    "alpha": 0.01 // markup used for markup pricing, should be between 0 and 1
+    "solver_configuration": {
+      "time_limit": 3600
+    },
+    "zonal_configuration": {
+      "type": "zonal_DE2-s",
+      "factor": 0.8,
+      "base_case": "BC4"
+    }
+  },
+  "eu_model": {
+    "dataset": "GME",
+    "cut_type": "price based",
+    "euphemia_configuration": {
+      "max_iterations": 50
+    }
+  }
 }
 ```
 
@@ -78,11 +99,11 @@ The most important section is `scenario`, which defines the dataset, market mode
 - **Redispatch algorithms** (only for `US_model/Zonal_NTC_aggregated`): `MinCostRD`, `MinAbsCostRD`, `MinAbsVolRD`
 - **Zonal configurations** (only for `US_model/Zonal_NTC_aggregated`, `US_model/Zonal_NTC_multiedge` and `US_model/Zonal_FBMC`): `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE5`
 
-US-model solver settings like tolerances and runtime limits can be adjusted under `"us_solver_configuration"`.
-EU-model-specific hyperparameters can be adjusted under `"euphemia_configuration"` (for example `max_iterations`,
+US-model solver settings like tolerances and runtime limits can be adjusted under `us_model.solver_configuration`.
+EU-model-specific hyperparameters can be adjusted under `eu_model.euphemia_configuration` (for example `max_iterations`,
 `reinsertion_max_iterations`, price bounds, cut thresholds, and Gurobi parameters such as `time_limit`, `mip_gap`,
 `threads`, `seed`, `output_flag`).
-Zonal-specific settings are under `"zonal_configuration"`.
+Zonal-specific settings are under `us_model.zonal_configuration`.
 
 ---
 To run the configuration, execute:

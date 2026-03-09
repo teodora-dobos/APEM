@@ -1,7 +1,6 @@
 import json
 from numbers import Integral, Real
 from typing import Any, Dict
-import warnings
 
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
@@ -15,13 +14,79 @@ from apem.enums import FBMCBaseCases, MarketModels, PricingAlgorithms, Redispatc
 class ConfigLoader:
     def __init__(self, config_path: str = "config.json"):
         self.config_path = config_path
-        self.raw_config = self._load_raw_config()
+        self.raw_config = self._normalize_config_format(self._load_raw_config())
         self._validate_config()
         self.config = self._filter_documentation_fields()
 
     def _load_raw_config(self) -> Dict[str, Any]:
         with open(self.config_path, "r") as f:
             return json.load(f)
+
+    def _normalize_config_format(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Accept only model-scoped config format ('run', 'us_model', 'eu_model').
+        """
+        if "run" not in raw:
+            raise ValueError(
+                "Invalid config format: expected model-scoped format "
+                "with a top-level 'run' section."
+            )
+        return self._normalize_model_scoped_config(raw)
+
+    def _normalize_model_scoped_config(self, raw: Dict[str, Any]) -> Dict[str, Any]:
+        run_cfg = raw.get("run", {})
+        us_cfg = raw.get("us_model", {})
+        eu_cfg = raw.get("eu_model", {})
+
+        if not isinstance(run_cfg, dict):
+            raise ValueError("Invalid run: expected an object.")
+        if us_cfg is None:
+            us_cfg = {}
+        if eu_cfg is None:
+            eu_cfg = {}
+        if not isinstance(us_cfg, dict):
+            raise ValueError("Invalid us_model: expected an object.")
+        if not isinstance(eu_cfg, dict):
+            raise ValueError("Invalid eu_model: expected an object.")
+
+        redispatch_cfg = us_cfg.get("redispatch", {})
+        if redispatch_cfg is None:
+            redispatch_cfg = {}
+        if not isinstance(redispatch_cfg, dict):
+            raise ValueError("Invalid us_model.redispatch: expected an object.")
+
+        us_solver_cfg = us_cfg.get("solver_configuration")
+
+        normalized = {
+            "verbosity": run_cfg.get("verbosity", raw.get("verbosity", True)),
+            "scenario": {
+                "market_model": run_cfg.get("market_model", "US_model"),
+                "US_dataset": us_cfg.get("dataset", "IEEE_RTS"),
+                "EU_dataset": eu_cfg.get("dataset", "GENERATED_SMALL"),
+                "power_flow_model": us_cfg.get("power_flow_model", {"type": "DCOPF"}),
+                "cut_type": eu_cfg.get("cut_type", CutTypes.PB.value),
+                "pricing_algorithm": us_cfg.get("pricing_algorithm", "IP"),
+                "redispatch_algorithm": redispatch_cfg.get("algorithm", "MinCostRD"),
+                "redispatch_constraint_units": redispatch_cfg.get("constraint_units", False),
+                "redispatch_threshold": redispatch_cfg.get("threshold", 0.0),
+                "alpha": redispatch_cfg.get("alpha", 0.0),
+            },
+            "euphemia_configuration": eu_cfg.get("euphemia_configuration", raw.get("euphemia_configuration", {})),
+            "zonal_configuration": us_cfg.get(
+                "zonal_configuration",
+                raw.get("zonal_configuration", {"type": "zonal_DE2-s", "factor": 0.8, "base_case": "BC4"}),
+            ),
+        }
+
+        if us_solver_cfg is not None:
+            normalized["us_solver_configuration"] = us_solver_cfg
+
+        # Preserve optional documentation/helper fields.
+        for key, value in raw.items():
+            if key.startswith("_"):
+                normalized[key] = value
+
+        return normalized
 
     def _filter_documentation_fields(self) -> Dict[str, Any]:
         """Remove documentation fields (those starting with _) from the config."""
@@ -99,20 +164,16 @@ class ConfigLoader:
         self._validate_euphemia_configuration()
 
     def _validate_us_solver_configuration(self) -> None:
-        has_new_key = "us_solver_configuration" in self.raw_config
-        has_legacy_key = "solver_configuration" in self.raw_config
+        if self.raw_config["scenario"]["market_model"] != "US_model":
+            return
 
-        if not has_new_key and not has_legacy_key:
+        if "us_solver_configuration" not in self.raw_config:
             raise ValueError(
-                "Missing solver configuration: provide 'us_solver_configuration' "
-                "(preferred) or 'solver_configuration' (deprecated)."
+                "Missing solver configuration: provide 'us_model.solver_configuration'."
             )
 
-        if has_new_key and not isinstance(self.raw_config["us_solver_configuration"], dict):
+        if not isinstance(self.raw_config["us_solver_configuration"], dict):
             raise ValueError("Invalid us_solver_configuration: expected an object.")
-
-        if has_legacy_key and not isinstance(self.raw_config["solver_configuration"], dict):
-            raise ValueError("Invalid solver_configuration: expected an object.")
 
     @staticmethod
     def _is_number(value: Any) -> bool:
@@ -248,20 +309,7 @@ class ConfigLoader:
         if "us_solver_configuration" in self.config:
             return self.config["us_solver_configuration"]
 
-        if "solver_configuration" in self.config:
-            warnings.warn(
-                "Config key 'solver_configuration' is deprecated and will be removed. "
-                "Use 'us_solver_configuration' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            return self.config["solver_configuration"]
-
         raise ValueError("Missing US solver configuration.")
-
-    def get_solver_configuration(self) -> Dict[str, Any]:
-        """Backward-compatible alias for get_us_solver_configuration()."""
-        return self.get_us_solver_configuration()
 
     def get_euphemia_configuration(self) -> Dict[str, Any]:
         return self.config.get("euphemia_configuration", {})
