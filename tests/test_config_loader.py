@@ -20,7 +20,7 @@ def valid_config(tmp_path):
             "redispatch_threshold": 0.001,
             "alpha": 0.5
         },
-        "solver_configuration": {
+        "us_solver_configuration": {
             "MIP_gap": 1e-4,
             "optimality_tol": 1e-6,
             "time_limit": 3600
@@ -78,3 +78,54 @@ def test_zonal_config_used_only_for_zonal(valid_config):
     loader = ConfigLoader(str(loader_file))
     pf_model = loader.get_power_flow_model()
     assert pf_model.__class__.__name__ == "Zonal_NTC_aggregated"
+
+
+def test_get_euphemia_configuration_defaults_to_empty(valid_config):
+    loader = ConfigLoader(str(valid_config))
+    assert loader.get_euphemia_configuration() == {}
+
+
+def test_invalid_euphemia_configuration_key(valid_config):
+    cfg = json.loads(valid_config.read_text())
+    cfg["euphemia_configuration"] = {"not_a_real_key": 1}
+    bad_file = valid_config.parent / "bad_euphemia_key.json"
+    bad_file.write_text(json.dumps(cfg))
+
+    with pytest.raises(ValueError, match="Invalid euphemia_configuration key"):
+        ConfigLoader(str(bad_file))
+
+
+def test_valid_euphemia_configuration(valid_config):
+    cfg = json.loads(valid_config.read_text())
+    cfg["euphemia_configuration"] = {
+        "max_iterations": 25,
+        "reinsertion_max_iterations": 5,
+        "output_flag": 0,
+        "lazy_constraints": 1,
+        "beta_MIC": 0.2,
+    }
+    cfg_file = valid_config.parent / "good_euphemia.json"
+    cfg_file.write_text(json.dumps(cfg))
+
+    loader = ConfigLoader(str(cfg_file))
+    euphemia_cfg = loader.get_euphemia_configuration()
+    assert euphemia_cfg["max_iterations"] == 25
+    assert euphemia_cfg["reinsertion_max_iterations"] == 5
+
+
+def test_legacy_solver_configuration_key_supported_with_warning(valid_config):
+    cfg = json.loads(valid_config.read_text())
+    cfg["solver_configuration"] = cfg.pop("us_solver_configuration")
+    cfg_file = valid_config.parent / "legacy_solver_key.json"
+    cfg_file.write_text(json.dumps(cfg))
+
+    loader = ConfigLoader(str(cfg_file))
+    with pytest.warns(DeprecationWarning, match="solver_configuration"):
+        us_solver_cfg = loader.get_us_solver_configuration()
+
+    assert us_solver_cfg["time_limit"] == 3600
+
+
+def test_solver_configuration_alias_method(valid_config):
+    loader = ConfigLoader(str(valid_config))
+    assert loader.get_solver_configuration() == loader.get_us_solver_configuration()

@@ -1,5 +1,7 @@
 import json
+from numbers import Integral, Real
 from typing import Any, Dict
+import warnings
 
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
@@ -93,6 +95,110 @@ class ConfigLoader:
                 if base_case not in [c.value for c in FBMCBaseCases]:
                     raise ValueError(f"Invalid FBMC base case: {base_case}.")
 
+        self._validate_us_solver_configuration()
+        self._validate_euphemia_configuration()
+
+    def _validate_us_solver_configuration(self) -> None:
+        has_new_key = "us_solver_configuration" in self.raw_config
+        has_legacy_key = "solver_configuration" in self.raw_config
+
+        if not has_new_key and not has_legacy_key:
+            raise ValueError(
+                "Missing solver configuration: provide 'us_solver_configuration' "
+                "(preferred) or 'solver_configuration' (deprecated)."
+            )
+
+        if has_new_key and not isinstance(self.raw_config["us_solver_configuration"], dict):
+            raise ValueError("Invalid us_solver_configuration: expected an object.")
+
+        if has_legacy_key and not isinstance(self.raw_config["solver_configuration"], dict):
+            raise ValueError("Invalid solver_configuration: expected an object.")
+
+    @staticmethod
+    def _is_number(value: Any) -> bool:
+        return isinstance(value, Real) and not isinstance(value, bool)
+
+    @staticmethod
+    def _is_int(value: Any) -> bool:
+        return isinstance(value, Integral) and not isinstance(value, bool)
+
+    def _validate_euphemia_configuration(self) -> None:
+        cfg = self.raw_config.get("euphemia_configuration", {})
+        if cfg is None:
+            return
+        if not isinstance(cfg, dict):
+            raise ValueError("Invalid euphemia_configuration: expected an object.")
+
+        allowed = {
+            "disable_reinsertion",
+            "calculate_corrected_welfare",
+            "price_lower_bound",
+            "price_upper_bound",
+            "beta_MIC",
+            "delta_load_gradient",
+            "delta_PAB",
+            "epsilon",
+            "max_iterations",
+            "reinsertion_max_iterations",
+            "big_m",
+            "lazy_constraints",
+            "output_flag",
+            "time_limit",
+            "mip_gap",
+            "threads",
+            "seed",
+        }
+
+        unknown = sorted(set(cfg) - allowed)
+        if unknown:
+            raise ValueError(f"Invalid euphemia_configuration key(s): {', '.join(unknown)}")
+
+        bool_fields = {"disable_reinsertion", "calculate_corrected_welfare"}
+        int_fields = {"max_iterations", "reinsertion_max_iterations", "threads", "seed", "output_flag", "lazy_constraints"}
+        number_fields = {"price_lower_bound", "price_upper_bound", "beta_MIC", "delta_load_gradient", "delta_PAB", "epsilon", "big_m", "time_limit", "mip_gap"}
+
+        for field in bool_fields:
+            if field in cfg and not isinstance(cfg[field], bool):
+                raise ValueError(f"Invalid euphemia_configuration.{field}: must be boolean.")
+        for field in int_fields:
+            if field in cfg and not self._is_int(cfg[field]):
+                raise ValueError(f"Invalid euphemia_configuration.{field}: must be integer.")
+        for field in number_fields:
+            if field in cfg and not self._is_number(cfg[field]):
+                raise ValueError(f"Invalid euphemia_configuration.{field}: must be numeric.")
+
+        if "beta_MIC" in cfg and not 0 <= cfg["beta_MIC"] <= 1:
+            raise ValueError("Invalid euphemia_configuration.beta_MIC: must be in [0, 1].")
+        if "delta_load_gradient" in cfg and cfg["delta_load_gradient"] < 0:
+            raise ValueError("Invalid euphemia_configuration.delta_load_gradient: must be >= 0.")
+        if "delta_PAB" in cfg and cfg["delta_PAB"] < 0:
+            raise ValueError("Invalid euphemia_configuration.delta_PAB: must be >= 0.")
+        if "epsilon" in cfg and cfg["epsilon"] <= 0:
+            raise ValueError("Invalid euphemia_configuration.epsilon: must be > 0.")
+        if "max_iterations" in cfg and cfg["max_iterations"] <= 0:
+            raise ValueError("Invalid euphemia_configuration.max_iterations: must be > 0.")
+        if "reinsertion_max_iterations" in cfg and cfg["reinsertion_max_iterations"] <= 0:
+            raise ValueError("Invalid euphemia_configuration.reinsertion_max_iterations: must be > 0.")
+        if "big_m" in cfg and cfg["big_m"] <= 0:
+            raise ValueError("Invalid euphemia_configuration.big_m: must be > 0.")
+        if "threads" in cfg and cfg["threads"] < 0:
+            raise ValueError("Invalid euphemia_configuration.threads: must be >= 0.")
+        if "seed" in cfg and cfg["seed"] < 0:
+            raise ValueError("Invalid euphemia_configuration.seed: must be >= 0.")
+        if "time_limit" in cfg and cfg["time_limit"] <= 0:
+            raise ValueError("Invalid euphemia_configuration.time_limit: must be > 0.")
+        if "mip_gap" in cfg and cfg["mip_gap"] < 0:
+            raise ValueError("Invalid euphemia_configuration.mip_gap: must be >= 0.")
+        if "output_flag" in cfg and cfg["output_flag"] not in [0, 1]:
+            raise ValueError("Invalid euphemia_configuration.output_flag: must be 0 or 1.")
+        if "lazy_constraints" in cfg and cfg["lazy_constraints"] not in [0, 1]:
+            raise ValueError("Invalid euphemia_configuration.lazy_constraints: must be 0 or 1.")
+
+        price_lower = cfg.get("price_lower_bound", -500)
+        price_upper = cfg.get("price_upper_bound", 4000)
+        if price_lower >= price_upper:
+            raise ValueError("Invalid euphemia_configuration: price_lower_bound must be < price_upper_bound.")
+
     def get_US_dataset(self) -> US_Datasets:
         return US_Datasets[self.config["scenario"]["US_dataset"]]
 
@@ -138,5 +244,24 @@ class ConfigLoader:
     def get_alpha(self) -> float:
         return self.config["scenario"]["alpha"]
 
+    def get_us_solver_configuration(self) -> Dict[str, Any]:
+        if "us_solver_configuration" in self.config:
+            return self.config["us_solver_configuration"]
+
+        if "solver_configuration" in self.config:
+            warnings.warn(
+                "Config key 'solver_configuration' is deprecated and will be removed. "
+                "Use 'us_solver_configuration' instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            return self.config["solver_configuration"]
+
+        raise ValueError("Missing US solver configuration.")
+
     def get_solver_configuration(self) -> Dict[str, Any]:
-        return self.config["solver_configuration"]
+        """Backward-compatible alias for get_us_solver_configuration()."""
+        return self.get_us_solver_configuration()
+
+    def get_euphemia_configuration(self) -> Dict[str, Any]:
+        return self.config.get("euphemia_configuration", {})

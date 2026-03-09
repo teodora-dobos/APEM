@@ -1,16 +1,21 @@
+import json
+import logging
 import os
 import random
-import shutil
-from typing import Optional
-import gurobipy as gp
-from gurobipy import GRB
 import re
-import pandas as pd
 import time
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
+from uuid import uuid4
+
+import gurobipy as gp
+import pandas as pd
+from gurobipy import GRB
 
 import apem.EU_market_model.euphemia.cutting_strategies.price_based as price_based_cutting
 import apem.EU_market_model.euphemia.cutting_strategies.combinatorial_benders as combinatorial_benders_cutting
+import apem.EU_market_model.euphemia.cutting_strategies.no_good as no_good_cutting
 from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
 from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig
 from apem.EU_market_model.euphemia.model.setup_model import add_objective, add_market_constraints, \
@@ -20,7 +25,17 @@ from apem.EU_market_model.euphemia.reinsertions.prmic_prb_reinsertion import PRM
 from apem.EU_market_model.euphemia.utils.calculations import calculate_flexible_order_active_period, \
     calculate_block_demand_surplus
 from apem.EU_market_model.euphemia.utils.extraction import get, parse_step_order_ids
-from apem.EU_market_model.euphemia.utils.paths import EUPHEMIA_ROOT
+
+
+def _slugify(value: str) -> str:
+    """Convert free-text labels to folder-safe identifiers."""
+    return re.sub(r"[^a-z0-9]+", "_", value.lower()).strip("_")
+
+
+def _new_run_id() -> str:
+    """Create a unique run id with UTC timestamp and random suffix."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{timestamp}_{uuid4().hex[:8]}"
 
 
 class MasterProblem:
@@ -80,11 +95,9 @@ class MasterProblem:
 
         self.iteration = 0
         self.start_time = 0
-        self.M = 10 ** 6
+        self.M = config.big_m
         self.prices = {}
         self.prices_reinsertion = {}
-
-        self.model.Params.LazyConstraints = 1
 
         self.price_lower_bound = config.price_lower_bound
         self.price_upper_bound = config.price_upper_bound
@@ -93,33 +106,126 @@ class MasterProblem:
         self.delta_load_gradient = config.delta_load_gradient
         self.epsilon = config.epsilon
         self.max_iterations = config.max_iterations
+        self.reinsertion_max_iterations = config.reinsertion_max_iterations
         self.cutting_strategy = config.cutting_strategy
         self.disable_reinsertion = config.disable_reinsertion
         self.calculate_corrected_welfare = config.calculate_corrected_welfare
+        self.output_flag = config.output_flag
+        self.time_limit = config.time_limit
+        self.mip_gap = config.mip_gap
+        self.threads = config.threads
+        self.seed = config.seed
+        self.lazy_constraints = config.lazy_constraints
 
-        PROJECT_ROOT = Path(__file__).resolve().parents[4]
-        RESULTS_ROOT = PROJECT_ROOT / "EU_results/euphemia"
+        self.model.Params.LazyConstraints = int(self.lazy_constraints)
+        self.model.setParam("OutputFlag", int(self.output_flag))
+        if self.time_limit is not None:
+            self.model.setParam("TimeLimit", float(self.time_limit))
+        if self.mip_gap is not None:
+            self.model.setParam("MIPGap", float(self.mip_gap))
+        if self.threads is not None:
+            self.model.setParam("Threads", int(self.threads))
+        if self.seed is not None:
+            self.model.setParam("Seed", int(self.seed))
+
+        self.run_id = _new_run_id()
+        self.cut_type_key = _slugify(self.cutting_strategy.value)
+        self.created_at_utc = datetime.now(timezone.utc)
+        self.started_at_utc = None
+
+        project_root = Path(__file__).resolve().parents[4]
+        results_root = project_root / "EU_results" / "euphemia"
+        self.run_root = results_root / self.config.dataset / self.cut_type_key / self.run_id
 
         self.paths = {
-            "alloc": str(RESULTS_ROOT / self.config.dataset / "allocation"),
-            "prices": str(RESULTS_ROOT / self.config.dataset / "prices"),
-            "pab": str(RESULTS_ROOT / self.config.dataset / "pab"),
-            "block_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "block_inm_threshold"),
-            "complex_mic": str(RESULTS_ROOT / self.config.dataset / "complex_mic"),
-            "complex_mic_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "complex_mic_inm_threshold"),
-            "scalable_mic": str(RESULTS_ROOT / self.config.dataset / "scalable_mic"),
-            "scalable_mic_inm_threshold": str(RESULTS_ROOT / self.config.dataset / "scalable_mic_inm_threshold"),
-            "debug": str(RESULTS_ROOT / self.config.dataset / "debug"),
-            "evaluation": str(RESULTS_ROOT / self.config.dataset / "evaluation"),
+            "alloc": self.run_root / "allocation",
+            "prices": self.run_root / "prices",
+            "pab": self.run_root / "pab",
+            "block_inm_threshold": self.run_root / "block_inm_threshold",
+            "complex_mic": self.run_root / "complex_mic",
+            "complex_mic_inm_threshold": self.run_root / "complex_mic_inm_threshold",
+            "scalable_mic": self.run_root / "scalable_mic",
+            "scalable_mic_inm_threshold": self.run_root / "scalable_mic_inm_threshold",
+            "debug": self.run_root / "debug",
+            "evaluation": self.run_root / "evaluation",
         }
 
         for attr, path in self.paths.items():
             setattr(self, attr, path)
-            full_path = EUPHEMIA_ROOT / path
-            # Exclude folders that should not be deleted for each run here
-            if os.path.exists(full_path) and attr != "evaluation":
-                shutil.rmtree(full_path)
-            os.makedirs(full_path, exist_ok=True)
+            os.makedirs(path, exist_ok=True)
+
+        self.run_metadata_path = self.run_root / "run.json"
+        self.run_logger = logging.getLogger(f"apem.euphemia.{self.config.dataset}.{self.cut_type_key}.{self.run_id}")
+        self._setup_run_logger()
+        self.run_metadata = {
+            "run_id": self.run_id,
+            "dataset": self.config.dataset,
+            "scenario_name": self.scenario.name,
+            "cut_type": self.cutting_strategy.value,
+            "cut_type_key": self.cut_type_key,
+            "created_at_utc": self.created_at_utc.isoformat().replace("+00:00", "Z"),
+            "started_at_utc": None,
+            "ended_at_utc": None,
+            "status": "initialized",
+            "reinsertion_run": self.reinsertion_run,
+            "iteration": 0,
+            "found_solution": False,
+            "best_objective": None,
+            "model_status": None,
+            "paths": {key: str(path) for key, path in self.paths.items()},
+            "run_log": str(self.run_root / "run.log"),
+        }
+        self._write_run_metadata()
+
+    def _setup_run_logger(self) -> None:
+        """Configure a per-run file logger."""
+        self.run_logger.setLevel(logging.INFO)
+        self.run_logger.propagate = False
+        for handler in list(self.run_logger.handlers):
+            self.run_logger.removeHandler(handler)
+            handler.close()
+
+        log_file = self.run_root / "run.log"
+        handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+        handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+        self.run_logger.addHandler(handler)
+
+    def _emit(self, message: str, level: int = logging.INFO) -> None:
+        """Write a message to stdout and the per-run log file."""
+        print(message)
+        self.run_logger.log(level, message)
+
+    def _safe_model_status(self):
+        try:
+            return int(self.model.Status)
+        except Exception:  # noqa: BLE001
+            return None
+
+    def _write_run_metadata(self) -> None:
+        """Persist run metadata as JSON for downstream tracking."""
+        with open(self.run_metadata_path, "w", encoding="utf-8") as metadata_file:
+            json.dump(self.run_metadata, metadata_file, indent=2, sort_keys=True)
+
+    def _finalize_run_metadata(self, status: str, error: Optional[str] = None) -> None:
+        elapsed_seconds = None
+        if self.start_time:
+            elapsed_seconds = time.time() - self.start_time
+
+        self.run_metadata.update(
+            {
+                "status": status,
+                "reinsertion_run": self.reinsertion_run,
+                "iteration": self.iteration,
+                "found_solution": self.found_solution,
+                "best_objective": self.current_best_objective if self.current_best_objective >= 0 else None,
+                "model_status": self._safe_model_status(),
+                "ended_at_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+                "elapsed_seconds": elapsed_seconds,
+            }
+        )
+        if error:
+            self.run_metadata["error"] = error
+        self._write_run_metadata()
 
     def run(self) -> None:
         """
@@ -135,49 +241,76 @@ class MasterProblem:
             - MIC
         """
         self.start_time = time.time()
+        self.started_at_utc = datetime.now(timezone.utc)
+        self.run_metadata.update(
+            {
+                "started_at_utc": self.started_at_utc.isoformat().replace("+00:00", "Z"),
+                "status": "running",
+                "reinsertion_run": self.reinsertion_run,
+                "error": None,
+            }
+        )
+        self._write_run_metadata()
 
-        add_objective(self)
-        add_market_constraints(self)
-        add_network_constraints(self)
-        self.max_iterations = self.max_iterations if not self.reinsertion_run else 10
+        run_status = "failed"
+        run_error = None
+        try:
+            add_objective(self)
+            add_market_constraints(self)
+            add_network_constraints(self)
+            self.max_iterations = self.max_iterations if not self.reinsertion_run else self.reinsertion_max_iterations
 
-        print("Solving master problem...")
-        self.solve_master_problem()
-        self.model.write(os.path.join(EUPHEMIA_ROOT / self.paths['debug'], f"master_problem.lp"))
-        print(f"Master problem status: {self.model.Status}")
-        if self.model.Status == GRB.Status.INFEASIBLE:
-            print("Master problem is infeasible")
+            self._emit("Solving master problem...")
+            self.solve_master_problem()
+            self.model.write(str(self.paths["debug"] / "master_problem.lp"))
+            self._emit(f"Master problem status: {self.model.Status}")
+            if self.model.Status == GRB.Status.INFEASIBLE:
+                self._emit("Master problem is infeasible")
+                run_status = "infeasible"
+            else:
+                run_status = "completed_no_solution"
 
-        if self.found_solution:
-            print(
-                f'------- Surplus maximization and price problem successfully finished after {self.iteration} iterations -------')
-            print(
-                f'Final economic surplus{" of reinsertion run" if self.reinsertion_run else ""}: {self.current_best_objective}')
-            print(f'Found prices: {self.prices}')
+            if self.found_solution:
+                self._emit(
+                    f"------- Surplus maximization and price problem successfully finished after {self.iteration} iterations -------"
+                )
+                self._emit(
+                    f'Final economic surplus{" of reinsertion run" if self.reinsertion_run else ""}: {self.current_best_objective}'
+                )
+                self._emit(f"Found prices: {self.prices}")
+                run_status = "success"
 
-            # Log metrics for evaluation
-            if not self.reinsertion_run:
-                elapsed = time.time() - self.start_time
-                file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
-                with open(file_path, 'a', buffering=1) as file:
-                    file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
-                    if self.cutting_strategy == CutTypes.PB:
-                        file.write(
-                            f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n")
-                    file.write(f"Iterations: {self.iteration}\n")
-                    file.write(f"Final welfare: {self.current_best_objective}\n")
-                    file.write(f"Time passed: {elapsed:.3f} seconds\n")
-                    file.write(f"Clearing prices {self.prices}\n")
-                    if self.calculate_corrected_welfare:
-                        inelastic_surplus = calculate_block_demand_surplus(self)
-                        file.write(f"Corrected welfare: {self.current_best_objective - inelastic_surplus}\n")
-                    file.write("\n")
-                    file.flush()
-                    os.fsync(file.fileno())
+                # Log metrics for evaluation
+                if not self.reinsertion_run:
+                    elapsed = time.time() - self.start_time
+                    file_path = self.paths["evaluation"] / "evaluation.txt"
+                    with open(file_path, "a", buffering=1) as file:
+                        file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
+                        if self.cutting_strategy == CutTypes.PB:
+                            file.write(
+                                f"- beta_MIC: {self.beta_MIC} ; delta_load_gradient: {self.delta_load_gradient} - \n"
+                            )
+                        file.write(f"Iterations: {self.iteration}\n")
+                        file.write(f"Final welfare: {self.current_best_objective}\n")
+                        file.write(f"Time passed: {elapsed:.3f} seconds\n")
+                        file.write(f"Clearing prices {self.prices}\n")
+                        if self.calculate_corrected_welfare:
+                            inelastic_surplus = calculate_block_demand_surplus(self)
+                            file.write(f"Corrected welfare: {self.current_best_objective - inelastic_surplus}\n")
+                        file.write("\n")
+                        file.flush()
+                        os.fsync(file.fileno())
 
-            if not self.reinsertion_run and not self.disable_reinsertion:
-                PRMIC_PRB_reinsertion(self, is_prmic_reinsertion=True)
-                PRMIC_PRB_reinsertion(self, is_prmic_reinsertion=False)
+                if not self.reinsertion_run and not self.disable_reinsertion:
+                    PRMIC_PRB_reinsertion(self, is_prmic_reinsertion=True)
+                    PRMIC_PRB_reinsertion(self, is_prmic_reinsertion=False)
+        except Exception as exc:  # noqa: BLE001
+            run_error = str(exc)
+            self._emit(f"Run failed: {exc}", level=logging.ERROR)
+            self.run_logger.exception("Unhandled exception during run")
+            raise
+        finally:
+            self._finalize_run_metadata(status=run_status, error=run_error)
 
     def solve_master_problem(self) -> None:
         """
@@ -198,13 +331,13 @@ class MasterProblem:
         if where == GRB.Callback.MIPSOL:
             # Check iteration limit
             if self.iteration >= self.max_iterations:
-                print(f"Maximum iterations ({self.max_iterations}) reached. Terminating.")
+                self._emit(f"Maximum iterations ({self.max_iterations}) reached. Terminating.")
                 callback_model.terminate()  # terminate optimization early
                 if not self.reinsertion_run:
                     elapsed = time.time() - self.start_time
                     # Log if no solution could be found
-                    file_path = EUPHEMIA_ROOT / self.paths['evaluation'] / f"evaluation.txt"
-                    with open(file_path, 'a', buffering=1) as file:
+                    file_path = self.paths["evaluation"] / "evaluation.txt"
+                    with open(file_path, "a", buffering=1) as file:
                         file.write(f"--- Evaluation: {self.cutting_strategy} on {self.scenario.name} ---\n")
                         if self.cutting_strategy == CutTypes.PB:
                             file.write(
@@ -220,8 +353,8 @@ class MasterProblem:
             vars = callback_model.getVars()
             solution = callback_model.cbGetSolution(vars)
             if solution is not None:
-                print("Found integer solution")
-                print("Objective value:", objective_value)
+                self._emit("Found integer solution")
+                self._emit(f"Objective value: {objective_value}")
                 self.iteration += 1
 
                 # match variables with value in current solution
@@ -229,29 +362,29 @@ class MasterProblem:
                 self.update_order_dataframes()
 
                 # Write current allocation solution to file
-                file_path = EUPHEMIA_ROOT / self.paths['alloc'] / "results.txt"
-                with open(file_path, 'w', buffering=1) as f:
+                file_path = self.paths["alloc"] / "results.txt"
+                with open(file_path, "w", buffering=1) as f:
                     f.write(f"New solution with objective value {objective_value}\n")
                     for var in callback_model.getVars():
                         f.write(f"{var.VarName}: {callback_model.cbGetSolution(var)}\n")
                     f.flush()
                     os.fsync(f.fileno())
 
-                print("Solving price determination subproblem...")
+                self._emit("Solving price determination subproblem...")
                 price_subproblem = PriceSubproblem(master_problem=self)
                 price_subproblem.solve_price_determination_subproblem()
 
                 # If price subproblem optimal check if new incumbent was found
                 if price_subproblem.pricing_model.Status == GRB.OPTIMAL:
-                    print("Found market clearing prices")
+                    self._emit("Found market clearing prices")
 
                     # Write MCPs to file
-                    file_path = EUPHEMIA_ROOT / self.paths['prices'] / "results.txt"
-                    with open(file_path, 'a', buffering=1) as file:  # 'a' = append
+                    file_path = self.paths["prices"] / "results.txt"
+                    with open(file_path, "a", buffering=1) as file:  # 'a' = append
                         for v in price_subproblem.pricing_model.getVars():
                             line = f"{v.varName}: {v.X}\n"
                             file.write(line)  # to file
-                            print(line, end='')  # for console output
+                            self._emit(line.rstrip())  # for console output and run log
                         file.flush()
                         os.fsync(file.fileno())
 
@@ -263,7 +396,7 @@ class MasterProblem:
 
                 # if price subproblem is infeasible, add cut to master problem
                 if price_subproblem.pricing_model.Status == GRB.INFEASIBLE:
-                    print("Price subproblem is infeasible")
+                    self._emit("Price subproblem is infeasible")
 
                     if self.cutting_strategy == CutTypes.CB:
                         combinatorial_benders_cutting.add_combinatorial_benders_cut(self=self,
@@ -460,9 +593,9 @@ class MasterProblem:
                         res.append(i)
 
         path_key = 'pab' if not threshold else 'block_inm_threshold'
-        file_path = f"{EUPHEMIA_ROOT / self.paths[path_key]}/iteration_{self.iteration}.txt"
+        file_path = self.paths[path_key] / f"iteration_{self.iteration}.txt"
 
-        with open(file_path, 'w') as file:
+        with open(file_path, "w") as file:
             file.writelines(f"{bid}\n" for bid in res)
 
         return res
@@ -474,7 +607,7 @@ class MasterProblem:
         """
         in_the_money_blocks = self.get_block_bids(threshold=True)
         if len(in_the_money_blocks) == 0:
-            print("No INM block orders left to reject.")
+            self._emit("No INM block orders left to reject.")
             return False
         if not single:
             self.model.addConstrs(self.accept_block[i] == 0 for i in in_the_money_blocks)
@@ -482,7 +615,7 @@ class MasterProblem:
             random_block = random.choice(in_the_money_blocks)
             self.model.addConstr(self.accept_block[random_block] == 0)
 
-        print("Block cut successfully added.")
+        self._emit("Block cut successfully added.")
         return True
 
     def get_MIC_complex_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
@@ -532,9 +665,9 @@ class MasterProblem:
                     res.append(i)
 
             path_key = 'complex_mic_inm_threshold' if threshold else 'complex_mic'
-            file_path = f"{EUPHEMIA_ROOT / self.paths[path_key]}/iteration_{self.iteration}.txt"
+            file_path = self.paths[path_key] / f"iteration_{self.iteration}.txt"
 
-            with open(file_path, 'w') as file:
+            with open(file_path, "w") as file:
                 file.writelines(f"{bid}\n" for bid in res)
 
         return res
@@ -590,9 +723,9 @@ class MasterProblem:
                     res.append(i)
 
             path_key = 'scalable_mic_inm_threshold' if threshold else 'scalable_mic'
-            file_path = f"{EUPHEMIA_ROOT / self.paths[path_key]}/iteration_{self.iteration}.txt"
+            file_path = self.paths[path_key] / f"iteration_{self.iteration}.txt"
 
-            with open(file_path, 'w') as file:
+            with open(file_path, "w") as file:
                 file.writelines(f"{bid}\n" for bid in res)
 
         return res
@@ -655,7 +788,7 @@ class MasterProblem:
         """
         in_the_money_MIC_complex_orders = self.get_MIC_complex_orders(threshold=True)
         if len(in_the_money_MIC_complex_orders) == 0:
-            print("No INM complex MIC orders left to reject.")
+            self._emit("No INM complex MIC orders left to reject.")
             return False
         else:
             if not single:
@@ -664,7 +797,7 @@ class MasterProblem:
                 random_order = random.choice(in_the_money_MIC_complex_orders)
                 self.model.addConstr(self.accept_complex[random_order] == 0)
 
-        print("MIC complex cut successfully added.")
+        self._emit("MIC complex cut successfully added.")
         return True
 
     def add_MIC_scalable_cut(self, single: Optional[bool] = False) -> bool:
@@ -676,7 +809,7 @@ class MasterProblem:
         """
         in_the_money_MIC_scalable_orders = self.get_MIC_scalable_orders(threshold=True)
         if len(in_the_money_MIC_scalable_orders) == 0:
-            print("No INM scalable complex MIC orders left to reject.")
+            self._emit("No INM scalable complex MIC orders left to reject.")
             return False
         else:
             if not single:
@@ -685,7 +818,7 @@ class MasterProblem:
                 random_order = random.choice(in_the_money_MIC_scalable_orders)
                 self.model.addConstr(self.accept_scalable[random_order] == 0)
 
-        print("MIC scalable complex cut successfully added.")
+        self._emit("MIC scalable complex cut successfully added.")
         return True
 
     def volume_indeterminacy_subproblem(self):

@@ -31,7 +31,7 @@ def _retrieve_data(dataset: US_Datasets) -> Scenario:
 
 def _create_configuration() -> Configuration:
     """Create a Configuration instance using the current configuration."""
-    config = ConfigLoader().get_solver_configuration()
+    config = ConfigLoader().get_us_solver_configuration()
     return Configuration(
         MIP_gap=config.get("MIP_gap", 1e-4),
         optimality_tol=config.get("optimality_tol", 1e-6),
@@ -239,7 +239,8 @@ def solve_and_analyse_scenario(
 ):
     """Computes allocation and pricing for some scenario and performs several analyses."""
     if market_model == MarketModels.EU_model:
-        solve_euphemia(EU_dataset, cut_type)
+        euphemia_config = ConfigLoader().get_euphemia_configuration()
+        solve_euphemia(EU_dataset, cut_type, euphemia_config)
         return
 
     if market_model != MarketModels.US_model:

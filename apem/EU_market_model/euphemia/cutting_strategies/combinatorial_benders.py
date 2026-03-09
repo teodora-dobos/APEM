@@ -1,6 +1,6 @@
 import gurobipy as gp
 
-from apem.EU_market_model import euphemia as no_good_cutting
+import apem.EU_market_model.euphemia.cutting_strategies.no_good as no_good_cutting
 from apem.EU_market_model.euphemia.enums.order_types import OrderType
 
 

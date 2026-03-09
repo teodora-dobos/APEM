@@ -4,9 +4,6 @@ import pandas as pd
 
 from apem.EU_market_model.euphemia.enums.order_types import OrderType
 from apem.EU_market_model.euphemia.utils.calculations import calculate_flexible_order_active_period
-from apem.EU_market_model.euphemia.utils.paths import EUPHEMIA_ROOT
-
-
 class PriceSubproblem:
     """
     Formulate and solve the Euphemia price determination subproblem.
@@ -50,7 +47,7 @@ class PriceSubproblem:
             self.add_complex_order_constraints()
             self.add_scalable_complex_order_constraints()
 
-        self.pricing_model.write(f"{EUPHEMIA_ROOT / self.master_problem.paths['debug']}/pricing_model.lp")
+        self.pricing_model.write(str(self.master_problem.paths["debug"] / "pricing_model.lp"))
 
         self.pricing_model.optimize()
 

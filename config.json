@@ -59,9 +59,28 @@
         "BC3.2",
         "BC4"
     ],
+    "_available_euphemia_configuration_fields": [
+        "disable_reinsertion",
+        "calculate_corrected_welfare",
+        "price_lower_bound",
+        "price_upper_bound",
+        "beta_MIC",
+        "delta_load_gradient",
+        "delta_PAB",
+        "epsilon",
+        "max_iterations",
+        "reinsertion_max_iterations",
+        "big_m",
+        "lazy_constraints",
+        "output_flag",
+        "time_limit",
+        "mip_gap",
+        "threads",
+        "seed"
+    ],
     "verbosity": true,
     "scenario": {
-        "market_model": "US_model",
+        "market_model": "EU_model",
         "US_dataset": "PyPSAEurLarge",
         "EU_dataset": "GME",
         "power_flow_model": {
@@ -74,7 +93,7 @@
         "redispatch_threshold": 0.001,
         "alpha": 0.01
     },
-    "solver_configuration": {
+    "us_solver_configuration": {
         "MIP_gap": 1e-4,
         "optimality_tol": 1e-6,
         "time_limit": 3600,
@@ -84,6 +103,25 @@
         "strict_supply_demand_eq": true,
         "relaxation": false,
         "output_flag": 0
+    },
+    "euphemia_configuration": {
+        "disable_reinsertion": true,
+        "calculate_corrected_welfare": false,
+        "price_lower_bound": -500,
+        "price_upper_bound": 4000,
+        "beta_MIC": 0.1,
+        "delta_load_gradient": 5000,
+        "delta_PAB": 50,
+        "epsilon": 1e-4,
+        "max_iterations": 50,
+        "reinsertion_max_iterations": 10,
+        "big_m": 1000000,
+        "lazy_constraints": 1,
+        "output_flag": 0,
+        "time_limit": 3600,
+        "mip_gap": 1e-4,
+        "threads": 0,
+        "seed": 0
     },
     "zonal_configuration": {
         "type": "zonal_DE2-s",

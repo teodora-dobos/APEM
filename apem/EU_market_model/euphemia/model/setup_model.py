@@ -182,9 +182,6 @@ def add_market_constraints(self) -> None:
                 periods_orders[t] >= get(self.scalable_complex_orders, f'MAP{t}', i) * self.accept_scalable[i]
                 for t in self.periods)
 
-    self.model.setParam("OutputFlag", 0)
-
-
 def add_network_constraints(self) -> None:
     """
     Formulate the network constraints of the Euphemia master problem for a given model. TODO extend
