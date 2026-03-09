@@ -71,7 +71,7 @@ The most important section is `scenario`, which defines the dataset, market mode
 - **Market models**: `US_model`, `EU_model`
 - **Datasets**
   - US: `IEEE_RTS`, `PJM`, `PyPSAEurSmall`, `PyPSAEurLarge`, `ARPA`
-  - EU: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`, `PyPSAEurSmall`, `PyPSAEurLarge`, `PJM`
+  - EU: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`
 - **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, `Zonal_FBMC` (base cases: `BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`)
 - **Cut types** (only for `EU_model`): `price based`, `combinatorial benders`, `no good`
 - **Pricing algorithms** (only for `US_model`): `ELMP`, `IP`, `MinMWP`, `Join`
@@ -93,6 +93,68 @@ python main.py
 Once the execution is done, a new `results` folder will be created storing detailed allocation and pricing results.
 
 **Note:** If you ever run into the error "ModuleNotFoundError: No module named 'src'", this can likely be resolved by setting the PYTHONPATH inside your virtual environment. To do this, add the following line to <venv_name>/bin/activate: `export PYTHONPATH=/<path-to-APEM>`.
+
+## US-to-EU Dataset Conversion (Euphemia)
+
+APEM includes a converter that transforms US-style `Scenario` data into the CSV format expected by the Euphemia implementation (`step_orders.csv`, `block_orders.csv`, etc.).
+
+Use this when you want to run `EU_model` on converted datasets such as `IEEE_RTS` or `ARPA`.
+In this repository, the `EU_model` versions of `IEEE_RTS` and `ARPA` are obtained via this conversion step (US parser output converted into Euphemia input CSVs).
+
+### High-level entrypoint: `run_us_eu_conversion.py`
+
+File: `apem/EU_market_model/euphemia/data/conversion/run_us_eu_conversion.py`
+
+Run with its default (`ParseIEEERTS`):
+
+```bash
+python -m apem.EU_market_model.euphemia.data.conversion.run_us_eu_conversion
+```
+
+Run for a specific US parser:
+
+```bash
+python - <<'PY'
+from apem.US_market_model.data.parsing.parse_arpa import ParseARPA
+from apem.EU_market_model.euphemia.data.conversion.run_us_eu_conversion import run_us_eu_conversion
+
+run_us_eu_conversion(
+    ParseARPA,
+    generate_uptime_patterns=True,
+    reduce_linked_blocks=True,
+    use_contiguous_patterns=True,
+    compress_identical_blocks=True,
+)
+PY
+```
+
+### Advanced customization
+
+If you need custom conversion behavior, use `DataConversion` directly:
+`apem/EU_market_model/euphemia/data/conversion/data_conversion.py`.
+For standard usage, prefer `run_us_eu_conversion(...)`.
+
+### What gets written
+
+The high-level converter writes these files:
+
+- `periods.csv`
+- `step_orders.csv`
+- `block_orders.csv`
+- `scalable_complex_orders.csv`
+- `scalable_step_orders.csv`
+- `complex_orders.csv` (empty placeholder)
+- `complex_step_orders.csv` (empty placeholder)
+- `piecewise_linear_orders.csv` (empty placeholder)
+
+Output folders are chosen via `CONVERTED_DATASET_PATH_MAP` in
+`apem/EU_market_model/euphemia/utils/paths.py` (for example `.../data/datasets/ieee_rts`).
+
+### Notes
+
+- `generate_uptime_patterns=True` regenerates files in `.../data/conversion/patterns/`.
+- `compress_identical_blocks=True` merges identical linked-block chains to reduce model size.
+- Conversion complexity can be high on large instances: one seller can generate many commitment-pattern-based exclusive and linked block bids, so conversion time and output size can grow quickly with the number of units, periods, and bid blocks.
 
 ## Using Your Own Data for the US Model
 

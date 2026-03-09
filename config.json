@@ -12,9 +12,7 @@
         "OMIE",
         "GME",
         "IEEE_RTS",
-        "ARPA",
-        "PyPSAEurSmall",
-        "PyPSAEurLarge"
+        "ARPA"
     ],
     "_available_market_models": [
         "US_model",
