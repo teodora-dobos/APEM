@@ -14,8 +14,7 @@
         "IEEE_RTS",
         "ARPA",
         "PyPSAEurSmall",
-        "PyPSAEurLarge",
-        "PJM"
+        "PyPSAEurLarge"
     ],
     "_available_market_models": [
         "US_model",
