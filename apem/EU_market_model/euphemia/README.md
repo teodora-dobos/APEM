@@ -1,42 +1,101 @@
-# EUPHEMIA (Pan-European Hybrid Electricity Market Integration Algorithm)
+# EUPHEMIA Module
 
-### Quick Start
-For a quick start run the method `solve_euphemia(dataset, cutting_strategy)` from `runner.py`
-Parameters:
-- dataset: choose from `Datasets`
-- cutting_stratgey: choose a cutting strategy from `CutType` (NG=No-Good, CB=Combinatorial-Benders, PB=Price-Based)
+This README is intentionally **module-scoped**.
+For installation, global config format, and top-level run instructions, use the repository root README.
 
-You can also run the algorithm without these parameters, then the base configuration will be used ("Generated Small", Price-based cutting)
+## Scope
 
-### Config
-You can customize Euphemia by creating and modifying a `EuphemiaConfig` object from `euphemia_config.py`
-A config object can be used to initialize a new `MasterProblem` object that is the foundation of each Euphemia run.
+This folder contains the EU market model implementation (EUPHEMIA-style flow):
+- surplus-maximizing master problem
+- price determination subproblem
+- cut strategies
+- optional reinsertion logic
+- EU-format dataset parsing/conversion helpers
 
-Methods:
+## Public API
 
-`set_dataset(dataset: Datasets)`: Load and parses a specific dataset. Should be used to set the dataset.
+Primary entrypoint:
+- `runner.py` -> `solve_euphemia(dataset, cut_type, config_overrides=None)`
 
+Key enums:
+- `enums/datasets.py` -> `EU_Datasets`
+- `enums/cut_types.py` -> `CutTypes`
 
-Below are the key attributes and what they control:
+## Internal Structure
 
-| Parameter                     | Description                                                                                                                                                                 |
-|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `scenario`                    | Parsed scenario data; initialized by the selected dataset. Default: `Datasets.GENERATED_SMALL`                                                                              |
-| `disable_reinsertion`         | If `True`, disables the automatic reinsertion process for rejected bids.                                                                                                    |
-| `price_lower_bound`           | Lower bound for price values during optimization (default: -500).                                                                                                           |
-| `price_upper_bound`           | Upper bound for price values during optimization (default: 4000).                                                                                                           |
-| `beta_MIC`                    | Controls how much a paradoxically accepted MIC order must be out-of-the-money (OTM).                                                                                        |
-| `delta_load_gradient`         | Threshold for allowing paradoxically accepted load gradients.                                                                                                               |
-| `epsilon`                     | Small numerical tolerance used to mitigate floating-point precision issues (e.g., in Gurobi).                                                                               |
-| `max_iterations`              | Sets a hard cap on the number of iterations during the solving process (default: 50).                                                                                       |
-| `cutting_strategy`            | Strategy used to generate cuts during the algorithm. Values come from `CutType` enum (e.g., `CutType.CB` for callback-based cuts).                                          |
-| `delta_PAB`                   | Placeholder parameter (currently unused) related to Paradoxically Accepted Blocks.                                                                                          |
-| `calculate_corrected_welfare` | Adds an additional welfare value to the evaluation output (important for US data). The surplus of inelastic demand is dedcuted from the welfare (Only works for 24 periods!) |
+- `master_problem/`: core MIP + callback orchestration
+- `pricing/`: pricing subproblem (MCP recovery)
+- `cutting_strategies/`: NG / CB / PB cut logic
+- `reinsertions/`: PRMIC / PRB reinsertion routines
+- `model/`: objective and constraint builders
+- `data/parsing/`: EU CSV dataset loading
+- `data/conversion/`: US -> EU bidding-language conversion
 
-### Evaluation
-Statistics about an Euphemia run are stored in `euphemia_results/evaluation/evaluation.txt`
+## Euphemia-Specific Config Keys
 
-### Conversion (US-EU bidding language)
-The main method in `run_us_eu_conversion.py` can be modified and used to run the conversion with different parameters. Here, you can also set
-if patterns should be generated and what compression methods should be applied to the data.
-In some IDEs this may not work: Alternatively, you can run `run_us_eu_conversion(...)` from the main file of the project.
+Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`:
+- `disable_reinsertion`
+- `calculate_corrected_welfare`
+- `price_lower_bound`, `price_upper_bound`
+- `beta_MIC`, `delta_load_gradient`, `delta_PAB`, `epsilon`
+- `max_iterations`
+- `reinsertion_max_iterations`
+- `max_prb_reinsertion_attempts` (`null`/`None` = unlimited)
+- `big_m`
+- `lazy_constraints`, `output_flag`, `time_limit`, `mip_gap`, `threads`, `seed`
+
+## Output Contract
+
+Per run:
+- `EU_results/euphemia/<DATASET>/<CUT_TYPE>/<RUN_ID>/`
+
+Main artifacts:
+- `allocation/results.csv` (`variable,value`)
+- `prices/prices.csv` (`variable,value`)
+- `evaluation/evaluation.txt`
+- `debug/master_problem.lp`
+- `debug/pricing_model.lp`
+- `run.json`
+- `run.log`
+
+Diagnostics folders (created for all runs, may be empty):
+- `pab/`
+- `block_inm_threshold/`
+- `complex_mic/`
+- `complex_mic_inm_threshold/`
+- `scalable_mic/`
+- `scalable_mic_inm_threshold/`
+
+### Artifact Semantics
+
+- `allocation/results.csv`:
+  stores the current incumbent master solution variables (for example acceptance variables and ATC flow variables).
+- `prices/prices.csv`:
+  stores MCP variables from pricing subproblems that solved to optimality.
+- `evaluation/evaluation.txt`:
+  human-readable run summary (iterations, welfare, runtime, prices, and optional corrected welfare).
+- `run.json`:
+  machine-readable run metadata (status, timestamps, objective, paths).
+- `run.log`:
+  chronological execution log for the run.
+- `debug/master_problem.lp`, `debug/pricing_model.lp`:
+  dumped solver models for debugging and reproducibility.
+
+### Diagnostics Semantics
+
+- `pab/iteration_k.txt`:
+  IDs of currently paradoxically accepted block bids (as checked in iteration `k`).
+- `block_inm_threshold/iteration_k.txt`:
+  IDs of block bids close to the in-the-money threshold used for threshold-based block cuts.
+- `complex_mic/iteration_k.txt`:
+  IDs of accepted complex orders that violate MIC/MP consistency at current prices.
+- `complex_mic_inm_threshold/iteration_k.txt`:
+  thresholded complex MIC/MP candidates used for cutting decisions.
+- `scalable_mic/iteration_k.txt`:
+  IDs of accepted scalable complex orders that violate MIC/MP consistency.
+- `scalable_mic_inm_threshold/iteration_k.txt`:
+  thresholded scalable MIC/MP candidates used for cutting decisions.
+
+Notes:
+- diagnostics folders are created for every run, even when empty.
+- which diagnostics are populated depends on cut type and whether the corresponding checks are triggered.

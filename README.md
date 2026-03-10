@@ -103,6 +103,7 @@ US-model solver settings like tolerances and runtime limits can be adjusted unde
 EU-model-specific hyperparameters can be adjusted under `eu_model.euphemia_configuration` (for example `max_iterations`,
 `reinsertion_max_iterations`, price bounds, cut thresholds, and Gurobi parameters such as `time_limit`, `mip_gap`,
 `threads`, `seed`, `output_flag`).
+For EU-model internals (module structure, API, and run output contract), see [`apem/EU_market_model/euphemia/README.md`](./apem/EU_market_model/euphemia/README.md).
 Zonal-specific settings are under `us_model.zonal_configuration`.
 
 ---
