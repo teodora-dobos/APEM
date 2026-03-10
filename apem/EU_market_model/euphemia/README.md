@@ -44,58 +44,27 @@ Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`
 - `big_m`
 - `lazy_constraints`, `output_flag`, `time_limit`, `mip_gap`, `threads`, `seed`
 
-## Output Contract
+## Output
 
 Per run:
 - `EU_results/euphemia/<DATASET>/<CUT_TYPE>/<RUN_ID>/`
 
-Main artifacts:
-- `allocation/results.csv` (`variable,value`)
-- `prices/prices.csv` (`variable,value`)
-- `evaluation/evaluation.txt`
-- `debug/master_problem.lp`
-- `debug/pricing_model.lp`
-- `run.json`
-- `run.log`
+Core artifacts:
+- `allocation/results.csv`: incumbent master variables (`variable,value`)
+- `prices/prices.csv`: MCP variables from feasible pricing subproblems (`variable,value`)
+- `evaluation/evaluation.txt`: human-readable run summary (iterations, welfare, runtime, prices, optional corrected welfare)
+- `debug/master_problem.lp`, `debug/pricing_model.lp`: solver model dumps
+- `run.json`: machine-readable run metadata
+- `run.log`: chronological run log
 
-Diagnostics folders (created for all runs, may be empty):
-- `pab/`
-- `block_inm_threshold/`
-- `complex_mic/`
-- `complex_mic_inm_threshold/`
-- `scalable_mic/`
-- `scalable_mic_inm_threshold/`
-
-### Artifact Semantics
-
-- `allocation/results.csv`:
-  stores the current incumbent master solution variables (for example acceptance variables and ATC flow variables).
-- `prices/prices.csv`:
-  stores MCP variables from pricing subproblems that solved to optimality.
-- `evaluation/evaluation.txt`:
-  human-readable run summary (iterations, welfare, runtime, prices, and optional corrected welfare).
-- `run.json`:
-  machine-readable run metadata (status, timestamps, objective, paths).
-- `run.log`:
-  chronological execution log for the run.
-- `debug/master_problem.lp`, `debug/pricing_model.lp`:
-  dumped solver models for debugging and reproducibility.
-
-### Diagnostics Semantics
-
-- `pab/iteration_k.txt`:
-  IDs of currently paradoxically accepted block bids (as checked in iteration `k`).
-- `block_inm_threshold/iteration_k.txt`:
-  IDs of block bids close to the in-the-money threshold used for threshold-based block cuts.
-- `complex_mic/iteration_k.txt`:
-  IDs of accepted complex orders that violate MIC/MP consistency at current prices.
-- `complex_mic_inm_threshold/iteration_k.txt`:
-  thresholded complex MIC/MP candidates used for cutting decisions.
-- `scalable_mic/iteration_k.txt`:
-  IDs of accepted scalable complex orders that violate MIC/MP consistency.
-- `scalable_mic_inm_threshold/iteration_k.txt`:
-  thresholded scalable MIC/MP candidates used for cutting decisions.
+Diagnostics (`iteration_k.txt` IDs):
+- `pab/`: paradoxically accepted blocks
+- `block_inm_threshold/`: near-threshold INM block candidates for cuts
+- `complex_mic/`: complex MIC/MP violations
+- `complex_mic_inm_threshold/`: thresholded complex MIC/MP candidates
+- `scalable_mic/`: scalable complex MIC/MP violations
+- `scalable_mic_inm_threshold/`: thresholded scalable MIC/MP candidates
 
 Notes:
-- diagnostics folders are created for every run, even when empty.
-- which diagnostics are populated depends on cut type and whether the corresponding checks are triggered.
+- diagnostics folders are created for every run, even when empty
+- populated diagnostics depend on cut type and triggered checks
