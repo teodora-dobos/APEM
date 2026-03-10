@@ -4,6 +4,7 @@ import os
 import random
 import re
 import time
+import csv
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -444,11 +445,12 @@ class MasterProblem:
                 self.update_order_dataframes()
 
                 # Write current allocation solution to file
-                file_path = self.paths["alloc"] / "results.txt"
-                with open(file_path, "w", buffering=1) as f:
-                    f.write(f"New solution with objective value {objective_value}\n")
+                file_path = self.paths["alloc"] / "results.csv"
+                with open(file_path, "w", newline="", buffering=1, encoding="utf-8") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["variable", "value"])
                     for var in callback_model.getVars():
-                        f.write(f"{var.VarName}: {callback_model.cbGetSolution(var)}\n")
+                        writer.writerow([var.VarName, callback_model.cbGetSolution(var)])
                     f.flush()
                     os.fsync(f.fileno())
 
@@ -461,12 +463,15 @@ class MasterProblem:
                     self._emit("Found market clearing prices")
 
                     # Write MCPs to file
-                    file_path = self.paths["prices"] / "results.txt"
-                    with open(file_path, "a", buffering=1) as file:  # 'a' = append
+                    file_path = self.paths["prices"] / "prices.csv"
+                    file_exists = file_path.exists() and file_path.stat().st_size > 0
+                    with open(file_path, "a", newline="", buffering=1, encoding="utf-8") as file:  # 'a' = append
+                        writer = csv.writer(file)
+                        if not file_exists:
+                            writer.writerow(["variable", "value"])
                         for v in price_subproblem.pricing_model.getVars():
-                            line = f"{v.varName}: {v.X}\n"
-                            file.write(line)  # to file
-                            self._emit(line.rstrip())  # for console output and run log
+                            writer.writerow([v.varName, v.X])
+                            self._emit(f"{v.varName}: {v.X}")  # for console output and run log
                         file.flush()
                         os.fsync(file.fileno())
 
