@@ -88,6 +88,7 @@ class MasterProblem:
             self.zones = [self.default_zone]
         self.default_zone = self.zones[0]
 
+        self.network_model = str(getattr(config, "network_model", "ATC")).upper()
         self.atc = getattr(self.scenario, "atc", pd.DataFrame(columns=["from_zone", "to_zone", "t", "cap"]))
         self.atc_cap = {}
         self.atc_ramp_up = {}
@@ -116,8 +117,45 @@ class MasterProblem:
                     set(self.zones).union({i for (i, _, _) in self.atc_cap}).union({j for (_, j, _) in self.atc_cap})
                 )
 
+        self.fb_constraints = getattr(
+            self.scenario, "fb_constraints", pd.DataFrame(columns=["cnec_id", "t", "ram"])
+        )
+        self.fb_ptdf = getattr(self.scenario, "fb_ptdf", pd.DataFrame(columns=["cnec_id", "t", "zone", "ptdf"]))
+        self.fb_ram = {}
+        self.fb_lb = {}
+        self.fb_ptdf_map = {}
+
+        if isinstance(self.fb_constraints, pd.DataFrame) and not self.fb_constraints.empty:
+            for _, row in self.fb_constraints.iterrows():
+                t = int(row["t"])
+                if t not in self.periods:
+                    continue
+                cnec_id = str(row["cnec_id"])
+                key = (cnec_id, t)
+                ram = float(row["ram"])
+                self.fb_ram[key] = min(self.fb_ram[key], ram) if key in self.fb_ram else ram
+                if "lb" in row and pd.notna(row["lb"]):
+                    lb = float(row["lb"])
+                    self.fb_lb[key] = max(self.fb_lb[key], lb) if key in self.fb_lb else lb
+
+        if isinstance(self.fb_ptdf, pd.DataFrame) and not self.fb_ptdf.empty:
+            for _, row in self.fb_ptdf.iterrows():
+                t = int(row["t"])
+                if t not in self.periods:
+                    continue
+                cnec_id = str(row["cnec_id"])
+                zone = str(row["zone"])
+                self.fb_ptdf_map[(cnec_id, t, zone)] = self.fb_ptdf_map.get((cnec_id, t, zone), 0.0) + float(row["ptdf"])
+
+            if self.fb_ptdf_map:
+                self.zones = sorted(set(self.zones).union({z for (_, _, z) in self.fb_ptdf_map}))
+
         self.atc_index = sorted(self.atc_cap.keys())
-        self.network_constraints_enabled = bool(self.atc_index) and len(self.zones) > 1
+        self.fb_index = sorted((c, t) for (c, t) in self.fb_ram if any((c, t, z) in self.fb_ptdf_map for z in self.zones))
+        if self.network_model == "ATC":
+            self.network_constraints_enabled = bool(self.atc_index) and len(self.zones) > 1
+        else:
+            self.network_constraints_enabled = bool(self.fb_index) and len(self.zones) > 1
         self.zonal_pricing_enabled = self.network_constraints_enabled
 
         self.accept_step = self.model.addVars(list(self.step_orders['id']), vtype=GRB.CONTINUOUS, lb=0, ub=1,
@@ -142,7 +180,14 @@ class MasterProblem:
         self.accept_piecewise_linear = self.model.addVars(list(self.piecewise_linear_orders['id']),
                                                           vtype=GRB.CONTINUOUS, lb=0, ub=1,
                                                           name='accept_piecewise_linear')
-        self.f_atc = self.model.addVars(self.atc_index, vtype=GRB.CONTINUOUS, lb=0, name="f_atc")
+        if self.network_model == "ATC":
+            self.f_atc = self.model.addVars(self.atc_index, vtype=GRB.CONTINUOUS, lb=0, name="f_atc")
+            self.net_position = gp.tupledict()
+        else:
+            self.f_atc = gp.tupledict()
+            self.net_position = self.model.addVars(
+                self.zones, self.periods, vtype=GRB.CONTINUOUS, lb=-GRB.INFINITY, name="net_position"
+            )
 
         self.add_acceptance_variables_to_dataframe()
 
@@ -223,6 +268,7 @@ class MasterProblem:
         self.run_metadata = {
             "run_id": self.run_id,
             "dataset": self.config.dataset,
+            "network_model": self.network_model,
             "scenario_name": self.scenario.name,
             "cut_type": self.cutting_strategy.value,
             "cut_type_key": self.cut_type_key,

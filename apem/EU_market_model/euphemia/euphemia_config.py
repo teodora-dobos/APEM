@@ -28,6 +28,7 @@ class EuphemiaConfig:
         self.reinsertion_max_iterations = 10  # Iteration limit for reinsertion runs
         self.max_prb_reinsertion_attempts = None  # Optional cap for attempted PRB block reinsertions
         self.big_m = 10 ** 6  # Big-M value used in master/pricing formulations
+        self.network_model = "ATC"  # One of: "ATC", "FBMC"
 
         # Solver parameters
         self.lazy_constraints = 1
@@ -64,6 +65,7 @@ class EuphemiaConfig:
             "reinsertion_max_iterations",
             "max_prb_reinsertion_attempts",
             "big_m",
+            "network_model",
             "lazy_constraints",
             "output_flag",
             "time_limit",
@@ -81,3 +83,4 @@ class EuphemiaConfig:
 
         for key, value in overrides.items():
             setattr(self, key, value)
+            

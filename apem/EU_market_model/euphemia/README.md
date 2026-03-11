@@ -87,6 +87,10 @@ Post-solve economic checks and cut candidate extraction:
   - PAB detection
   - MIC/MP checks for complex and scalable complex orders
 
+### Network Inputs
+- ATC mode (default): optional `atc.csv` with directed capacities (`from_zone,to_zone,t,cap`) and optional `ramp_up,ramp_down`.
+- FBMC mode: optional `fb_constraints.csv` (`cnec_id,t,ram[,lb]`) plus `fb_ptdf.csv` (`cnec_id,t,zone,ptdf`).
+
 ## Cut Types
 
 Cut-type enum values:
@@ -129,6 +133,7 @@ Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`
 - `reinsertion_max_iterations`
 - `max_prb_reinsertion_attempts` (`null`/`None` = unlimited)
 - `big_m`
+- `network_model` (`"ATC"` or `"FBMC"`)
 - `lazy_constraints`, `output_flag`, `time_limit`, `mip_gap`, `threads`, `seed`
 
 ## Output

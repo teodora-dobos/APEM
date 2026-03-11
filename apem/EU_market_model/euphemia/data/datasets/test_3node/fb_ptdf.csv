@@ -1,0 +1,10 @@
+cnec_id,t,zone,ptdf
+NP_Z1,1,Z1,1.0
+NP_Z1,1,Z2,0.0
+NP_Z1,1,Z3,0.0
+NP_Z2,1,Z1,0.0
+NP_Z2,1,Z2,1.0
+NP_Z2,1,Z3,0.0
+NP_Z3,1,Z1,0.0
+NP_Z3,1,Z2,0.0
+NP_Z3,1,Z3,1.0

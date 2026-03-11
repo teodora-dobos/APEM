@@ -204,6 +204,7 @@ class ConfigLoader:
             "reinsertion_max_iterations",
             "max_prb_reinsertion_attempts",
             "big_m",
+            "network_model",
             "lazy_constraints",
             "output_flag",
             "time_limit",
@@ -237,6 +238,14 @@ class ConfigLoader:
         for field in number_fields:
             if field in cfg and not self._is_number(cfg[field]):
                 raise ValueError(f"Invalid euphemia_configuration.{field}: must be numeric.")
+
+        if "network_model" in cfg:
+            if not isinstance(cfg["network_model"], str):
+                raise ValueError("Invalid euphemia_configuration.network_model: must be a string.")
+            network_model = cfg["network_model"].upper()
+            if network_model not in {"ATC", "FBMC"}:
+                raise ValueError("Invalid euphemia_configuration.network_model: must be 'ATC' or 'FBMC'.")
+            cfg["network_model"] = network_model
 
         if "beta_MIC" in cfg and not 0 <= cfg["beta_MIC"] <= 1:
             raise ValueError("Invalid euphemia_configuration.beta_MIC: must be in [0, 1].")

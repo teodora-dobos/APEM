@@ -59,11 +59,11 @@
         "BC4"
     ],
     "run": {
-        "market_model": "US_model",
+        "market_model": "EU_model",
         "verbosity": true
     },
     "us_model": {
-        "dataset": "IEEE_RTS",
+        "dataset": "PyPSAEurLarge",
         "power_flow_model": {
             "type": "DCOPF"
         },
@@ -92,9 +92,10 @@
         }
     },
     "eu_model": {
-        "dataset": "GME",
+        "dataset": "TEST_3NODE",
         "cut_type": "price based",
         "euphemia_configuration": {
+            "network_model": "FBMC",
             "disable_reinsertion": true,
             "calculate_corrected_welfare": true,
             "price_lower_bound": -500,

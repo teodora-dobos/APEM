@@ -74,7 +74,11 @@ class PriceSubproblem:
         - f == cap    -> MCP[j,t] >= MCP[i,t]
         - 0 < f < cap -> MCP[j,t] == MCP[i,t]
         """
-        if not self.zonal_pricing or not self.master_problem.network_constraints_enabled:
+        if (
+            not self.zonal_pricing
+            or not self.master_problem.network_constraints_enabled
+            or self.master_problem.network_model != "ATC"
+        ):
             return
 
         tol = max(float(self.epsilon), 1e-6)
@@ -98,6 +102,90 @@ class PriceSubproblem:
             else:
                 self.pricing_model.addConstr(to_price - from_price <= tol, name=f"{base_name}_eq1")
                 self.pricing_model.addConstr(from_price - to_price <= tol, name=f"{base_name}_eq2")
+
+    def add_fbmc_price_consistency_constraints(self) -> None:
+        """
+        Add FBMC dual-consistent MCP/PTDF coupling based on incumbent net positions.
+
+        The formulation introduces one system price component per period and dual multipliers
+        on FBMC constraints:
+        - mu_up[c,t] >= 0 for PTDF * NP <= RAM
+        - mu_lo[c,t] >= 0 for PTDF * NP >= LB (when LB exists)
+
+        Zonal prices are linked through stationarity:
+            MCP[z,t] = lambda[t] - sum_c PTDF[c,t,z] * (mu_up[c,t] - mu_lo[c,t])
+
+        Active-set complementarity is enforced from the incumbent allocation:
+        - if upper slack > tol: mu_up[c,t] = 0
+        - if lower slack > tol: mu_lo[c,t] = 0
+        """
+        if (
+            not self.zonal_pricing
+            or not self.master_problem.network_constraints_enabled
+            or self.master_problem.network_model != "FBMC"
+            or not self.master_problem.fb_index
+        ):
+            return
+
+        tol = max(float(self.epsilon), 1e-6)
+        periods = list(self.master_problem.periods)
+        fb_index = list(self.master_problem.fb_index)
+        fb_lb_index = [idx for idx in fb_index if idx in self.master_problem.fb_lb]
+
+        # Dual variables for FBMC constraints and one unconstrained system component per period.
+        fb_lambda = self.pricing_model.addVars(
+            periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, vtype=GRB.CONTINUOUS, name="fbmc_lambda"
+        )
+        mu_up = self.pricing_model.addVars(fb_index, lb=0.0, vtype=GRB.CONTINUOUS, name="fbmc_mu_up")
+        mu_lo = (
+            self.pricing_model.addVars(fb_lb_index, lb=0.0, vtype=GRB.CONTINUOUS, name="fbmc_mu_lo")
+            if fb_lb_index
+            else gp.tupledict()
+        )
+
+        # Build active-set complementarity from incumbent net positions.
+        for cnec_id, t in fb_index:
+            ptdf_np = 0.0
+            for zone in self.master_problem.zones:
+                coeff = float(self.master_problem.fb_ptdf_map.get((cnec_id, t, zone), 0.0))
+                if coeff == 0.0:
+                    continue
+                np_value = self._master_solution_value(self.master_problem.net_position[zone, t])
+                ptdf_np += coeff * np_value
+
+            upper_slack = float(self.master_problem.fb_ram[(cnec_id, t)]) - ptdf_np
+            if upper_slack > tol:
+                self.pricing_model.addConstr(
+                    mu_up[cnec_id, t] == 0.0,
+                    name=f"fbmc_mu_up_zero_if_nonbinding_{cnec_id}_{t}",
+                )
+
+            if (cnec_id, t) in self.master_problem.fb_lb:
+                lower_slack = ptdf_np - float(self.master_problem.fb_lb[(cnec_id, t)])
+                if lower_slack > tol:
+                    self.pricing_model.addConstr(
+                        mu_lo[cnec_id, t] == 0.0,
+                        name=f"fbmc_mu_lo_zero_if_nonbinding_{cnec_id}_{t}",
+                    )
+
+        # Zonal MCP stationarity under PTDF constraints.
+        for t in periods:
+            fb_rows_t = [c for (c, tt) in fb_index if tt == t]
+            for zone in self.master_problem.zones:
+                expr = gp.LinExpr()
+                expr += fb_lambda[t]
+                for cnec_id in fb_rows_t:
+                    coeff = float(self.master_problem.fb_ptdf_map.get((cnec_id, t, zone), 0.0))
+                    if coeff == 0.0:
+                        continue
+                    expr.addTerms(-coeff, mu_up[cnec_id, t])
+                    if (cnec_id, t) in mu_lo:
+                        expr.addTerms(coeff, mu_lo[cnec_id, t])
+
+                self.pricing_model.addConstr(
+                    self._price_var(t, zone) == expr,
+                    name=f"fbmc_mcp_stationarity_{zone}_{t}",
+                )
 
     def extract_prices(self) -> dict:
         if self.zonal_pricing:
@@ -137,6 +225,7 @@ class PriceSubproblem:
         self.add_step_order_constraints()
         self.add_piecewise_linear_order_constraints()
         self.add_atc_price_consistency_constraints()
+        self.add_fbmc_price_consistency_constraints()
 
         # isConstrained is False for price-based cuts.
         if self.isConstrained:

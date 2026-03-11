@@ -48,13 +48,68 @@ def add_objective(self) -> None:
 
 def add_market_constraints(self) -> None:
     """
-    Formulate the market constraints of the Euphemia master problem for a given model.
+    Formulate the market-clearing constraints.
+
+    Let I_{z,t} denote zonal net injection in zone z and period t, computed as the
+    accepted sum of all bid families assigned to (z,t):
+    - step orders
+    - block orders (including flexible blocks through flex_period)
+    - complex/scalable complex step orders
+    - piecewise-linear orders
+
+    Depending on the selected network model:
+
+    1) No active network constraints (single-zone fallback):
+       sum(all accepted quantities at t) = 0
+
+    2) ATC:
+       I_{z,t} - sum_j f_{z,j,t} + sum_i f_{i,z,t} = 0
+       where f_{i,j,t} is directed ATC flow.
+
+    3) FBMC:
+       NP_{z,t} = I_{z,t}
+       sum_z NP_{z,t} = 0
+       where NP_{z,t} is the zonal net position variable.
     """
 
     def order_zone(df, order_id):
         if "zone" not in df.columns:
             return self.default_zone
         return self.resolve_zone(get(df, "zone", order_id))
+
+    def zonal_injection(z, t):
+        return (
+            gp.quicksum(
+                self.accept_step[i] * get(self.step_orders, "q", i)
+                for i in list(self.step_orders["id"])
+                if get(self.step_orders, "t", i) == t and order_zone(self.step_orders, i) == z
+            )
+            + gp.quicksum(
+                self.accept_block[i] * get(self.block_orders, f"q{t}", i)
+                for i in list(self.block_orders["id"])
+                if get(self.block_orders, "block_type", i) != "flexible" and order_zone(self.block_orders, i) == z
+            )
+            + gp.quicksum(
+                self.accept_block[i] * self.flex_period[i, t] * get(self.block_orders, f"q{t}", i)
+                for i in list(self.block_orders["id"])
+                if get(self.block_orders, "block_type", i) == "flexible" and order_zone(self.block_orders, i) == z
+            )
+            + gp.quicksum(
+                self.accept_complex_step[i] * get(self.complex_step_orders, "q", i)
+                for i in list(self.complex_step_orders["id"])
+                if get(self.complex_step_orders, "t", i) == t and order_zone(self.complex_step_orders, i) == z
+            )
+            + gp.quicksum(
+                self.accept_scalable_step[i] * get(self.scalable_step_orders, "q", i)
+                for i in list(self.scalable_step_orders["id"])
+                if get(self.scalable_step_orders, "t", i) == t and order_zone(self.scalable_step_orders, i) == z
+            )
+            + gp.quicksum(
+                self.accept_piecewise_linear[i] * get(self.piecewise_linear_orders, "q", i)
+                for i in list(self.piecewise_linear_orders["id"])
+                if get(self.piecewise_linear_orders, "t", i) == t and order_zone(self.piecewise_linear_orders, i) == z
+            )
+        )
 
     if not self.network_constraints_enabled:
         # single-zone market clearing
@@ -73,40 +128,11 @@ def add_market_constraints(self) -> None:
                          list(self.piecewise_linear_orders['id']) if get(self.piecewise_linear_orders, 't', i) == t)
              == 0
              for t in self.periods), name='power_balance')
-    else:
+    elif self.network_model == "ATC":
         # zonal market clearing with directed ATC flows
         self.model.addConstrs(
             (
-                gp.quicksum(
-                    self.accept_step[i] * get(self.step_orders, "q", i)
-                    for i in list(self.step_orders["id"])
-                    if get(self.step_orders, "t", i) == t and order_zone(self.step_orders, i) == z
-                )
-                + gp.quicksum(
-                    self.accept_block[i] * get(self.block_orders, f"q{t}", i)
-                    for i in list(self.block_orders["id"])
-                    if get(self.block_orders, "block_type", i) != "flexible" and order_zone(self.block_orders, i) == z
-                )
-                + gp.quicksum(
-                    self.accept_block[i] * self.flex_period[i, t] * get(self.block_orders, f"q{t}", i)
-                    for i in list(self.block_orders["id"])
-                    if get(self.block_orders, "block_type", i) == "flexible" and order_zone(self.block_orders, i) == z
-                )
-                + gp.quicksum(
-                    self.accept_complex_step[i] * get(self.complex_step_orders, "q", i)
-                    for i in list(self.complex_step_orders["id"])
-                    if get(self.complex_step_orders, "t", i) == t and order_zone(self.complex_step_orders, i) == z
-                )
-                + gp.quicksum(
-                    self.accept_scalable_step[i] * get(self.scalable_step_orders, "q", i)
-                    for i in list(self.scalable_step_orders["id"])
-                    if get(self.scalable_step_orders, "t", i) == t and order_zone(self.scalable_step_orders, i) == z
-                )
-                + gp.quicksum(
-                    self.accept_piecewise_linear[i] * get(self.piecewise_linear_orders, "q", i)
-                    for i in list(self.piecewise_linear_orders["id"])
-                    if get(self.piecewise_linear_orders, "t", i) == t and order_zone(self.piecewise_linear_orders, i) == z
-                )
+                zonal_injection(z, t)
                 - gp.quicksum(
                     self.f_atc[i, j, tt] for (i, j, tt) in self.atc_index if i == z and tt == t
                 )
@@ -118,6 +144,20 @@ def add_market_constraints(self) -> None:
                 for t in self.periods
             ),
             name="zonal_power_balance",
+        )
+    else:
+        # FBMC zonal net positions linked to accepted quantities
+        self.model.addConstrs(
+            (
+                self.net_position[z, t] == zonal_injection(z, t)
+                for z in self.zones
+                for t in self.periods
+            ),
+            name="fbmc_net_position_def",
+        )
+        self.model.addConstrs(
+            (gp.quicksum(self.net_position[z, t] for z in self.zones) == 0 for t in self.periods),
+            name="fbmc_global_balance",
         )
 
     # block order acceptance
@@ -230,32 +270,70 @@ def add_market_constraints(self) -> None:
 
 def add_network_constraints(self) -> None:
     """
-    Formulate optional ATC network constraints.
+    Formulate network constraints for the selected model.
+
+    This function is skipped when ``network_constraints_enabled`` is False.
+
+    ATC model:
+    - Capacity limits on directed interconnectors:
+        f_{i,j,t} <= CAP_{i,j,t}
+      (non-negativity f_{i,j,t} >= 0 comes from variable bounds)
+    - Optional directional ramping between consecutive periods:
+        f_{i,j,t} - f_{i,j,t-1} <= RAMP_UP_{i,j}
+        f_{i,j,t-1} - f_{i,j,t} <= RAMP_DOWN_{i,j}
+
+    FBMC model:
+    - For each CNEC c and period t:
+        sum_z PTDF_{c,t,z} * NP_{z,t} <= RAM_{c,t}
+    - Optional lower bound (if provided in input):
+        sum_z PTDF_{c,t,z} * NP_{z,t} >= LB_{c,t}
     """
     if not self.network_constraints_enabled:
         return
 
-    # ATC capacity limits for directed interconnectors
+    if self.network_model == "ATC":
+        # ATC capacity limits for directed interconnectors
+        self.model.addConstrs(
+            (self.f_atc[i, j, t] <= self.atc_cap[(i, j, t)] for (i, j, t) in self.atc_index),
+            name="atc_capacity",
+        )
+
+        # Optional directional flow ramping limits
+        if self.atc_ramp_up:
+            for (i, j), ramp_up in self.atc_ramp_up.items():
+                for prev_t, t in zip(self.periods[:-1], self.periods[1:]):
+                    if (i, j, prev_t) in self.atc_cap and (i, j, t) in self.atc_cap:
+                        self.model.addConstr(
+                            self.f_atc[i, j, t] - self.f_atc[i, j, prev_t] <= ramp_up,
+                            name=f"atc_ramp_up_{i}_{j}_{t}",
+                        )
+
+        if self.atc_ramp_down:
+            for (i, j), ramp_down in self.atc_ramp_down.items():
+                for prev_t, t in zip(self.periods[:-1], self.periods[1:]):
+                    if (i, j, prev_t) in self.atc_cap and (i, j, t) in self.atc_cap:
+                        self.model.addConstr(
+                            self.f_atc[i, j, prev_t] - self.f_atc[i, j, t] <= ramp_down,
+                            name=f"atc_ramp_down_{i}_{j}_{t}",
+                        )
+        return
+
+    # FBMC PTDF * net_position <= RAM constraints
     self.model.addConstrs(
-        (self.f_atc[i, j, t] <= self.atc_cap[(i, j, t)] for (i, j, t) in self.atc_index),
-        name="atc_capacity",
+        (
+            gp.quicksum(self.fb_ptdf_map.get((cnec_id, t, z), 0.0) * self.net_position[z, t] for z in self.zones)
+            <= self.fb_ram[(cnec_id, t)]
+            for (cnec_id, t) in self.fb_index
+        ),
+        name="fbmc_ram",
     )
-
-    # Optional directional flow ramping limits
-    if self.atc_ramp_up:
-        for (i, j), ramp_up in self.atc_ramp_up.items():
-            for prev_t, t in zip(self.periods[:-1], self.periods[1:]):
-                if (i, j, prev_t) in self.atc_cap and (i, j, t) in self.atc_cap:
-                    self.model.addConstr(
-                        self.f_atc[i, j, t] - self.f_atc[i, j, prev_t] <= ramp_up,
-                        name=f"atc_ramp_up_{i}_{j}_{t}",
-                    )
-
-    if self.atc_ramp_down:
-        for (i, j), ramp_down in self.atc_ramp_down.items():
-            for prev_t, t in zip(self.periods[:-1], self.periods[1:]):
-                if (i, j, prev_t) in self.atc_cap and (i, j, t) in self.atc_cap:
-                    self.model.addConstr(
-                        self.f_atc[i, j, prev_t] - self.f_atc[i, j, t] <= ramp_down,
-                        name=f"atc_ramp_down_{i}_{j}_{t}",
-                    )
+    if self.fb_lb:
+        self.model.addConstrs(
+            (
+                gp.quicksum(self.fb_ptdf_map.get((cnec_id, t, z), 0.0) * self.net_position[z, t] for z in self.zones)
+                >= self.fb_lb[(cnec_id, t)]
+                for (cnec_id, t) in self.fb_index
+                if (cnec_id, t) in self.fb_lb
+            ),
+            name="fbmc_lb",
+        )

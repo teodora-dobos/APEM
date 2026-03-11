@@ -74,6 +74,89 @@ def parse_atc(path) -> pd.DataFrame:
         atc["ramp_down"] = atc["ramp_down"].astype(float)
     return atc
 
+
+def parse_fb_constraints(path) -> pd.DataFrame:
+    """
+    Parse optional FBMC RAM data from ``fb_constraints.csv``.
+    Expected columns (aliases supported): cnec_id, t, ram.
+    Optional lower bound aliases: lb, ram_lb, min_ram.
+    """
+    fb_path = path / "fb_constraints.csv"
+    if not fb_path.exists():
+        return pd.DataFrame(columns=["cnec_id", "t", "ram"])
+
+    fb = pd.read_csv(fb_path)
+    aliases = {
+        "cnec": "cnec_id",
+        "constraint_id": "cnec_id",
+        "period": "t",
+        "time": "t",
+        "capacity": "ram",
+    }
+    fb = fb.rename(columns={k: v for k, v in aliases.items() if k in fb.columns})
+
+    required = {"cnec_id", "t", "ram"}
+    missing = required.difference(fb.columns)
+    if missing:
+        missing_cols = ", ".join(sorted(missing))
+        raise ValueError(f"Invalid fb_constraints.csv: missing required column(s): {missing_cols}")
+
+    lb_column = None
+    for candidate in ("lb", "ram_lb", "min_ram"):
+        if candidate in fb.columns:
+            lb_column = candidate
+            break
+
+    keep_cols = ["cnec_id", "t", "ram"]
+    if lb_column is not None:
+        fb = fb.rename(columns={lb_column: "lb"})
+        keep_cols.append("lb")
+    fb = fb[keep_cols].copy()
+
+    fb["cnec_id"] = fb["cnec_id"].astype(str)
+    fb["t"] = fb["t"].astype(int)
+    fb["ram"] = fb["ram"].astype(float)
+    if "lb" in fb.columns:
+        fb["lb"] = fb["lb"].astype(float)
+    return fb
+
+
+def parse_fb_ptdf(path) -> pd.DataFrame:
+    """
+    Parse optional FBMC PTDF matrix entries from ``fb_ptdf.csv``.
+    Expected columns (aliases supported): cnec_id, t, zone, ptdf.
+    """
+    ptdf_path = path / "fb_ptdf.csv"
+    if not ptdf_path.exists():
+        return pd.DataFrame(columns=["cnec_id", "t", "zone", "ptdf"])
+
+    ptdf = pd.read_csv(ptdf_path)
+    aliases = {
+        "cnec": "cnec_id",
+        "constraint_id": "cnec_id",
+        "period": "t",
+        "time": "t",
+        "bidding_zone": "zone",
+        "z": "zone",
+        "value": "ptdf",
+        "factor": "ptdf",
+    }
+    ptdf = ptdf.rename(columns={k: v for k, v in aliases.items() if k in ptdf.columns})
+
+    required = {"cnec_id", "t", "zone", "ptdf"}
+    missing = required.difference(ptdf.columns)
+    if missing:
+        missing_cols = ", ".join(sorted(missing))
+        raise ValueError(f"Invalid fb_ptdf.csv: missing required column(s): {missing_cols}")
+
+    ptdf = ptdf[["cnec_id", "t", "zone", "ptdf"]].copy()
+    ptdf["cnec_id"] = ptdf["cnec_id"].astype(str)
+    ptdf["t"] = ptdf["t"].astype(int)
+    ptdf["zone"] = ptdf["zone"].fillna("Z1").astype(str)
+    ptdf["ptdf"] = ptdf["ptdf"].astype(float)
+    return ptdf
+
+
 def transform_step_orders(orders: pd.DataFrame, periods: List[int], sell: bool, order_id: Optional[int] = None,
                           scalable: Optional[bool] = None) -> pd.DataFrame:
     """
@@ -142,6 +225,8 @@ class ParseEU(ParseData):
         periods_df = pd.read_csv(self.path / 'periods.csv')
         periods = periods_df['period'].tolist()
         atc = parse_atc(self.path)
+        fb_constraints = parse_fb_constraints(self.path)
+        fb_ptdf = parse_fb_ptdf(self.path)
 
         zones_path = self.path / "zones.csv"
         if zones_path.exists():
@@ -157,6 +242,8 @@ class ParseEU(ParseData):
 
         if not atc.empty:
             zones = sorted(set(zones).union(atc["from_zone"]).union(atc["to_zone"]))
+        if not fb_ptdf.empty:
+            zones = sorted(set(zones).union(fb_ptdf["zone"]))
         if not zones:
             zones = ["Z1"]
 
@@ -188,4 +275,6 @@ class ParseEU(ParseData):
             piecewise_linear_orders,
             zones=zones,
             atc=atc,
+            fb_constraints=fb_constraints,
+            fb_ptdf=fb_ptdf,
         )
