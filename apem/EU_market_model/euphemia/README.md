@@ -31,6 +31,62 @@ Key enums:
 - `data/parsing/`: EU CSV dataset loading
 - `data/conversion/`: US -> EU bidding-language conversion
 
+## Order Types Description
+
+Canonical order families (enum):
+- `STEP`
+- `PLO` (piecewise linear order)
+- `BLOCK`
+- `COMPLEX`
+- `SCALABLE_COMPLEX`
+
+Defined in:
+- `enums/order_types.py`
+
+### Step Orders (`step_orders.csv`)
+- Piecewise constant bid/offer segments per period and zone.
+- Sign convention: positive `q` behaves as sell-side volume, negative `q` as buy-side volume.
+- Cleared with continuous acceptance `0..1`.
+
+### Piecewise Linear Orders (`piecewise_linear_orders.csv`)
+- Linear bid/offer segments with prices interpolated between `p0` and `p1`.
+- Cleared with continuous acceptance `0..1`.
+
+### Block Orders (`block_orders.csv`)
+- Multi-period indivisible/partially indivisible structures with acceptance constrained by `MAR`.
+- `block_type` values:
+  - `normal`: independent block order.
+  - `exclusive`: members sharing `code_prm` form an exclusive group (at most one accepted).
+  - `linked`: child references parent in `code_prm`; child acceptance cannot exceed parent acceptance.
+  - `flexible`: one-period activation chosen via `flex_period`.
+
+### Complex Orders (`complex_orders.csv` + `complex_step_orders.csv`)
+- Parent order with associated step orders.
+- Uses `fixed_term`, `variable_term`, and `condition`.
+- Typical `condition` values used in diagnostics/cuts:
+  - `MIC` (minimum income condition)
+  - `MP` (minimum profit condition)
+  - `load gradient`
+- `load_gradient` limits inter-temporal volume changes.
+
+### Scalable Complex Orders (`scalable_complex_orders.csv` + `scalable_step_orders.csv`)
+- Complex-order variant with scalable activation and optional minimum acceptance per period.
+- Uses `MAP1..MAPT` for period-wise minimum acceptance when active.
+- Supports `load_gradient` similarly to complex orders.
+
+### Where Behavior Is Enforced
+
+Model constraints:
+- `model/setup_model.py`
+  - market balance and acceptance linkage
+  - block subtypes (`exclusive`, `linked`, `flexible`)
+  - complex/scalable load-gradient and MAP constraints
+
+Post-solve economic checks and cut candidate extraction:
+- `master_problem/master_problem.py`
+  - PAB detection
+  - MIC/MP checks for complex and scalable complex orders
+
 ## Euphemia-Specific Config Keys
 
 Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`:
