@@ -51,6 +51,54 @@ class PriceSubproblem:
             return self.MCP[zone, t]
         return self.MCP[t]
 
+    def _master_solution_value(self, variable) -> float:
+        """
+        Return the incumbent value of a master variable from the callback solution.
+        """
+        raw_value = self.master_problem.current_alloc_solution.get(variable.VarName)
+        if raw_value is None:
+            try:
+                return float(variable.X)
+            except Exception:  # noqa: BLE001
+                return 0.0
+        if isinstance(raw_value, list):
+            return float(raw_value[0])
+        return float(raw_value)
+
+    def add_atc_price_consistency_constraints(self) -> None:
+        """
+        Add ATC active-set price coupling constraints based on incumbent flows.
+
+        For each directed arc (i,j,t) with 0 <= f <= cap:
+        - f == 0      -> MCP[j,t] <= MCP[i,t]
+        - f == cap    -> MCP[j,t] >= MCP[i,t]
+        - 0 < f < cap -> MCP[j,t] == MCP[i,t]
+        """
+        if not self.zonal_pricing or not self.master_problem.network_constraints_enabled:
+            return
+
+        tol = max(float(self.epsilon), 1e-6)
+        for arc_idx, (from_zone, to_zone, t) in enumerate(self.master_problem.atc_index):
+            cap = float(self.master_problem.atc_cap[(from_zone, to_zone, t)])
+            if cap <= tol:
+                continue
+
+            flow_var = self.master_problem.f_atc[from_zone, to_zone, t]
+            flow = self._master_solution_value(flow_var)
+            flow = max(0.0, min(cap, flow))
+
+            from_price = self._price_var(t, from_zone)
+            to_price = self._price_var(t, to_zone)
+            base_name = f"atc_price_{from_zone}_{to_zone}_{t}_{arc_idx}"
+
+            if flow <= tol:
+                self.pricing_model.addConstr(to_price <= from_price + tol, name=f"{base_name}_lb")
+            elif cap - flow <= tol:
+                self.pricing_model.addConstr(to_price >= from_price - tol, name=f"{base_name}_ub")
+            else:
+                self.pricing_model.addConstr(to_price - from_price <= tol, name=f"{base_name}_eq1")
+                self.pricing_model.addConstr(from_price - to_price <= tol, name=f"{base_name}_eq2")
+
     def extract_prices(self) -> dict:
         if self.zonal_pricing:
             return {
@@ -88,6 +136,7 @@ class PriceSubproblem:
 
         self.add_step_order_constraints()
         self.add_piecewise_linear_order_constraints()
+        self.add_atc_price_consistency_constraints()
 
         # isConstrained is False for price-based cuts.
         if self.isConstrained:
