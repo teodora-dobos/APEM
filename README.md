@@ -367,3 +367,5 @@ python main.py
 
 For Euphemia internals and run-output details, see
 [`apem/EU_market_model/euphemia/README.md`](./apem/EU_market_model/euphemia/README.md).
+For EU order-type semantics, see the
+[`Order Types Glossary`](./apem/EU_market_model/euphemia/README.md#order-types-glossary).
