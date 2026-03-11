@@ -60,6 +60,12 @@ def handle_price_based_cutting(self, callback_model) -> None:
 
 
 def add_price_based_cut_to_block(self, callback_model, block_order) -> None:
+    """
+    Add a lazy price-based combinatorial cut for one paradoxically accepted block.
+
+    The cut is built from the target block plus accepted/rejected overlapping
+    blocks according to buy/sell direction, then posted via ``cbLazy``.
+    """
     terms = [1 - self.MAR_aux[block_order['id']]]  # (1 - ACCEPT_hat)
 
     def is_sale(bo_id: int) -> bool:

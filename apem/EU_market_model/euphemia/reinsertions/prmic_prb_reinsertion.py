@@ -2,6 +2,14 @@ from apem.EU_market_model.euphemia.utils.extraction import get
 
 
 def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
+    """
+    Run reinsertion for paradoxically rejected orders after a feasible solution.
+
+    When ``is_prmic_reinsertion`` is ``False``, the routine targets PRBs
+    (paradoxically rejected block orders) and can be limited by
+    ``max_prb_reinsertion_attempts``. When ``True``, it targets PRMIC/PRSCO
+    (complex and scalable-complex) orders.
+    """
     from apem.EU_market_model.euphemia.master_problem.master_problem import MasterProblem
 
     counter = 0
@@ -109,6 +117,13 @@ def PRMIC_PRB_reinsertion(self, is_prmic_reinsertion: bool):
         print(f'--- Attempted {attempted_block_counter} block reinsertions ---')
 
 def calculate_paradoxically_rejected_orders(self, is_prmic_reinsertion: bool):
+    """
+    Collect rejected orders and filter those that are paradoxically rejected.
+
+    Returns:
+        tuple[dict, dict]: ``(rejected_orders, paradoxically_rejected_orders)``
+        keyed by ``block``, ``complex``, and ``scalable_complex``.
+    """
     rejected_orders = {'block': [], 'complex': [], 'scalable_complex': []}
     paradoxically_rejected_orders = {'block': [], 'complex': [], 'scalable_complex': []}
     # Calculate rejected orders
@@ -143,6 +158,12 @@ def calculate_paradoxically_rejected_orders(self, is_prmic_reinsertion: bool):
 
 
 def check_PRCO_PRSCO(self, id: int, is_complex: bool) -> bool:
+    """
+    Check whether a rejected complex/scalable-complex order is paradoxical.
+
+    The test compares an expected value against value at current prices,
+    respecting the order ``condition`` (MIC/MP) and skipping ``load gradient``.
+    """
     orders = self.complex_orders if is_complex else self.scalable_complex_orders
     step_orders = self.complex_step_orders if is_complex else self.scalable_step_orders
     variable_term = get(orders, 'variable_term', id) if is_complex else None
@@ -173,6 +194,12 @@ def check_PRCO_PRSCO(self, id: int, is_complex: bool) -> bool:
         return actual_value <= expected_value
 
 def check_PRB(self, order: int) -> bool:
+    """
+    Check whether a rejected block order is paradoxical at current prices.
+
+    Flexible blocks are always considered candidates. Other block orders are
+    evaluated using their volume-weighted average MCP versus bid price.
+    """
     # Always try flexible orders
     if get(self.block_orders, f'block_type', order) == 'flexible':
         return True

@@ -18,6 +18,12 @@ def calculate_flexible_order_active_period(master_problem, block_id) -> int:
 
 
 def calculate_block_demand_surplus(master_problem):
+    """
+    Compute total demand-side surplus contributed by accepted block orders.
+
+    Only block orders with at least one negative quantity (demand blocks) are
+    considered. Surplus is aggregated over all periods using current prices.
+    """
     total_surplus = 0.0
     for _, row in master_problem.block_orders.iterrows():
         p = row['p']

@@ -54,6 +54,8 @@ def convert(offerte_path: Path) -> pd.DataFrame:
 
 
 def main() -> None:
+    """Convert source GME block offers and write ``block_orders.csv``."""
+
     print("Reading:", SOURCE_PATH)
     df = convert(SOURCE_PATH)
 

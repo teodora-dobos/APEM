@@ -7,6 +7,8 @@ from apem.EU_market_model.euphemia.utils.paths import DATA_DIR, CONVERTED_DATASE
 
 
 class EU_Datasets(Enum):
+    """Named EU datasets mapped to concrete ``ParseEU`` parser instances."""
+
     GENERATED_SMALL = ParseEU(DATA_DIR / "generated_small", "Generated Small")
     GENERATED_LARGE = ParseEU(DATA_DIR / "generated_large", "Generated Large")
     OMIE = ParseEU(DATA_DIR / "omie", "OMIE")

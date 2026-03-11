@@ -91,6 +91,8 @@ def run_us_eu_conversion(us_data: ParseData,
 
 
 def save_df(df, us_data: ParseData, name: str):
+    """Persist one converted DataFrame into the mapped EU dataset folder."""
+
     output_dir = CONVERTED_DATASET_PATH_MAP[us_data]
     output_dir.mkdir(parents=True, exist_ok=True)
     filepath = output_dir / f"{name}.csv"

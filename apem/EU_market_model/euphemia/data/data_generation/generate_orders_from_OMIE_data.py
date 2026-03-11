@@ -14,19 +14,29 @@ df  = pd.read_csv(src)
 sign = lambda cv: 1 if cv == "V" else -1
 
 def has_block(g):
+    """Return ``True`` if an OMIE offer group contains non-zero block slices."""
+
     return (g["num_bloq"] != 0).any()
 
 def has_var(g):
+    """Return ``True`` if the offer group has a positive variable term."""
+
     return (g["vareuro"] > 0).any()
 
 def has_fixed(g):
+    """Return ``True`` if the offer group has a positive fixed term."""
+
     return (g["fijoeuro"] > 0).any()
 
 def has_ramp(g):
+    """Return ``True`` when up/down ramp constraints are provided in the group."""
+
     ramp_cols = ["max_ram_sub", "max_ram_baj"]
     return (g[ramp_cols].fillna(0).abs().sum(axis=1) > 0).any()
 
 def indivisible(g):
+    """Return ``True`` if the offer behaves as indivisible in Euphemia mapping."""
+
     # An order is indivisible if bloq_ind == 'S' OR it contains block slices
     return (g["bloq_ind"] == "S").any() or has_block(g)
 

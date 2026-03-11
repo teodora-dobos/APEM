@@ -119,11 +119,19 @@ def transform_step_orders(orders: pd.DataFrame, periods: List[int], sell: bool, 
 
 
 class ParseEU(ParseData):
+    """Parser for Euphemia-formatted CSV dataset folders."""
+
     def __init__(self, path: str, title: str):
         self.path = path
         self.title = title
 
     def parse_data(self, day=None) -> ZonalScenario:
+        """
+        Parse CSV files from ``self.path`` into a ``ZonalScenario``.
+
+        The optional ``day`` argument is accepted for interface compatibility
+        with other parsers and is currently unused.
+        """
         step_orders = ensure_zone_column(pd.read_csv(self.path / 'step_orders.csv'))
         block_orders = ensure_zone_column(pd.read_csv(self.path / 'block_orders.csv'))
         complex_orders = pd.read_csv(self.path / 'complex_orders.csv')

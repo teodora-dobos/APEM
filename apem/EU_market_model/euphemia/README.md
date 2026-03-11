@@ -87,6 +87,37 @@ Post-solve economic checks and cut candidate extraction:
   - PAB detection
   - MIC/MP checks for complex and scalable complex orders
 
+## Cut Types
+
+Cut-type enum values:
+- `price based` (`PB`)
+- `combinatorial benders` (`CB`)
+- `no good` (`NG`)
+
+Defined in:
+- `enums/cut_types.py`
+
+Selection and callback dispatch:
+- `master_problem/master_problem.py`
+
+### Price Based (`PB`)
+- Solves an unconstrained pricing subproblem (step + piecewise-linear orders only).
+- If feasible, updates provisional prices and adds cuts that deactivate paradoxically accepted/rejected patterns (PAB/PAMIC/PAMP-style logic).
+- Falls back to a no-good cut if no useful price-based cut can be built.
+- Implementation: `cutting_strategies/price_based.py`.
+
+### Combinatorial Benders (`CB`)
+- Computes an IIS of the infeasible pricing subproblem.
+- Builds a cut from IIS-linked master binaries (block/complex/scalable-complex acceptances), forcing at least one of them to change.
+- Falls back to a no-good cut if no IIS-linked terms are found.
+- Implementation: `cutting_strategies/combinatorial_benders.py`.
+
+### No Good (`NG`)
+- Generic exclusion cut on current binary assignment.
+- Enforces that at least one binary variable flips in future incumbents.
+- Most conservative strategy; useful as baseline/fallback.
+- Implementation: `cutting_strategies/no_good.py`.
+
 ## Euphemia-Specific Config Keys
 
 Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`:
