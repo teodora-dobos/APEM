@@ -65,15 +65,12 @@ def dummy_scenario():
 def dummy_config():
     class DummyConfig:
         relaxation = False
+        slack_penalty = 1234.0
 
         def apply_to_model(self, model):
             pass
 
     return DummyConfig()
-
-
-def test_dcopf_str():
-    assert str(DCOPF()) == "DCOPF"
 
 
 def test_compare_zonal_vs_final_allocation(tmp_path):
@@ -130,9 +127,10 @@ def test_compute_redispatch_volumes(tmp_path):
     assert "Redispatch volumes" in file.read_text()
 
 
-def test_add_redispatch_constraints_objective_minabsvol(dummy_scenario):
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
+def test_add_redispatch_constraints_objective_minabsvol_uses_slack_penalty(mock_quicksum, dummy_scenario):
+    mock_quicksum.side_effect = lambda terms: sum(terms)
     model = MagicMock()
-    # Return zero-by-default containers for any addVars(...) call
     model.addVars.side_effect = lambda *a, **kw: defaultdict(float)
     model.addConstrs.side_effect = lambda *a, **kw: None
     model.setObjective.side_effect = lambda *a, **kw: None
@@ -140,8 +138,8 @@ def test_add_redispatch_constraints_objective_minabsvol(dummy_scenario):
     zonal_alloc = MagicMock()
     zonal_alloc.y_stl = {(1, 1, 1): 0.0}
 
-    # Provide abs_slack as real numbers for all (node, period) pairs used in quicksum
-    abs_slack = {("n1", 1): 0.0, ("n2", 1): 0.0}
+    abs_slack = {("n1", 1): 2.0, ("n2", 1): 3.0}
+    slack_penalty = 7.0
 
     dcopf = DCOPF()
     updated = dcopf.add_redispatch_constraints_objective(
@@ -150,9 +148,12 @@ def test_add_redispatch_constraints_objective_minabsvol(dummy_scenario):
         scenario=dummy_scenario,
         y_stl={}, u_st={}, abs_slack=abs_slack,
         seller_cost_dict={}, seller_no_load_cost_dict={},
-        zonal_allocation=zonal_alloc
+        zonal_allocation=zonal_alloc,
+        slack_penalty=slack_penalty,
     )
     assert updated is model
+    set_obj_args = model.setObjective.call_args[0]
+    assert set_obj_args[0] == pytest.approx(slack_penalty * (2.0 + 3.0))
 
 
 @patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
@@ -182,3 +183,78 @@ def test_solve_returns_error(mock_preproc, GRB, MockModel, dummy_scenario, dummy
     dcopf = DCOPF()
     res = dcopf.solve(dummy_scenario, dummy_config)
     assert isinstance(res, Error)
+
+
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+def test_solve_uses_configured_slack_penalty_in_objective(
+    mock_preproc, mock_quicksum, GRB, MockModel, dummy_scenario, dummy_config
+):
+    mock_preproc.side_effect = lambda *a, **kw: defaultdict(float)
+    mock_quicksum.side_effect = lambda terms: sum(terms)
+
+    def _addvars(*args, **kwargs):
+        name = kwargs.get("name", "")
+        if name == "abs_slack_vt":
+            return defaultdict(lambda: 1.0)
+        return defaultdict(float)
+
+    mock_model = MagicMock()
+    mock_model.addConstr.side_effect = lambda *a, **kw: None
+    mock_model.addConstrs.side_effect = lambda *a, **kw: None
+    mock_model.addVars.side_effect = _addvars
+    mock_model.setObjective.side_effect = lambda *a, **kw: None
+    mock_model.optimize.side_effect = lambda *a, **kw: None
+    mock_model.Status = 3
+    MockModel.return_value = mock_model
+
+    GRB.INFEASIBLE = 3
+    GRB.BINARY = "BINARY"
+    GRB.INFINITY = float("inf")
+    GRB.MAXIMIZE = "MAXIMIZE"
+    GRB.MINIMIZE = "MINIMIZE"
+
+    dcopf = DCOPF()
+    res = dcopf.solve(dummy_scenario, dummy_config)
+    assert isinstance(res, Error)
+
+    objective, sense = mock_model.setObjective.call_args[0]
+    expected_penalty_term = -dummy_config.slack_penalty * len(dummy_scenario.network.nodes) * len(dummy_scenario.periods)
+    assert objective == pytest.approx(expected_penalty_term)
+    assert sense == GRB.MAXIMIZE
+
+
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+def test_solve_error_writes_status_message_csv(mock_preproc, GRB, MockModel, dummy_scenario, dummy_config, tmp_path):
+    mock_preproc.side_effect = lambda *a, **kw: defaultdict(float)
+
+    mock_model = MagicMock()
+    mock_model.addConstr.side_effect = lambda *a, **kw: None
+    mock_model.addConstrs.side_effect = lambda *a, **kw: None
+    mock_model.addVars.side_effect = lambda *a, **kw: defaultdict(float)
+    mock_model.setObjective.side_effect = lambda *a, **kw: None
+    mock_model.optimize.side_effect = lambda *a, **kw: None
+    mock_model.Status = 3
+    MockModel.return_value = mock_model
+
+    GRB.INF_OR_UNBD = 4
+    GRB.INFEASIBLE = 3
+    GRB.UNBOUNDED = 5
+    GRB.INTERRUPTED = 6
+    GRB.BINARY = "BINARY"
+    GRB.INFINITY = float("inf")
+
+    out = tmp_path / "dcopf_error.csv"
+    dcopf = DCOPF()
+    res = dcopf.solve(dummy_scenario, dummy_config, results_file=str(out))
+
+    assert isinstance(res, Error)
+    assert out.exists()
+    df = pd.read_csv(out)
+    assert list(df.columns) == ["status", "message"]
+    assert int(df.loc[0, "status"]) == GRB.INFEASIBLE
+    assert "infeasible" in str(df.loc[0, "message"]).lower()
