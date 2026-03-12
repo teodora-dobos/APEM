@@ -243,7 +243,7 @@ class MasterProblem:
 
         project_root = Path(__file__).resolve().parents[4]
         results_root = project_root / "EU_results" / "euphemia"
-        self.run_root = results_root / self.config.dataset / self.cut_type_key / self.run_id
+        self.run_root = results_root / self.config.dataset / self.run_id / self.cut_type_key
 
         self.paths = {
             "alloc": self.run_root / "allocation",

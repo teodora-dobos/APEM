@@ -3,7 +3,9 @@ Utility to run a full matrix of APEM EU_model configurations.
 
 Matrix:
 - Datasets (EU_Datasets):
-  GENERATED_SMALL, GENERATED_LARGE, OMIE, GME, IEEE_RTS, ARPA
+  GENERATED_SMALL, GENERATED_LARGE, OMIE, GME,
+  TEST_3NODE, TEST_3NODE_LOWCAP,
+  IEEE_RTS, ARPA
 - Cut types (CutTypes):
   "price based", "combinatorial benders", "no good"
 

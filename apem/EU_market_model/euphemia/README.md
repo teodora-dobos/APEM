@@ -139,7 +139,7 @@ Defined in `euphemia_config.py` and passed via `eu_model.euphemia_configuration`
 ## Output
 
 Per run:
-- `EU_results/euphemia/<DATASET>/<CUT_TYPE>/<RUN_ID>/`
+- `EU_results/euphemia/<DATASET>/<RUN_ID>/<CUT_TYPE>/`
 
 Core artifacts:
 - `allocation/results.csv`: incumbent master variables (`variable,value`)
