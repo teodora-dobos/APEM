@@ -1,0 +1,179 @@
+"""
+Example script for comparing redispatch costs across power-flow models for one dataset.
+
+The script:
+1. parses one US dataset,
+2. reuses the latest matching run for each selected power-flow model, or computes it if missing,
+3. loads redispatch costs for one selected redispatch algorithm,
+4. writes a grouped redispatch-cost table and a comparison plot.
+
+The pricing algorithm is not part of the comparison itself. `RUN_PRICING_ALGORITHM`
+is only used when the script needs to compute a missing run.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import sys
+
+if "MPLCONFIGDIR" not in os.environ:
+    os.environ["MPLCONFIGDIR"] = str(Path(__file__).resolve().parents[2] / ".matplotlib_cache")
+
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from apem.execution_chain import _retrieve_data
+from apem.US_market_model.enums import (
+    PowerFlowModels,
+    PricingAlgorithms,
+    RedispatchAlgorithms,
+    US_Datasets,
+)
+from apem.US_market_model.evaluation import (
+    ensure_redispatch_run_for_configuration,
+    load_redispatch_metrics_from_run,
+    plot_redispatch_metric_by_power_flow_model,
+    round_numeric_columns,
+)
+
+US_RESULTS_DIR = ROOT / "US_results"
+
+DATASET = US_Datasets.PyPSAEurLarge
+POWER_FLOW_MODELS = (
+    PowerFlowModels.Zonal_NTC_aggregated,
+    PowerFlowModels.Zonal_NTC_multiedge,
+    PowerFlowModels.ZonalFBMC,
+)
+REDISPATCH_ALGORITHM = RedispatchAlgorithms.MinCostRD
+RUN_PRICING_ALGORITHM = PricingAlgorithms.IP
+REDISPATCH_CONSTRAINT_UNITS = False
+REDISPATCH_THRESHOLD = 0
+
+
+def dataset_root(scenario_name: str) -> Path:
+    return US_RESULTS_DIR / f"{scenario_name}_results"
+
+
+def evaluation_root(scenario_name: str) -> Path:
+    return dataset_root(scenario_name) / "evaluation" / "redispatch_cost_comparison"
+
+
+def create_evaluation_output_dir(
+    scenario_name: str,
+    redispatch_algorithm: RedispatchAlgorithms,
+    power_flow_models: tuple[PowerFlowModels, ...],
+) -> Path:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    model_part = "_".join(model.name for model in power_flow_models)
+    output_dir = evaluation_root(scenario_name) / f"{timestamp}_{redispatch_algorithm.name}_{model_part}"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def run_redispatch_cost_comparison(
+    dataset: US_Datasets = DATASET,
+    power_flow_models: tuple[PowerFlowModels, ...] = POWER_FLOW_MODELS,
+) -> tuple[pd.DataFrame, dict[str, dict[str, str]]]:
+    scenario = _retrieve_data(dataset)
+    scenario_name = scenario.name
+    all_costs = []
+    selected_runs: dict[str, dict[str, str]] = {}
+    results_root = dataset_root(scenario_name)
+
+    for power_flow_model in power_flow_models:
+        if power_flow_model == PowerFlowModels.DCOPF:
+            raise ValueError("Redispatch cost comparison requires zonal power-flow models.")
+
+        power_flow_model_name = str(power_flow_model.value)
+        run_dir, source = ensure_redispatch_run_for_configuration(
+            results_root=results_root,
+            repo_root=ROOT,
+            dataset=dataset,
+            power_flow_model=power_flow_model.value,
+            power_flow_model_name=power_flow_model_name,
+            redispatch_algorithm=REDISPATCH_ALGORITHM,
+            pricing_algorithm=RUN_PRICING_ALGORITHM,
+            redispatch_constraint_units=REDISPATCH_CONSTRAINT_UNITS,
+            redispatch_threshold=REDISPATCH_THRESHOLD,
+        )
+        metrics = load_redispatch_metrics_from_run(
+            run_dir,
+            scenario_name,
+            power_flow_model_name=power_flow_model_name,
+            redispatch_algorithm=REDISPATCH_ALGORITHM,
+            redispatch_constraint_units=REDISPATCH_CONSTRAINT_UNITS,
+            redispatch_threshold=REDISPATCH_THRESHOLD,
+        )
+        all_costs.append(metrics.loc[metrics["metric"] == "costs"].copy())
+        selected_runs[power_flow_model.name] = {
+            "source": source,
+            "run_dir": str(run_dir),
+        }
+
+    redispatch_costs = pd.concat(all_costs, ignore_index=True)
+    return redispatch_costs, selected_runs
+
+
+def pivot_redispatch_costs_by_power_flow_model(redispatch_costs: pd.DataFrame) -> pd.DataFrame:
+    grouped = (
+        redispatch_costs.pivot(
+            index=["dataset", "metric"],
+            columns="power_flow_model",
+            values="value",
+        )
+        .reset_index()
+        .rename_axis(columns=None)
+    )
+
+    ordered_columns = ["dataset", "metric"] + [
+        str(model.value) for model in POWER_FLOW_MODELS if str(model.value) in grouped.columns
+    ]
+    return grouped.loc[:, ordered_columns]
+
+
+def main() -> None:
+    redispatch_costs, selected_runs = run_redispatch_cost_comparison()
+    scenario_name = redispatch_costs["dataset"].iloc[0]
+    dataset_output_dir = create_evaluation_output_dir(
+        scenario_name,
+        REDISPATCH_ALGORITHM,
+        POWER_FLOW_MODELS,
+    )
+
+    grouped_costs = round_numeric_columns(pivot_redispatch_costs_by_power_flow_model(redispatch_costs))
+    power_flow_model_order = [str(model.value) for model in POWER_FLOW_MODELS]
+    plot_file = dataset_output_dir / "redispatch_costs_by_power_flow_model.png"
+    plot_redispatch_metric_by_power_flow_model(
+        redispatch_costs,
+        plot_file,
+        metric="costs",
+        power_flow_model_order=power_flow_model_order,
+    )
+
+    grouped_costs.to_csv(dataset_output_dir / "redispatch_costs.csv", index=False)
+    metadata = {
+        "dataset": DATASET.name,
+        "scenario_name": scenario_name,
+        "power_flow_models": [model.name for model in POWER_FLOW_MODELS],
+        "power_flow_model_names": [str(model.value) for model in POWER_FLOW_MODELS],
+        "redispatch_algorithm": REDISPATCH_ALGORITHM.name,
+        "run_pricing_algorithm": RUN_PRICING_ALGORITHM.name,
+        "redispatch_constraint_units": REDISPATCH_CONSTRAINT_UNITS,
+        "redispatch_threshold": REDISPATCH_THRESHOLD,
+        "redispatch_costs_csv_layout": "grouped_by_dataset_metric_power_flow_model",
+        "redispatch_costs_plot": str(plot_file),
+        "selected_runs": selected_runs,
+        "evaluation_root": str(dataset_output_dir),
+    }
+    with open(dataset_output_dir / "metadata.json", "w", encoding="utf-8") as handle:
+        json.dump(metadata, handle, indent=2)
+
+
+if __name__ == "__main__":
+    main()

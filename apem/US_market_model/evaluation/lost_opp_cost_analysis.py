@@ -5,7 +5,6 @@ from pathlib import Path
 import pandas as pd
 
 REQUIRED_COLUMNS = ("algorithm", "lost_opp_cost", "component", "value")
-SUPPORTED_FILE_SUFFIXES = {".csv", ".parquet", ".txt", ".xlsx", ".xls"}
 SUPPORTED_LOST_OPP_COSTS = {"glocs", "llocs", "mwps"}
 SUPPORTED_COMPONENTS = {"buyers", "sellers", "network", "total"}
 
@@ -37,9 +36,10 @@ def load_lost_opp_cost_table(
     """Load a lost-opportunity-cost table from disk and normalize the core columns."""
     file_path = Path(path)
     suffix = file_path.suffix.lower()
+    supported_suffixes = {".csv", ".parquet", ".txt", ".xlsx", ".xls"}
 
-    if suffix not in SUPPORTED_FILE_SUFFIXES:
-        supported = ", ".join(sorted(SUPPORTED_FILE_SUFFIXES))
+    if suffix not in supported_suffixes:
+        supported = ", ".join(sorted(supported_suffixes))
         raise ValueError(f"Unsupported file type '{suffix}'. Supported types: {supported}.")
 
     if suffix == ".csv":
