@@ -1,3 +1,5 @@
+"""Utilities for loading and validating redispatch cost and volume metrics."""
+
 from __future__ import annotations
 
 from pathlib import Path

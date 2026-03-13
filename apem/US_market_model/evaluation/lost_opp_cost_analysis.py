@@ -1,3 +1,5 @@
+"""Utilities for loading and validating lost opportunity cost tables and legacy stats files."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -58,8 +60,6 @@ def load_lost_opp_cost_table(
         rename_map[algorithm_column] = "algorithm"
     if lost_opp_cost_column != "lost_opp_cost" and lost_opp_cost_column in df.columns:
         rename_map[lost_opp_cost_column] = "lost_opp_cost"
-    if "objective" in df.columns and "lost_opp_cost" not in df.columns:
-        rename_map["objective"] = "lost_opp_cost"
     if component_column != "component" and component_column in df.columns:
         rename_map[component_column] = "component"
     if value_column != "value" and value_column in df.columns:

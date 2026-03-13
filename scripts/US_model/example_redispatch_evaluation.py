@@ -44,7 +44,7 @@ from apem.US_market_model.evaluation import (
 
 US_RESULTS_DIR = ROOT / "US_results"
 
-DATASET = US_Datasets.PyPSAEurLarge
+DATASET = US_Datasets.ARPA
 POWER_FLOW_MODEL = PowerFlowModels.Zonal_NTC_multiedge
 REDISPATCH_ALGORITHMS = (
     RedispatchAlgorithms.MinCostRD,

@@ -1,3 +1,5 @@
+"""Plotting helpers for evaluation outputs such as prices, lost opportunity costs, welfare, and redispatch metrics."""
+
 from __future__ import annotations
 
 from pathlib import Path

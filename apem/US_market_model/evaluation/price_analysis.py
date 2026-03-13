@@ -1,3 +1,5 @@
+"""Utilities for validating, summarizing, and comparing price tables across algorithms."""
+
 from __future__ import annotations
 
 from itertools import combinations

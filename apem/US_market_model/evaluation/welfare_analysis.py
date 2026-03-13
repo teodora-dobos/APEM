@@ -1,3 +1,5 @@
+"""Utilities for loading and validating welfare tables from structured files or allocation stats text files."""
+
 from __future__ import annotations
 
 from pathlib import Path

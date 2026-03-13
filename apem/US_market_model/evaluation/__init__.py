@@ -1,4 +1,4 @@
-"""Generic evaluation utilities for the US market model."""
+"""Public entrypoints for post-processing and comparing saved US-model results."""
 
 from apem.US_market_model.evaluation.lost_opp_cost_analysis import (
     load_lost_opp_cost_table,

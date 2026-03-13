@@ -115,6 +115,11 @@ python main.py
 
 Once the execution is done, a new `results` folder will be created storing detailed allocation and pricing results.
 
+For US-model-specific evaluation and comparison workflows, see the example scripts in
+[`scripts/US_model`](./scripts/US_model). These cover, for example, comparisons of
+pricing algorithms, lost opportunity costs, redispatch costs, and cost-based
+comparisons across power-flow models.
+
 **Note:** If you ever run into the error "ModuleNotFoundError: No module named 'src'", this can likely be resolved by setting the PYTHONPATH inside your virtual environment. To do this, add the following line to <venv_name>/bin/activate: `export PYTHONPATH=/<path-to-APEM>`.
 
 ## US-to-EU Dataset Conversion (Euphemia)
