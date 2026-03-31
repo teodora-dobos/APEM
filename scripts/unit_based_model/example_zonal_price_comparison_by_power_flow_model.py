@@ -40,7 +40,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from apem.execution_chain import _retrieve_data, analyse_results, solve_unit_based_scenario
-from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.unit_based_model.evaluation import (
@@ -67,7 +67,7 @@ def build_power_flow_models() -> tuple:
     return (
         Zonal_NTC_aggregated(zonal_configuration=ZONAL_CONFIGURATION, factor=NTC_FACTOR),
         Zonal_NTC_multiedge(zonal_configuration=ZONAL_CONFIGURATION, factor=NTC_FACTOR),
-        ZonalFBMC(zonal_configuration=ZONAL_CONFIGURATION, base_case_type=FBMC_BASE_CASE),
+        Zonal_FBMC(zonal_configuration=ZONAL_CONFIGURATION, base_case_type=FBMC_BASE_CASE),
     )
 
 
@@ -91,7 +91,7 @@ def create_evaluation_output_dir(
 
 
 def zonal_path_for_model(power_flow_model) -> str:
-    if isinstance(power_flow_model, ZonalFBMC):
+    if isinstance(power_flow_model, Zonal_FBMC):
         base_case = getattr(power_flow_model, "base_case_type", "")
         return f"{power_flow_model.zonal_configuration}_{base_case}" if base_case else power_flow_model.zonal_configuration
     factor = getattr(power_flow_model, "factor", None)

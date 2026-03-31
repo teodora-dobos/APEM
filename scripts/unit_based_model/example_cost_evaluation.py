@@ -8,8 +8,10 @@ The script:
 4. converts welfare to cost via `abs(welfare)`,
 5. writes grouped cost tables and comparison plots.
 
-The pricing algorithm is not part of the comparison itself. `RUN_PRICING_ALGORITHM`
-is only used when the script needs to compute a missing run.
+You can adapt the zonal models by editing the constants near the top of the file:
+- `ZONAL_CONFIGURATION`
+- `NTC_FACTOR`
+- `FBMC_BASE_CASE`
 
 In this script, `cost = abs(welfare)` is used only under the assumption that there
 is no elastic demand. The PyPSA datasets in this repository are examples where
@@ -38,7 +40,11 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from apem.execution_chain import _retrieve_data
-from apem.unit_based_model.enums import PowerFlowModels, PricingAlgorithms, UnitBased_Datasets
+from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
+from apem.unit_based_model.enums import FBMCBaseCases, UnitBased_Datasets
 from apem.unit_based_model.evaluation import (
     ensure_welfare_run_for_configuration,
     load_welfare_from_run,
@@ -50,13 +56,15 @@ from apem.unit_based_model.evaluation import (
 UNIT_BASED_RESULTS_DIR = ROOT / "results" / "unit_based_model"
 
 DATASET = UnitBased_Datasets.PyPSAEurLarge
+ZONAL_CONFIGURATION = "zonal_DE3"
+NTC_FACTOR = 0.8
+FBMC_BASE_CASE = FBMCBaseCases.BC4.value
 POWER_FLOW_MODELS = (
-    PowerFlowModels.DCOPF,
-    PowerFlowModels.Zonal_NTC_aggregated,
-    PowerFlowModels.Zonal_NTC_multiedge,
-    PowerFlowModels.ZonalFBMC,
+    DCOPF(),
+    Zonal_NTC_aggregated(zonal_configuration=ZONAL_CONFIGURATION, factor=NTC_FACTOR),
+    Zonal_NTC_multiedge(zonal_configuration=ZONAL_CONFIGURATION, factor=NTC_FACTOR),
+    Zonal_FBMC(zonal_configuration=ZONAL_CONFIGURATION, base_case_type=FBMC_BASE_CASE),
 )
-RUN_PRICING_ALGORITHM = PricingAlgorithms.IP
 
 
 def dataset_root(scenario_name: str) -> Path:
@@ -67,12 +75,16 @@ def evaluation_root(scenario_name: str) -> Path:
     return dataset_root(scenario_name) / "evaluation" / "cost_comparison"
 
 
+def power_flow_model_name(power_flow_model) -> str:
+    return str(power_flow_model)
+
+
 def create_evaluation_output_dir(
     scenario_name: str,
-    power_flow_models: tuple[PowerFlowModels, ...],
+    power_flow_models: tuple,
 ) -> Path:
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    model_part = "_".join(model.name for model in power_flow_models)
+    model_part = "_".join(power_flow_model_name(model) for model in power_flow_models)
     output_dir = evaluation_root(scenario_name) / f"{timestamp}_{model_part}"
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
@@ -80,7 +92,7 @@ def create_evaluation_output_dir(
 
 def run_cost_comparison(
     dataset: UnitBased_Datasets = DATASET,
-    power_flow_models: tuple[PowerFlowModels, ...] = POWER_FLOW_MODELS,
+    power_flow_models: tuple = POWER_FLOW_MODELS,
 ) -> tuple[pd.DataFrame, dict[str, dict[str, str]]]:
     scenario = _retrieve_data(dataset)
     scenario_name = scenario.name
@@ -89,23 +101,22 @@ def run_cost_comparison(
     results_root = dataset_root(scenario_name)
 
     for power_flow_model in power_flow_models:
-        power_flow_model_name = str(power_flow_model.value)
+        power_flow_model_name_value = power_flow_model_name(power_flow_model)
         run_dir, source = ensure_welfare_run_for_configuration(
             results_root=results_root,
             repo_root=ROOT,
             dataset=dataset,
-            power_flow_model=power_flow_model.value,
-            power_flow_model_name=power_flow_model_name,
-            pricing_algorithm=RUN_PRICING_ALGORITHM,
+            power_flow_model=power_flow_model,
+            power_flow_model_name=power_flow_model_name_value,
         )
         all_welfare.append(
             load_welfare_from_run(
                 run_dir,
                 scenario_name,
-                power_flow_model_name=power_flow_model_name,
+                power_flow_model_name=power_flow_model_name_value,
             )
         )
-        selected_runs[power_flow_model.name] = {
+        selected_runs[power_flow_model_name_value] = {
             "source": source,
             "run_dir": str(run_dir),
         }
@@ -128,7 +139,7 @@ def pivot_period_cost_by_model(cost_table: pd.DataFrame) -> pd.DataFrame:
     )
 
     ordered_columns = ["dataset", "period"] + [
-        str(model.value) for model in POWER_FLOW_MODELS if str(model.value) in grouped.columns
+        power_flow_model_name(model) for model in POWER_FLOW_MODELS if power_flow_model_name(model) in grouped.columns
     ]
     return grouped.loc[:, ordered_columns]
 
@@ -146,7 +157,7 @@ def pivot_total_cost_by_model(cost_table: pd.DataFrame) -> pd.DataFrame:
     )
 
     ordered_columns = ["dataset"] + [
-        str(model.value) for model in POWER_FLOW_MODELS if str(model.value) in grouped.columns
+        power_flow_model_name(model) for model in POWER_FLOW_MODELS if power_flow_model_name(model) in grouped.columns
     ]
     return grouped.loc[:, ordered_columns]
 
@@ -158,7 +169,7 @@ def main() -> None:
 
     period_cost = round_numeric_columns(pivot_period_cost_by_model(cost_table))
     total_cost = round_numeric_columns(pivot_total_cost_by_model(cost_table))
-    power_flow_model_order = [str(model.value) for model in POWER_FLOW_MODELS]
+    power_flow_model_order = [power_flow_model_name(model) for model in POWER_FLOW_MODELS]
     period_plot_file = dataset_output_dir / "cost_by_period.png"
     total_plot_file = dataset_output_dir / "total_cost_by_power_flow_model.png"
 
@@ -186,9 +197,10 @@ def main() -> None:
     metadata = {
         "dataset": DATASET.name,
         "scenario_name": scenario_name,
-        "power_flow_models": [model.name for model in POWER_FLOW_MODELS],
-        "power_flow_model_names": [str(model.value) for model in POWER_FLOW_MODELS],
-        "run_pricing_algorithm": RUN_PRICING_ALGORITHM.name,
+        "power_flow_models": [power_flow_model_name(model) for model in POWER_FLOW_MODELS],
+        "zonal_configuration": ZONAL_CONFIGURATION,
+        "ntc_factor": NTC_FACTOR,
+        "fbmc_base_case": FBMC_BASE_CASE,
         "cost_definition": "absolute_value_of_welfare",
         "period_cost_csv_layout": "grouped_by_dataset_period_power_flow_model",
         "total_cost_csv_layout": "grouped_by_dataset_power_flow_model",

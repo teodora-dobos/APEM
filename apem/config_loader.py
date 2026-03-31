@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from apem.order_book_based_model.euphemia.enums.cut_types import CutTypes
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.order_book_based_model.euphemia.enums.datasets import OrderBookBased_Datasets
@@ -318,7 +318,7 @@ class ConfigLoader:
             base_case = zonal_config["base_case"]
             if base_case not in [c.value for c in FBMCBaseCases]:
                 raise ValueError(f"Invalid FBMC base case: {base_case}")
-            return ZonalFBMC(zonal_configuration=zonal_config["type"], base_case_type=base_case)
+            return Zonal_FBMC(zonal_configuration=zonal_config["type"], base_case_type=base_case)
         if model_type == "DCOPF":
             return DCOPF()
         raise ValueError(f"Invalid power flow model: {model_type}")

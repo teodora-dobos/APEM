@@ -9,7 +9,7 @@ from apem.order_book_based_model.euphemia.enums.datasets import OrderBookBased_D
 from apem.order_book_based_model.euphemia.runner import solve_euphemia
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.nodal_fbmc_included import NodalFBMC
-from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.unit_based_model.allocation.allocation import SellersAllocation, Allocation
@@ -65,7 +65,7 @@ def _create_configuration() -> Configuration:
 
 def _zonal_part(power_flow_model: PowerFlowModel) -> str:
     """Encodes zonal configuration (and influencing params) into the result path."""
-    if isinstance(power_flow_model, ZonalFBMC):
+    if isinstance(power_flow_model, Zonal_FBMC):
         base_case = getattr(power_flow_model, "base_case_type", "")
         suffix = f"{power_flow_model.zonal_configuration}"
         if base_case:
@@ -79,7 +79,7 @@ def _zonal_part(power_flow_model: PowerFlowModel) -> str:
 
 
 def _write_run_metadata(dataset: UnitBased_Datasets, scenario: Scenario, power_flow_model: PowerFlowModel,
-                        pricing_algorithm: PricingAlgorithms, redispatch_algorithm: RedispatchAlgorithms,
+                        pricing_algorithm: Optional[PricingAlgorithms], redispatch_algorithm: Optional[RedispatchAlgorithms],
                         zonal_part: str, run_root: str, run_id: str) -> None:
     """Persist a quick summary of the run configuration alongside results."""
     base_dir = run_root
@@ -92,12 +92,14 @@ def _write_run_metadata(dataset: UnitBased_Datasets, scenario: Scenario, power_f
         f.write(f"power_flow_model={power_flow_model}\n")
         if zonal_part:
             f.write(f"zonal_path={zonal_part.rstrip('/')}\n")
-        if isinstance(power_flow_model, ZonalFBMC):
+        if isinstance(power_flow_model, Zonal_FBMC):
             f.write(f"base_case={getattr(power_flow_model, 'base_case_type', '')}\n")
         if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
             f.write(f"factor={getattr(power_flow_model, 'factor', '')}\n")
-        f.write(f"pricing_algorithm={pricing_algorithm.name}\n")
-        f.write(f"redispatch_algorithm={redispatch_algorithm.name}\n")
+        if pricing_algorithm is not None:
+            f.write(f"pricing_algorithm={pricing_algorithm.name}\n")
+        if redispatch_algorithm is not None:
+            f.write(f"redispatch_algorithm={redispatch_algorithm.name}\n")
 
 
 def _solve_unit_based_allocation_problem(
@@ -109,7 +111,7 @@ def _solve_unit_based_allocation_problem(
 ):
     if configuration.verbosity:
         extra = ""
-        if isinstance(power_flow_model, ZonalFBMC):
+        if isinstance(power_flow_model, Zonal_FBMC):
             extra = f" base_case={getattr(power_flow_model, 'base_case_type', '')}"
         if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):
             extra = f" factor={getattr(power_flow_model, 'factor', '')}"
@@ -208,6 +210,55 @@ def analyse_results(
     analysis = PriceAnalysis(scenario, allocation, pricing, configuration, base_scenario)
     analysis.compute_all_stats_and_plot_data(path, pf_model_value)
     return analysis
+
+
+def solve_unit_based_allocation_only(
+    dataset: UnitBased_Datasets,
+    power_flow_model: PowerFlowModel,
+) -> str:
+    """Compute only the allocation stage and return the run root for welfare-style analyses."""
+    scenario = _retrieve_data(dataset)
+    configuration = _create_configuration()
+    run_id = _new_run_id()
+    run_root = f"results/unit_based_model/{scenario}_results/{run_id}"
+    zonal_part = _zonal_part(power_flow_model)
+    _write_run_metadata(
+        dataset,
+        scenario,
+        power_flow_model,
+        pricing_algorithm=None,
+        redispatch_algorithm=None,
+        zonal_part=zonal_part,
+        run_root=run_root,
+        run_id=run_id,
+    )
+
+    if isinstance(power_flow_model, DCOPF):
+        allocation = _solve_unit_based_allocation_problem(
+            scenario,
+            power_flow_model,
+            configuration,
+            run_root=run_root,
+        )
+        if isinstance(allocation, Error):
+            raise RuntimeError(f"{power_flow_model} allocation failed with status {allocation.status}.")
+        return run_root
+
+    if dataset not in [UnitBased_Datasets.PyPSAEurLarge, UnitBased_Datasets.PyPSAEurSmall]:
+        raise ValueError(
+            f"The dataset {dataset.name} cannot be used in combination with the power flow model "
+            f"{power_flow_model}. Zonal prices can only be computed for the PyPSA datasets."
+        )
+
+    zonal_scenario, allocation = _solve_unit_based_allocation_problem(
+        scenario,
+        power_flow_model,
+        configuration,
+        run_root=run_root,
+    )
+    if isinstance(allocation, Error):
+        raise RuntimeError(f"{power_flow_model} allocation failed with status {allocation.status}.")
+    return run_root
 
 
 def solve_unit_based_scenario(
@@ -339,7 +390,7 @@ def solve_and_analyse_scenario(
             is_dcopf_like = isinstance(power_flow_model, (DCOPF, NodalFBMC))
             scenario_to_analyse = price_analysis.scenario if is_dcopf_like else price_analysis.base_scenario
             base_scenario = None if is_dcopf_like else price_analysis.base_scenario
-            zonal_config = _zonal_part(power_flow_model).rstrip("/") if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge, ZonalFBMC)) else ""
+            zonal_config = _zonal_part(power_flow_model).rstrip("/") if isinstance(power_flow_model, (Zonal_NTC_aggregated, Zonal_NTC_multiedge, Zonal_FBMC)) else ""
 
             run_root = getattr(price_analysis, "results_root", None)
             scenario_to_analyse.analyse_scenario(results_root=run_root)  # analyse base scenario

@@ -29,7 +29,7 @@ from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc impor
 )
 
 
-class ZonalFBMC(PowerFlowModel):
+class Zonal_FBMC(PowerFlowModel):
     """
     Implementation of the Zonal Flow-Based Market Coupling Model.
     
@@ -40,7 +40,7 @@ class ZonalFBMC(PowerFlowModel):
 
     def __init__(self, zonal_configuration: str, base_case_type: str = 'BC2'):
         """
-        Initializes the ZonalFBMC model.
+        Initializes the Zonal_FBMC model.
         :param zonal_configuration: The name of the zonal configuration to use (e.g., 'zonal_DE4').
         :param base_case_type: The type of base case to generate (e.g., 'BC1', 'BC4').
             Base-case definitions are documented in ``BaseCaseGenerator.generate`` in ``zonal_fbmc.py``.
@@ -216,7 +216,7 @@ class ZonalFBMC(PowerFlowModel):
             return zonal_scenario, allocation
 
         except Exception as e:
-            logging.exception("An error occurred during ZonalFBMC solve.")
+            logging.exception("An error occurred during Zonal_FBMC solve.")
             print(f'{self} allocation error: {str(e)}')
             return Error(-1)
 
@@ -263,7 +263,7 @@ class ZonalFBMC(PowerFlowModel):
 
 
 def create_allocation_from_zonal_results(zonal_results: dict, network: pypsa.Network,
-                                         zonal_scenario: Scenario, power_flow_model: 'ZonalFBMC') -> Allocation:
+                                         zonal_scenario: Scenario, power_flow_model: 'Zonal_FBMC') -> Allocation:
     """
     Creates a purely ZONAL allocation object that matches the zonal_scenario.
     It synthesizes inter-zonal flows by aggregating the solved FBMC line loadings.

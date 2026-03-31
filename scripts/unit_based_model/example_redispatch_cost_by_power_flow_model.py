@@ -48,7 +48,7 @@ DATASET = UnitBased_Datasets.PyPSAEurLarge
 POWER_FLOW_MODELS = (
     PowerFlowModels.Zonal_NTC_aggregated,
     PowerFlowModels.Zonal_NTC_multiedge,
-    PowerFlowModels.ZonalFBMC,
+    PowerFlowModels.Zonal_FBMC,
 )
 REDISPATCH_ALGORITHM = RedispatchAlgorithms.MinCostRD
 RUN_PRICING_ALGORITHM = PricingAlgorithms.IP

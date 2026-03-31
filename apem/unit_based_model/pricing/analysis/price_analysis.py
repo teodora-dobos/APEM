@@ -5,7 +5,7 @@ import pandas as pd
 
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
-from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.allocation import Allocation
 from apem.unit_based_model.allocation.configuration import Configuration
 from apem.unit_based_model.data.analysis.plot import plot_supply_demand
@@ -181,7 +181,7 @@ class PriceAnalysis:
         if self.scenario.name != "ARPA":
             plot_supply_demand(dir_stats, self.scenario)
 
-        if isinstance(pf_model_value, ZonalFBMC):
+        if isinstance(pf_model_value, Zonal_FBMC):
             base_case = getattr(pf_model_value, "base_case_type", "")
             zonal_config = f"{pf_model_value.zonal_configuration}_{base_case}" if base_case else pf_model_value.zonal_configuration
         elif isinstance(pf_model_value, (Zonal_NTC_aggregated, Zonal_NTC_multiedge)):

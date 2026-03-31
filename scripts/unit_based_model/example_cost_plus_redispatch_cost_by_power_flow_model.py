@@ -58,7 +58,7 @@ POWER_FLOW_MODELS = (
     PowerFlowModels.DCOPF,
     PowerFlowModels.Zonal_NTC_aggregated,
     PowerFlowModels.Zonal_NTC_multiedge,
-    PowerFlowModels.ZonalFBMC,
+    PowerFlowModels.Zonal_FBMC,
 )
 REDISPATCH_ALGORITHM = RedispatchAlgorithms.MinCostRD
 RUN_PRICING_ALGORITHM = PricingAlgorithms.IP
@@ -106,7 +106,6 @@ def run_cost_plus_redispatch_cost_comparison(
                 dataset=dataset,
                 power_flow_model=power_flow_model.value,
                 power_flow_model_name=power_flow_model_name,
-                pricing_algorithm=RUN_PRICING_ALGORITHM,
             )
             welfare = load_welfare_from_run(
                 run_dir,

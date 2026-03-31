@@ -11,7 +11,7 @@ You can adapt the evaluation by editing the constants near the top of the file:
 - `DATASET`: choose the unit-based dataset to analyze.
 - `POWER_FLOW_MODEL`: choose the power-flow model from `apem.unit_based_model.enums.PowerFlowModels`
   such as `PowerFlowModels.DCOPF`, `PowerFlowModels.Zonal_NTC_aggregated`,
-  `PowerFlowModels.Zonal_NTC_multiedge`, or `PowerFlowModels.ZonalFBMC`.
+  `PowerFlowModels.Zonal_NTC_multiedge`, or `PowerFlowModels.Zonal_FBMC`.
 - `PRICING_ALGORITHMS`: choose the pricing algorithms to compare.
 - `PLOT_STATISTIC_FN`: choose the statistic used in the saved plots, for example
   `np.mean`, `np.std`, or `np.var`.

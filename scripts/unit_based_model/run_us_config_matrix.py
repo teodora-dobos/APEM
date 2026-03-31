@@ -7,7 +7,7 @@ Current matrix:
   * DCOPF: all datasets
   * Zonal_NTC_aggregated: PyPSA datasets only (default zonal_DE4, factor 0.8)
   * Zonal_NTC_multiedge: PyPSA datasets only (default zonal_DE4, factor 0.8)
-  * Zonal_FBMC: PyPSA datasets only, base cases BC1â€“BC4 (zonal_DE4)
+  * Zonal_FBMC: PyPSA datasets only, base cases BC1-BC4 (zonal_DE4)
 
 Defaults: IP pricing, MinCostRD redispatch, MPLCONFIGDIR set to a local cache if unset.
 """
@@ -30,7 +30,7 @@ from apem.unit_based_model.enums import PricingAlgorithms, RedispatchAlgorithms,
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
-from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
@@ -98,7 +98,7 @@ def main():
 
             # Zonal FBMC with multiple base cases
             for bc in base_cases:
-                runs.append((dataset, ZonalFBMC(zonal_configuration="zonal_DE4", base_case_type=bc)))
+                runs.append((dataset, Zonal_FBMC(zonal_configuration="zonal_DE4", base_case_type=bc)))
 
     successes, failures = [], []
     for idx, (dataset, pf_model) in enumerate(runs, start=1):
