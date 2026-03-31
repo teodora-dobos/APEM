@@ -7,10 +7,18 @@ The script:
 3. loads redispatch costs for one selected redispatch algorithm,
 4. writes a grouped redispatch-cost table and a comparison plot.
 
-You can adapt the zonal models by editing the constants near the top of the file.
+You can adapt the evaluation by editing the constants near the top of the file.
+- `DATASET`: choose the unit-based dataset to analyze.
+- `POWER_FLOW_MODELS`: choose and order zonal power-flow models to compare.
+- `REDISPATCH_ALGORITHM`: choose the redispatch algorithm used for all models.
+- `REDISPATCH_CONSTRAINT_UNITS`: decide whether redispatch is limited to selected units based on REDISPATCH_THRESHOLD.
+- `REDISPATCH_THRESHOLD`: choose the threshold used when unit constraints are enabled.
 
 The script does not compute prices. Missing runs are generated through the
 allocation-plus-redispatch path only.
+
+Each execution writes a new timestamped evaluation folder under:
+`results/unit_based_model/<scenario>_results/evaluation/redispatch_cost_comparison/`
 """
 
 from __future__ import annotations
@@ -175,5 +183,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

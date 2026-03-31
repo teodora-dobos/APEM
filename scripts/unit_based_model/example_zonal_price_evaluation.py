@@ -7,7 +7,13 @@ The script:
 3. loads the resulting price CSVs into one normalized evaluation table,
 4. writes grouped price tables, summary statistics, pairwise comparisons, and plots.
 
-You can adapt the zonal models by editing the constants near the top of the file.
+You can adapt the evaluation by editing the constants near the top of the file.
+- `DATASET`: choose the unit-based dataset to analyze.
+- `ZONAL_CONFIGURATION`: choose the zonal split shared by all zonal models.
+- `PRICING_ALGORITHM`: choose the pricing algorithm used for all models.
+- `NTC_FACTOR`: choose the transfer-capacity scaling for NTC models.
+- `FBMC_BASE_CASE`: choose the FBMC base case.
+- `PLOT_STATISTIC_FN`: choose the statistic used in saved plots (for example `np.mean` or `np.std`).
 
 Each execution writes a new timestamped evaluation folder under:
 `results/unit_based_model/<scenario>_results/evaluation/zonal_price_comparison/`
@@ -502,5 +508,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

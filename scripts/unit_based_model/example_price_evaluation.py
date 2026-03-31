@@ -1,5 +1,5 @@
 ﻿"""
-Example script for comparing real price outputs from DCOPF pricing algorithms.
+Example script for comparing prices across pricing algorithms for one power-flow model.
 
 The script:
 1. parses one unit-based dataset,
@@ -9,9 +9,7 @@ The script:
 
 You can adapt the evaluation by editing the constants near the top of the file:
 - `DATASET`: choose the unit-based dataset to analyze.
-- `POWER_FLOW_MODEL`: choose the power-flow model from `apem.unit_based_model.enums.PowerFlowModels`
-  such as `PowerFlowModels.DCOPF`, `PowerFlowModels.Zonal_NTC_aggregated`,
-  `PowerFlowModels.Zonal_NTC_multiedge`, or `PowerFlowModels.Zonal_FBMC`.
+- `POWER_FLOW_MODEL`: choose the power-flow model for the pricing comparison.
 - `PRICING_ALGORITHMS`: choose the pricing algorithms to compare.
 - `PLOT_STATISTIC_FN`: choose the statistic used in the saved plots, for example
   `np.mean`, `np.std`, or `np.var`.
@@ -214,5 +212,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 

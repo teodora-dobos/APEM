@@ -9,7 +9,12 @@ The script:
 5. adds cost and redispatch costs for each power-flow model,
 6. writes a grouped comparison table and a plot.
 
-You can adapt the zonal models by editing the constants near the top of the file.
+You can adapt the evaluation by editing the constants near the top of the file.
+- `DATASET`: choose the unit-based dataset to analyze.
+- `POWER_FLOW_MODELS`: choose and order the power-flow models to compare.
+- `REDISPATCH_ALGORITHM`: choose the redispatch algorithm used for zonal runs.
+- `REDISPATCH_CONSTRAINT_UNITS`: decide whether redispatch is limited to selected units.
+- `REDISPATCH_THRESHOLD`: choose the threshold used when unit constraints are enabled.
 
 For `DCOPF`, redispatch costs are set to `0` because there is no redispatch stage.
 
@@ -17,6 +22,9 @@ In this script, `cost = abs(total_welfare)` is used only under the assumption th
 there is no elastic demand. The PyPSA datasets in this repository are examples
 where this assumption applies, so interpreting cost as the absolute value of
 welfare is appropriate for them.
+
+Each execution writes a new timestamped evaluation folder under:
+`results/unit_based_model/<scenario>_results/evaluation/cost_plus_redispatch_cost_comparison/`
 """
 
 from __future__ import annotations
@@ -201,5 +209,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

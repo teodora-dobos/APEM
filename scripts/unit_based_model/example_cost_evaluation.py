@@ -8,7 +8,12 @@ The script:
 4. converts welfare to cost via `abs(welfare)`,
 5. writes grouped cost tables and comparison plots.
 
-You can adapt the zonal models by editing the constants near the top of the file.
+You can adapt the evaluation by editing the constants near the top of the file.
+- `DATASET`: choose the unit-based dataset to analyze.
+- `ZONAL_CONFIGURATION`: choose the zonal split used by zonal power-flow models.
+- `NTC_FACTOR`: choose the transfer-capacity scaling for NTC models.
+- `FBMC_BASE_CASE`: choose the FBMC base case (`BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`).
+- `POWER_FLOW_MODELS`: choose and order the power-flow models to compare.
 
 In this script, `cost = abs(welfare)` is used only under the assumption that there
 is no elastic demand. The PyPSA datasets in this repository are examples where
@@ -212,5 +217,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

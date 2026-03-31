@@ -1,5 +1,5 @@
 ﻿"""
-Example script for comparing real lost opportunity cost outputs from pricing algorithms.
+Example script for comparing lost opportunity costs across pricing algorithms.
 
 The script:
 1. parses one unit-based dataset,
@@ -8,6 +8,9 @@ The script:
 4. writes grouped lost opportunity cost tables and one plot per lost opportunity cost type.
 
 You can adapt the evaluation by editing the constants near the top of the file.
+- `DATASET`: choose the unit-based dataset to analyze.
+- `POWER_FLOW_MODEL`: choose the power-flow model for the pricing comparison.
+- `PRICING_ALGORITHMS`: choose and order the pricing algorithms to compare.
 
 Each execution writes a new timestamped evaluation folder under:
 `results/unit_based_model/<scenario>_results/evaluation/lost_opp_cost_comparison/`
@@ -166,5 +169,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
