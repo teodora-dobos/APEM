@@ -202,41 +202,41 @@ This guide shows how to plug **your custom dataset** into APEM so you can run al
 
 Your parser must return a `Scenario` object with the following pieces:
 
-- **df_sellers (DataFrame)** â€” one row per (seller, period).
+- **df_sellers (DataFrame)** - one row per (seller, period).
   - Required columns (minimum):
-    - `seller` *(int/str)* â€” unique generator/unit id  
-    - `period` *(int >= 1)* â€” time index (1..T)  
-    - `node` *(int/str)* â€” network bus or zone id  
-    - `max_prod` *(float, MW)* â€” total available production in the period  
-    - `min_prod` *(float, MW)* â€” technical minimum  
-    - `min_uptime` *(int, hours or periods)* â€” minimum up time (0 if not modeled)  
-    - `no_load_cost` *(float, cost/unit time)* â€” fixed on-cost  
+    - `seller` *(int/str)* - unique generator/unit id  
+    - `period` *(int >= 1)* - time index (1..T)  
+    - `node` *(int/str)* - network bus or zone id  
+    - `max_prod` *(float, MW)* - total available production in the period  
+    - `min_prod` *(float, MW)* - technical minimum  
+    - `min_uptime` *(int, hours or periods)* - minimum up time (0 if not modeled)  
+    - `no_load_cost` *(float, cost/unit time)* - fixed on-cost  
     - **Block offers used to create a stepwise cost curve:** `size1..sizeK` *(MW)* and `cost1..costK` *(currency/MWh)*
 
-- **df_buyers (DataFrame)** â€” one row per (buyer, period).
+- **df_buyers (DataFrame)** - one row per (buyer, period).
   - Required columns (minimum):
-    - `buyer` *(int/str)* â€” unique demand id  
+    - `buyer` *(int/str)* - unique demand id  
     - `period` *(int >= 1)*  
     - `node` *(int/str)*  
-    - `inelastic_dem` *(float, MW)* â€” mustâ€serve part of demand  
+    - `inelastic_dem` *(float, MW)* - must-serve part of demand  
     - **Block bids (if any) used to create a stepwise valuation curve:** `size1..sizeL` *(MW)* and `val1..valL` *(currency/MWh)*  
-    - `max_dem` *(float, MW)* â€” inelastic + sum of `size*`
+    - `max_dem` *(float, MW)* - inelastic + sum of `size*`
 
-- **network (networkx.Graph)** â€” buses as nodes, branches as edges.
+- **network (networkx.Graph)** - buses as nodes, branches as edges.
   - Edge attributes (for `unit_based_model/DCOPF`):  
-    - `B` *(float)* â€” line susceptance  
-    - `F_max` *(float, MW)* â€” thermal limit 
+    - `B` *(float)* - line susceptance  
+    - `F_max` *(float, MW)* - thermal limit 
   - For zonal networks you may pass a single node graph.
 
-- **nodes_agents (dict)** â€” mapping `node -> {"sellers": [...], "buyers": [...]}`.
+- **nodes_agents (dict)** - mapping `node -> {"sellers": [...], "buyers": [...]}`.
 
-- **periods (list[int])** â€” e.g., `[1, 2, ..., 24]`.
+- **periods (list[int])** - e.g., `[1, 2, ..., 24]`.
 
-- **blocks_buyers (range)** â€” e.g., `range(1, 3+1)` for 3 buyer blocks.
+- **blocks_buyers (range)** - e.g., `range(1, 3+1)` for 3 buyer blocks.
 
-- **blocks_sellers (range)** â€” e.g., `range(1, 4+1)` for 4 seller blocks.
+- **blocks_sellers (range)** - e.g., `range(1, 4+1)` for 4 seller blocks.
 
-- **r_star** â€” reference node (slack) id.
+- **r_star** - reference node (slack) id.
 
 Return them via:
 
@@ -280,7 +280,7 @@ class ParseMyDataset(ParseData):
         network = nx.read_edgelist(path / "network.csv", delimiter=",", nodetype=str)
         # For DCOPF add edge attributes B and F_max
 
-        # --- Nodesâ†’agents mapping ---
+        # --- Nodes->agents mapping ---
         nodes_agents = defaultdict(lambda: {"sellers": [], "buyers": []})
         for n, group in df_sellers.groupby("node"):
             nodes_agents[n]["sellers"].extend(sorted(group["seller"].unique()))
@@ -382,5 +382,4 @@ For Euphemia internals and run-output details, see
 [`apem/order_book_based_model/euphemia/README.md`](./apem/order_book_based_model/euphemia/README.md).
 For order-book order-type semantics, see the
 [`Order Types Glossary`](./apem/order_book_based_model/euphemia/README.md#order-types-glossary).
-
 

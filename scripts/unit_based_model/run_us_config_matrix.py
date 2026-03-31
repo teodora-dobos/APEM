@@ -106,11 +106,11 @@ def main():
         try:
             run_single(dataset, pf_model)
             successes.append((dataset, pf_model))
-            print(f"âœ” Success: {dataset.name} | {pf_model}")
+            print(f"[OK] Success: {dataset.name} | {pf_model}")
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             failures.append((dataset, pf_model, exc))
-            print(f"âœ– Failed: {dataset.name} | {pf_model} | {exc}")
+            print(f"[FAIL] Failed: {dataset.name} | {pf_model} | {exc}")
 
     print("\n=== Summary ===")
     print(f"Successes: {len(successes)}")
@@ -122,5 +122,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

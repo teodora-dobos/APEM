@@ -3,12 +3,12 @@
 """
 Convert an raw GME block data CSV to the EUPHEMIA format
 
-â€¢ id is a sequential integer (1, 2, 3 â€¦)
-â€¢ block_type is always "normal"
-â€¢ code_prm is left empty
-â€¢ p is copied from the source row
-â€¢ q is written into the correct q1-q24 column based on Intervallo
-â€¢ MAR is fixed to 1
+- id is a sequential integer (1, 2, 3 ...)
+- block_type is always "normal"
+- code_prm is left empty
+- p is copied from the source row
+- q is written into the correct q1-q24 column based on Intervallo
+- MAR is fixed to 1
 """
 
 from pathlib import Path
@@ -67,4 +67,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

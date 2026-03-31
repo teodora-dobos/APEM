@@ -391,7 +391,7 @@ class DataConversion:
         Generate a stable hash for a single block
 
         The hash must uniquely identify a block by the attributes that
-        are relevant: block type, the 24â€‘hour
+        are relevant: block type, the 24-hour
         quantity vector, price and MAR. Seller/buyer IDs are not part
         of the hash because they do not influence the market clearing.
         """
@@ -400,16 +400,16 @@ class DataConversion:
         tup = (
             row["block_type"],
             tuple(round(float(row[c]), 6) for c in qty_cols),  # quantity vector
-            round(float(row["p"]), 4),  # price in â‚¬/MWh
+            round(float(row["p"]), 4),  # price in EUR/MWh
             round(float(row["MAR"]), 4),  # minimum acceptance ratio
         )
-        # Short but collisionâ€‘resistant fingerprint (SHAâ€‘1 over JSON dump)
+        # Short but collision-resistant fingerprint (SHA-1 over JSON dump)
         return hashlib.sha1(json.dumps(tup).encode()).hexdigest()
 
 
     def compress_blocks(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Lossless aggregation of identical linkedâ€‘block chains
+        Lossless aggregation of identical linked-block chains
 
         A linked chain is a rooted tree: one exclusive parent order plus
         zero or more linked children. Two chains are considered identical
@@ -417,27 +417,27 @@ class DataConversion:
         identical signature and the tree topology is the same.
 
         After merging we:
-        â€¢ sum the quantities of identical blocks,
-        â€¢ set the MAR of the parent (MAR=1),
-        â€¢ concatenate the original IDs so that we can still trace them,
-        â€¢ update the children so their `code_prm` points to the new parent ID.
+        - sum the quantities of identical blocks,
+        - set the MAR of the parent (MAR=1),
+        - concatenate the original IDs so that we can still trace them,
+        - update the children so their `code_prm` points to the new parent ID.
         """
 
         qty_cols = [c for c in df.columns if c.startswith("q")]
 
         # --- Determine the parent ID for every row: ---
-        #    â€“ exclusive blocks reference themselves,
-        #    â€“ linked blocks reference the column `code_prm`.
+        #    - exclusive blocks reference themselves,
+        #    - linked blocks reference the column `code_prm`.
         df["parent_id"] = np.where(
             df["block_type"] == "exclusive", df["id"], df["code_prm"]
         )
 
-        # Build a mapping  Parentâ€‘ID â†’ [childâ€‘IDs]  (only linked rows)
+        # Build a mapping  Parent-ID -> [child-IDs]  (only linked rows)
         children_map = (
             df[df["block_type"] == "linked"].groupby("parent_id")["id"].apply(list).to_dict()
         )
 
-        # --- Build the perâ€‘block signature dict  {order_id: signature} ---
+        # --- Build the per-block signature dict  {order_id: signature} ---
         sig_series = df.apply(self.block_signature, axis=1)
         blk_sig = dict(zip(df["id"], sig_series))
 
@@ -492,4 +492,3 @@ class DataConversion:
 
     def set_step_orders(self) -> None:
         pass
-

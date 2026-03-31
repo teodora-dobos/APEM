@@ -16,7 +16,7 @@ from apem.unit_based_model.data.parsing.scenario import Scenario
 
 class Zonal_NTC_multiedge(PowerFlowModel):
     """
-    Variant of the zonal NTC model that preserves individual crossâ€‘zonal lines
+    Variant of the zonal NTC model that preserves individual cross-zonal lines
     (no aggregation). Each interzonal line in the nodal network becomes its own
     edge in a zonal ``MultiGraph`` so parallel connections are modeled
     independently. Works only with PyPSA data.
@@ -29,7 +29,7 @@ class Zonal_NTC_multiedge(PowerFlowModel):
     def create_zonal_scenario_NTC(self, base_scenario: Scenario, results_root: Optional[str] = None) -> Scenario:
         """
         Convert a nodal scenario into a zonal one while keeping every
-        crossâ€‘zonal line as a separate edge.
+        cross-zonal line as a separate edge.
         """
         # Work on copies to avoid mutating the input nodal scenario in place.
         df_sellers = base_scenario.df_sellers.copy()
@@ -74,7 +74,7 @@ class Zonal_NTC_multiedge(PowerFlowModel):
         node_to_zone_df = pd.DataFrame(list(node_to_zone.items()), columns=['node', 'zone'])
         node_to_zone_df.to_csv(os.path.join(results_path, "node_to_zone.csv"), index=False)
 
-        # create network that keeps every crossâ€‘zonal line as an individual edge
+        # create network that keeps every cross-zonal line as an individual edge
         aggregated_network = nx.MultiGraph()
 
         for z in zones:
@@ -95,7 +95,7 @@ class Zonal_NTC_multiedge(PowerFlowModel):
             zone_v = node_to_zone[v]
             zone_w = node_to_zone[w]
 
-            # keep only interâ€‘zonal lines; intraâ€‘zonal lines vanish in zonal model
+            # keep only inter-zonal lines; intra-zonal lines vanish in zonal model
             if zone_v == zone_w:
                 continue
 
@@ -149,4 +149,3 @@ class Zonal_NTC_multiedge(PowerFlowModel):
 
 # Backward compatibility alias
 Zonal_NTC_independent = Zonal_NTC_multiedge
-

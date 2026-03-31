@@ -586,7 +586,7 @@ class DCOPF(PowerFlowModel):
         """
         Compute the total redispatch volume as the L1 norm of dispatch changes between the zonal solution and
         the post-redispatch solution.
-        For each seller s, period t, and seller block l, the redispatch volume is | y_stl(final) âˆ’ y_stl(zonal) |.
+        For each seller s, period t, and seller block l, the redispatch volume is | y_stl(final) - y_stl(zonal) |.
         """
         redispatch_volumes = sum(
             abs(final_allocation.y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls])
@@ -599,4 +599,3 @@ class DCOPF(PowerFlowModel):
 
     def __str__(self):
         return 'DCOPF'
-

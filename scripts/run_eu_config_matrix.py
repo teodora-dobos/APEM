@@ -72,11 +72,11 @@ def main() -> None:
         try:
             run_single(dataset, cut_type)
             successes.append((dataset, cut_type))
-            print(f"âœ” Success: {dataset.name} | {cut_type.value}")
+            print(f"[OK] Success: {dataset.name} | {cut_type.value}")
         except Exception as exc:  # noqa: BLE001
             traceback.print_exc()
             failures.append((dataset, cut_type, exc))
-            print(f"âœ– Failed: {dataset.name} | {cut_type.value} | {exc}")
+            print(f"[FAIL] Failed: {dataset.name} | {cut_type.value} | {exc}")
 
     print("\n=== Summary ===")
     print(f"Total runs: {len(runs)}")
@@ -89,5 +89,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
 
