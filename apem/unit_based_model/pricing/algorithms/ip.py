@@ -175,13 +175,14 @@ class IP(PricingAlgorithm):
 
         r_t = model.addVars(periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='r_t')
 
-        lambda_b = model.addVars(buyers, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_b')
-        lambda_s = model.addVars(sellers, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_s')
+        lambda_lb = 0 if use_fbmc_network else -GRB.INFINITY
+        lambda_b = model.addVars(buyers, lb=lambda_lb, ub=GRB.INFINITY, name='lambda_b')
+        lambda_s = model.addVars(sellers, lb=lambda_lb, ub=GRB.INFINITY, name='lambda_s')
         if use_fbmc_network:
-            lambda_lt = model.addVars(fb_constraint_ids, periods, lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_l_t')
+            lambda_lt = model.addVars(fb_constraint_ids, periods, lb=lambda_lb, ub=GRB.INFINITY, name='lambda_l_t')
         else:
             lambda_et = model.addVars([(e, v, w, t) for (e, v, w, _, _) in directed_edges for t in periods],
-                                      lb=-GRB.INFINITY, ub=GRB.INFINITY, name='lambda_e_t')
+                                      lb=lambda_lb, ub=GRB.INFINITY, name='lambda_e_t')
 
         model.update()
 
@@ -248,6 +249,41 @@ class IP(PricingAlgorithm):
                 seller_no_load_cost_dict[s, t] * u_st[s, t]
                 for t in periods
             )
+            for s in sellers
+        )
+        # Additional buyer/seller profit-floor constraints (also used in Join pricing).
+        # These tighten the dual formulation and prevent unbounded rays in some FBMC cases.
+        model.addConstrs(
+            gp.quicksum(
+                buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
+                for t in periods
+                for lb in blocks_buyers
+            )
+            - gp.quicksum(
+                p_vt[buyer_node_dict[b, t], t] * x_btl[b, t, lb]
+                for t in periods
+                for lb in blocks_buyers
+            )
+            + lambda_b[b]
+            >= 0
+            for b in buyers
+        )
+        model.addConstrs(
+            gp.quicksum(
+                p_vt[seller_node_dict[s, t], t] * y_st[s, t]
+                for t in periods
+            )
+            - gp.quicksum(
+                seller_cost_dict[ls][s, t] * y_stl[s, t, ls]
+                for t in periods
+                for ls in blocks_sellers
+            )
+            - gp.quicksum(
+                seller_no_load_cost_dict[s, t] * u_st[s, t]
+                for t in periods
+            )
+            + lambda_s[s]
+            >= 0
             for s in sellers
         )
         # 3-6: network constraints
@@ -401,4 +437,3 @@ class IP(PricingAlgorithm):
 
     def __str__(self):
         return 'IP'
-
