@@ -261,6 +261,66 @@ def solve_unit_based_allocation_only(
     return run_root
 
 
+def solve_unit_based_allocation_and_redispatch_only(
+    dataset: UnitBased_Datasets,
+    power_flow_model: PowerFlowModel,
+    redispatch_algorithm: RedispatchAlgorithms = RedispatchAlgorithms.MinCostRD,
+    redispatch_constraint_units: bool = False,
+    redispatch_threshold: float = 0,
+) -> str:
+    """Compute allocation plus redispatch only and return the run root for redispatch analyses."""
+    scenario = _retrieve_data(dataset)
+    configuration = _create_configuration()
+    run_id = _new_run_id()
+    run_root = f"results/unit_based_model/{scenario}_results/{run_id}"
+    zonal_part = _zonal_part(power_flow_model)
+    _write_run_metadata(
+        dataset,
+        scenario,
+        power_flow_model,
+        pricing_algorithm=None,
+        redispatch_algorithm=redispatch_algorithm,
+        zonal_part=zonal_part,
+        run_root=run_root,
+        run_id=run_id,
+    )
+
+    if isinstance(power_flow_model, DCOPF):
+        raise ValueError("Redispatch requires a zonal power-flow model.")
+
+    if dataset not in [UnitBased_Datasets.PyPSAEurLarge, UnitBased_Datasets.PyPSAEurSmall]:
+        raise ValueError(
+            f"The dataset {dataset.name} cannot be used in combination with the power flow model "
+            f"{power_flow_model}. Zonal redispatch can only be computed for the PyPSA datasets."
+        )
+
+    zonal_scenario, allocation = _solve_unit_based_allocation_problem(
+        scenario,
+        power_flow_model,
+        configuration,
+        run_root=run_root,
+    )
+    if isinstance(allocation, Error):
+        raise RuntimeError(f"{power_flow_model} allocation failed with status {allocation.status}.")
+
+    redispatch_result = _solve_unit_based_redispatch_problem(
+        zonal_scenario,
+        power_flow_model,
+        redispatch_algorithm=redispatch_algorithm,
+        nodal_scenario=scenario,
+        configuration=configuration,
+        zonal_allocation=allocation.SellersAllocation,
+        redispatch_constraint_units=redispatch_constraint_units,
+        redispatch_threshold=redispatch_threshold,
+        run_root=run_root,
+    )
+    if isinstance(redispatch_result, Error):
+        raise RuntimeError(
+            f"{power_flow_model} redispatch failed with status {redispatch_result.status}."
+        )
+    return run_root
+
+
 def solve_unit_based_scenario(
     dataset: UnitBased_Datasets,
     power_flow_model: PowerFlowModel,

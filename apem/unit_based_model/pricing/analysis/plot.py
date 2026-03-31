@@ -13,7 +13,7 @@ from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
 def plot_avg_prices(avg_prices: pd.DataFrame, scenario: Scenario, file_plot: str = "") -> None:
-    avg_prices.plot(xlim=(min(scenario.periods), max(scenario.periods)), xlabel="period", ylabel="â‚¬/MWh")
+    avg_prices.plot(xlim=(min(scenario.periods), max(scenario.periods)), xlabel="period", ylabel="EUR/MWh")
     plt.savefig(file_plot, dpi=300)
     plt.close()
 
@@ -146,10 +146,10 @@ def plot_price_heatmap(
     )
 
     # Add colorbar
-    cbar = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, ticks=[0, 20, 40, 60, 80, 100], label="â‚¬/MWh")
-    cbar.set_ticklabels(["â‰¤0", "20", "40", "60", "80", "â‰¥100"])
+    cbar = plt.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ax=ax, ticks=[0, 20, 40, 60, 80, 100], label="EUR/MWh")
+    cbar.set_ticklabels(["<=0", "20", "40", "60", "80", ">=100"])
     cbar.ax.tick_params(labelsize=13)
-    cbar.set_label("â‚¬/MWh", fontsize=13)
+    cbar.set_label("EUR/MWh", fontsize=13)
 
     # Add text with price information (based on provided prices)
     min_price = min(avg_prices_copy.values())
@@ -159,7 +159,7 @@ def plot_price_heatmap(
     ax.text(
         0.05,
         0.95,
-        f"Min: {min_price:.2f} â‚¬/MWh\nAvg: {avg_price:.2f} â‚¬/MWh\nMax: {max_price:.2f} â‚¬/MWh",
+        f"Min: {min_price:.2f} EUR/MWh\nAvg: {avg_price:.2f} EUR/MWh\nMax: {max_price:.2f} EUR/MWh",
         transform=ax.transAxes,
         fontsize=13,
         verticalalignment="top",
@@ -178,7 +178,7 @@ def plot_price_heatmap(
             ax.text(
                 x=point.x,
                 y=point.y,
-                s=f"Zone {zone}: {price:.2f} â‚¬/MWh",
+                s=f"Zone {zone}: {price:.2f} EUR/MWh",
                 fontsize=13,
                 ha="center",
                 color="black",

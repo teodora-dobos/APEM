@@ -7,8 +7,10 @@ The script:
 3. loads redispatch costs and volumes from each run,
 4. writes grouped redispatch tables and one plot per metric.
 
-The pricing algorithm is not part of the comparison itself. `RUN_PRICING_ALGORITHM`
-is only used when the script needs to compute a missing run.
+You can adapt the zonal models by editing the constants near the top of the file.
+
+The script does not compute prices. Missing runs are generated through the
+allocation-plus-redispatch path only.
 """
 
 from __future__ import annotations
@@ -31,7 +33,6 @@ if str(ROOT) not in sys.path:
 from apem.execution_chain import _retrieve_data
 from apem.unit_based_model.enums import (
     PowerFlowModels,
-    PricingAlgorithms,
     RedispatchAlgorithms,
     UnitBased_Datasets,
 )
@@ -51,7 +52,6 @@ REDISPATCH_ALGORITHMS = (
     RedispatchAlgorithms.MinAbsCostRD,
     RedispatchAlgorithms.MinAbsVolRD,
 )
-RUN_PRICING_ALGORITHM = PricingAlgorithms.IP
 REDISPATCH_CONSTRAINT_UNITS = False
 REDISPATCH_THRESHOLD = 0
 
@@ -96,7 +96,6 @@ def run_redispatch_comparison(
             power_flow_model=POWER_FLOW_MODEL.value,
             power_flow_model_name=POWER_FLOW_MODEL_NAME,
             redispatch_algorithm=redispatch_algorithm,
-            pricing_algorithm=RUN_PRICING_ALGORITHM,
             redispatch_constraint_units=REDISPATCH_CONSTRAINT_UNITS,
             redispatch_threshold=REDISPATCH_THRESHOLD,
         )
@@ -167,7 +166,6 @@ def main() -> None:
         "scenario_name": scenario_name,
         "power_flow_model": POWER_FLOW_MODEL_NAME,
         "redispatch_algorithms": [algorithm.name for algorithm in REDISPATCH_ALGORITHMS],
-        "run_pricing_algorithm": RUN_PRICING_ALGORITHM.name,
         "redispatch_constraint_units": REDISPATCH_CONSTRAINT_UNITS,
         "redispatch_threshold": REDISPATCH_THRESHOLD,
         "redispatch_metrics_csv_layout": "grouped_by_dataset_power_flow_model_metric",

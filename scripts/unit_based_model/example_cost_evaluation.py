@@ -8,10 +8,7 @@ The script:
 4. converts welfare to cost via `abs(welfare)`,
 5. writes grouped cost tables and comparison plots.
 
-You can adapt the zonal models by editing the constants near the top of the file:
-- `ZONAL_CONFIGURATION`
-- `NTC_FACTOR`
-- `FBMC_BASE_CASE`
+You can adapt the zonal models by editing the constants near the top of the file.
 
 In this script, `cost = abs(welfare)` is used only under the assumption that there
 is no elastic demand. The PyPSA datasets in this repository are examples where

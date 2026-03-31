@@ -7,12 +7,7 @@ The script:
 3. loads the resulting lost opportunity cost values from each algorithm's `*_stats.txt`,
 4. writes grouped lost opportunity cost tables and one plot per lost opportunity cost type.
 
-You can adapt the evaluation by editing the constants near the top of the file:
-- `DATASET`: choose the unit-based dataset to analyze.
-- `POWER_FLOW_MODEL`: choose the power-flow model from `apem.unit_based_model.enums.PowerFlowModels`
-  such as `PowerFlowModels.DCOPF`, `PowerFlowModels.Zonal_NTC_aggregated`,
-  `PowerFlowModels.Zonal_NTC_multiedge`, or `PowerFlowModels.Zonal_FBMC`.
-- `PRICING_ALGORITHMS`: choose the pricing algorithms to compare.
+You can adapt the evaluation by editing the constants near the top of the file.
 
 Each execution writes a new timestamped evaluation folder under:
 `results/unit_based_model/<scenario>_results/evaluation/lost_opp_cost_comparison/`
@@ -43,7 +38,7 @@ from apem.unit_based_model.evaluation import (
 UNIT_BASED_RESULTS_DIR = ROOT / "results" / "unit_based_model"
 
 DATASET = UnitBased_Datasets.PyPSAEurLarge
-POWER_FLOW_MODEL = PowerFlowModels.DCOPF
+POWER_FLOW_MODEL = PowerFlowModels.Zonal_FBMC
 PRICING_ALGORITHMS = (
     PricingAlgorithms.IP,
     PricingAlgorithms.ELMP,

@@ -7,13 +7,7 @@ The script:
 3. loads the resulting price CSVs into one normalized evaluation table,
 4. writes grouped price tables, summary statistics, pairwise comparisons, and plots.
 
-Edit the constants near the top to choose:
-- `DATASET`
-- `ZONAL_CONFIGURATION`
-- `PRICING_ALGORITHM`
-- `NTC_FACTOR`
-- `FBMC_BASE_CASE`
-- `PLOT_STATISTIC_FN`
+You can adapt the zonal models by editing the constants near the top of the file.
 
 Each execution writes a new timestamped evaluation folder under:
 `results/unit_based_model/<scenario>_results/evaluation/zonal_price_comparison/`

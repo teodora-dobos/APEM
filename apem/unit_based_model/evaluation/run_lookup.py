@@ -6,7 +6,12 @@ from pathlib import Path
 
 import pandas as pd
 
-from apem.execution_chain import analyse_results, solve_unit_based_allocation_only, solve_unit_based_scenario
+from apem.execution_chain import (
+    analyse_results,
+    solve_unit_based_allocation_and_redispatch_only,
+    solve_unit_based_allocation_only,
+    solve_unit_based_scenario,
+)
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
@@ -389,7 +394,6 @@ def ensure_redispatch_run_for_configuration(
     power_flow_model,
     power_flow_model_name: str,
     redispatch_algorithm: RedispatchAlgorithms,
-    pricing_algorithm: PricingAlgorithms,
     redispatch_constraint_units: bool = False,
     redispatch_threshold: float = 0,
 ) -> tuple[Path, str]:
@@ -407,15 +411,14 @@ def ensure_redispatch_run_for_configuration(
     if existing_run is not None:
         return existing_run, "reused"
 
-    analysis = solve_unit_based_scenario(
+    run_root = solve_unit_based_allocation_and_redispatch_only(
         dataset=dataset,
         power_flow_model=power_flow_model,
-        pricing_algorithm=pricing_algorithm,
         redispatch_algorithm=redispatch_algorithm,
         redispatch_constraint_units=redispatch_constraint_units,
         redispatch_threshold=redispatch_threshold,
     )
-    return normalize_run_dir(analysis.results_root, repo_root), "computed"
+    return normalize_run_dir(run_root, repo_root), "computed"
 
 
 def load_redispatch_metrics_from_run(

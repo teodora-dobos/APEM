@@ -9,8 +9,9 @@ The script:
 5. adds cost and redispatch costs for each power-flow model,
 6. writes a grouped comparison table and a plot.
 
+You can adapt the zonal models by editing the constants near the top of the file.
+
 For `DCOPF`, redispatch costs are set to `0` because there is no redispatch stage.
-`RUN_PRICING_ALGORITHM` is only used when the script needs to compute a missing run.
 
 In this script, `cost = abs(total_welfare)` is used only under the assumption that
 there is no elastic demand. The PyPSA datasets in this repository are examples
@@ -38,7 +39,6 @@ if str(ROOT) not in sys.path:
 from apem.execution_chain import _retrieve_data
 from apem.unit_based_model.enums import (
     PowerFlowModels,
-    PricingAlgorithms,
     RedispatchAlgorithms,
     UnitBased_Datasets,
 )
@@ -61,7 +61,6 @@ POWER_FLOW_MODELS = (
     PowerFlowModels.Zonal_FBMC,
 )
 REDISPATCH_ALGORITHM = RedispatchAlgorithms.MinCostRD
-RUN_PRICING_ALGORITHM = PricingAlgorithms.IP
 REDISPATCH_CONSTRAINT_UNITS = False
 REDISPATCH_THRESHOLD = 0
 
@@ -121,7 +120,6 @@ def run_cost_plus_redispatch_cost_comparison(
                 power_flow_model=power_flow_model.value,
                 power_flow_model_name=power_flow_model_name,
                 redispatch_algorithm=REDISPATCH_ALGORITHM,
-                pricing_algorithm=RUN_PRICING_ALGORITHM,
                 redispatch_constraint_units=REDISPATCH_CONSTRAINT_UNITS,
                 redispatch_threshold=REDISPATCH_THRESHOLD,
             )
@@ -189,7 +187,6 @@ def main() -> None:
         "power_flow_models": [model.name for model in POWER_FLOW_MODELS],
         "power_flow_model_names": [str(model.value) for model in POWER_FLOW_MODELS],
         "redispatch_algorithm": REDISPATCH_ALGORITHM.name,
-        "run_pricing_algorithm": RUN_PRICING_ALGORITHM.name,
         "redispatch_constraint_units": REDISPATCH_CONSTRAINT_UNITS,
         "redispatch_threshold": REDISPATCH_THRESHOLD,
         "cost_definition": "absolute_value_of_total_welfare",
