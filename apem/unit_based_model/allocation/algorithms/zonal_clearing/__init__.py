@@ -145,7 +145,3 @@ class Zonal_NTC_multiedge(PowerFlowModel):
 
     def __str__(self):
         return 'Zonal_NTC_multiedge'
-
-
-# Backward compatibility alias
-Zonal_NTC_independent = Zonal_NTC_multiedge

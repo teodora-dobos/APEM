@@ -139,8 +139,3 @@ class Zonal_NTC_aggregated(PowerFlowModel):
 
     def __str__(self):
         return 'Zonal_NTC_aggregated'
-
-
-# Backward compatibility alias
-Zonal_NTC = Zonal_NTC_aggregated
-
