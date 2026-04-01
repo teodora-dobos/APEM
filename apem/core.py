@@ -1,8 +1,9 @@
-from enum import Enum
+﻿from enum import Enum
 
-from apem.market_models import EU_model, US_model
+from apem.market_models import order_book_based_model, unit_based_model
 
 
 class MarketModels(Enum):
-    US_model = US_model
-    EU_model = EU_model
+    unit_based_model = unit_based_model
+    order_book_based_model = order_book_based_model
+

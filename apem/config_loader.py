@@ -1,15 +1,15 @@
-import json
+﻿import json
 from numbers import Integral, Real
 from typing import Any, Dict
 
-from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
-from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import ZonalFBMC
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
-from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
+from apem.order_book_based_model.euphemia.enums.cut_types import CutTypes
+from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.order_book_based_model.euphemia.enums.datasets import OrderBookBased_Datasets
 from apem.core import MarketModels
-from apem.US_market_model.enums import FBMCBaseCases, PricingAlgorithms, RedispatchAlgorithms, US_Datasets
+from apem.unit_based_model.enums import FBMCBaseCases, PricingAlgorithms, RedispatchAlgorithms, UnitBased_Datasets
 
 
 class ConfigLoader:
@@ -20,12 +20,13 @@ class ConfigLoader:
         self.config = self._filter_documentation_fields()
 
     def _load_raw_config(self) -> Dict[str, Any]:
-        with open(self.config_path, "r") as f:
+        with open(self.config_path, "r", encoding="utf-8-sig") as f:
             return json.load(f)
 
     def _normalize_config_format(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Accept only model-scoped config format ('run', 'us_model', 'eu_model').
+        Accept model-scoped config format with canonical keys
+        ('run', 'unit_based_model', 'order_book_based_model').
         """
         if "run" not in raw:
             raise ValueError(
@@ -36,51 +37,52 @@ class ConfigLoader:
 
     def _normalize_model_scoped_config(self, raw: Dict[str, Any]) -> Dict[str, Any]:
         run_cfg = raw.get("run", {})
-        us_cfg = raw.get("us_model", {})
-        eu_cfg = raw.get("eu_model", {})
+        unit_cfg = raw.get("unit_based_model", {})
+        order_book_cfg = raw.get("order_book_based_model", {})
 
         if not isinstance(run_cfg, dict):
             raise ValueError("Invalid run: expected an object.")
-        if us_cfg is None:
-            us_cfg = {}
-        if eu_cfg is None:
-            eu_cfg = {}
-        if not isinstance(us_cfg, dict):
-            raise ValueError("Invalid us_model: expected an object.")
-        if not isinstance(eu_cfg, dict):
-            raise ValueError("Invalid eu_model: expected an object.")
+        if unit_cfg is None:
+            unit_cfg = {}
+        if order_book_cfg is None:
+            order_book_cfg = {}
+        if not isinstance(unit_cfg, dict):
+            raise ValueError("Invalid unit_based_model: expected an object.")
+        if not isinstance(order_book_cfg, dict):
+            raise ValueError("Invalid order_book_based_model: expected an object.")
 
-        redispatch_cfg = us_cfg.get("redispatch", {})
+        redispatch_cfg = unit_cfg.get("redispatch", {})
         if redispatch_cfg is None:
             redispatch_cfg = {}
         if not isinstance(redispatch_cfg, dict):
-            raise ValueError("Invalid us_model.redispatch: expected an object.")
+            raise ValueError("Invalid unit_based_model.redispatch: expected an object.")
 
-        us_solver_cfg = us_cfg.get("solver_configuration")
+        unit_solver_cfg = unit_cfg.get("solver_configuration")
+        market_model = run_cfg.get("market_model", "unit_based_model")
 
         normalized = {
             "verbosity": run_cfg.get("verbosity", raw.get("verbosity", True)),
             "scenario": {
-                "market_model": run_cfg.get("market_model", "US_model"),
-                "US_dataset": us_cfg.get("dataset", "IEEE_RTS"),
-                "EU_dataset": eu_cfg.get("dataset", "GENERATED_SMALL"),
-                "power_flow_model": us_cfg.get("power_flow_model", {"type": "DCOPF"}),
-                "cut_type": eu_cfg.get("cut_type", CutTypes.PB.value),
-                "pricing_algorithm": us_cfg.get("pricing_algorithm", "IP"),
+                "market_model": market_model,
+                "unit_based_dataset": unit_cfg.get("dataset", "IEEE_RTS"),
+                "order_book_based_dataset": order_book_cfg.get("dataset", "GENERATED_SMALL"),
+                "power_flow_model": unit_cfg.get("power_flow_model", {"type": "DCOPF"}),
+                "cut_type": order_book_cfg.get("cut_type", CutTypes.PB.value),
+                "pricing_algorithm": unit_cfg.get("pricing_algorithm", "IP"),
                 "redispatch_algorithm": redispatch_cfg.get("algorithm", "MinCostRD"),
                 "redispatch_constraint_units": redispatch_cfg.get("constraint_units", False),
                 "redispatch_threshold": redispatch_cfg.get("threshold", 0.0),
                 "alpha": redispatch_cfg.get("alpha", 0.0),
             },
-            "euphemia_configuration": eu_cfg.get("euphemia_configuration", raw.get("euphemia_configuration", {})),
-            "zonal_configuration": us_cfg.get(
+            "euphemia_configuration": order_book_cfg.get("euphemia_configuration", raw.get("euphemia_configuration", {})),
+            "zonal_configuration": unit_cfg.get(
                 "zonal_configuration",
                 raw.get("zonal_configuration", {"type": "zonal_DE2-s", "factor": 0.8, "base_case": "BC4"}),
             ),
         }
 
-        if us_solver_cfg is not None:
-            normalized["us_solver_configuration"] = us_solver_cfg
+        if unit_solver_cfg is not None:
+            normalized["unit_based_solver_configuration"] = unit_solver_cfg
 
         # Preserve optional documentation/helper fields.
         for key, value in raw.items():
@@ -95,13 +97,15 @@ class ConfigLoader:
 
     def _validate_config(self):
         # Validate datasets
-        if self.raw_config["scenario"]["US_dataset"] not in [d.name for d in US_Datasets]:
-            raise ValueError(f"Invalid US_dataset: {self.raw_config['scenario']['US_dataset']}")
-        if self.raw_config["scenario"]["EU_dataset"] not in [d.name for d in EU_Datasets]:
-            raise ValueError(f"Invalid dataset: {self.raw_config['scenario']['EU_dataset']}")
+        if self.raw_config["scenario"]["unit_based_dataset"] not in [d.name for d in UnitBased_Datasets]:
+            raise ValueError(f"Invalid unit_based_dataset: {self.raw_config['scenario']['unit_based_dataset']}")
+        if self.raw_config["scenario"]["order_book_based_dataset"] not in [d.name for d in OrderBookBased_Datasets]:
+            raise ValueError(
+                f"Invalid order_book_based_dataset: {self.raw_config['scenario']['order_book_based_dataset']}"
+            )
 
         # Validate market model
-        if self.raw_config["scenario"]["market_model"] not in ["US_model", "EU_model"]:
+        if self.raw_config["scenario"]["market_model"] not in ["unit_based_model", "order_book_based_model"]:
             raise ValueError(f"Invalid market model: {self.raw_config['scenario']['market_model']}")
 
         # Validate power flow model
@@ -161,27 +165,27 @@ class ConfigLoader:
                 if base_case not in [c.value for c in FBMCBaseCases]:
                     raise ValueError(f"Invalid FBMC base case: {base_case}.")
 
-        self._validate_us_solver_configuration()
+        self._validate_unit_based_solver_configuration()
         self._validate_euphemia_configuration()
 
-    def _validate_us_solver_configuration(self) -> None:
-        if self.raw_config["scenario"]["market_model"] != "US_model":
+    def _validate_unit_based_solver_configuration(self) -> None:
+        if self.raw_config["scenario"]["market_model"] != "unit_based_model":
             return
 
-        if "us_solver_configuration" not in self.raw_config:
+        if "unit_based_solver_configuration" not in self.raw_config:
             raise ValueError(
-                "Missing solver configuration: provide 'us_model.solver_configuration'."
+                "Missing solver configuration: provide 'unit_based_model.solver_configuration'."
             )
 
-        if not isinstance(self.raw_config["us_solver_configuration"], dict):
-            raise ValueError("Invalid us_solver_configuration: expected an object.")
+        if not isinstance(self.raw_config["unit_based_solver_configuration"], dict):
+            raise ValueError("Invalid unit_based_solver_configuration: expected an object.")
 
-        cfg = self.raw_config["us_solver_configuration"]
+        cfg = self.raw_config["unit_based_solver_configuration"]
         if "slack_penalty" in cfg:
             if not self._is_number(cfg["slack_penalty"]):
-                raise ValueError("Invalid us_solver_configuration.slack_penalty: must be numeric.")
+                raise ValueError("Invalid unit_based_solver_configuration.slack_penalty: must be numeric.")
             if cfg["slack_penalty"] <= 0:
-                raise ValueError("Invalid us_solver_configuration.slack_penalty: must be > 0.")
+                raise ValueError("Invalid unit_based_solver_configuration.slack_penalty: must be > 0.")
 
     @staticmethod
     def _is_number(value: Any) -> bool:
@@ -292,11 +296,11 @@ class ConfigLoader:
         if price_lower >= price_upper:
             raise ValueError("Invalid euphemia_configuration: price_lower_bound must be < price_upper_bound.")
 
-    def get_US_dataset(self) -> US_Datasets:
-        return US_Datasets[self.config["scenario"]["US_dataset"]]
+    def get_unit_based_dataset(self) -> UnitBased_Datasets:
+        return UnitBased_Datasets[self.config["scenario"]["unit_based_dataset"]]
 
-    def get_EU_dataset(self) -> EU_Datasets:
-        return EU_Datasets[self.config["scenario"]["EU_dataset"]]
+    def get_order_book_based_dataset(self) -> OrderBookBased_Datasets:
+        return OrderBookBased_Datasets[self.config["scenario"]["order_book_based_dataset"]]
 
     def get_market_model(self) -> MarketModels:
         return MarketModels[self.config["scenario"]["market_model"]]
@@ -314,7 +318,7 @@ class ConfigLoader:
             base_case = zonal_config["base_case"]
             if base_case not in [c.value for c in FBMCBaseCases]:
                 raise ValueError(f"Invalid FBMC base case: {base_case}")
-            return ZonalFBMC(zonal_configuration=zonal_config["type"], base_case_type=base_case)
+            return Zonal_FBMC(zonal_configuration=zonal_config["type"], base_case_type=base_case)
         if model_type == "DCOPF":
             return DCOPF()
         raise ValueError(f"Invalid power flow model: {model_type}")
@@ -337,11 +341,13 @@ class ConfigLoader:
     def get_alpha(self) -> float:
         return self.config["scenario"]["alpha"]
 
-    def get_us_solver_configuration(self) -> Dict[str, Any]:
-        if "us_solver_configuration" in self.config:
-            return self.config["us_solver_configuration"]
+    def get_unit_based_solver_congiruation(self) -> Dict[str, Any]:
+        if "unit_based_solver_configuration" in self.config:
+            return self.config["unit_based_solver_configuration"]
 
-        raise ValueError("Missing US solver configuration.")
+        raise ValueError("Missing unit-based solver configuration.")
 
     def get_euphemia_configuration(self) -> Dict[str, Any]:
         return self.config.get("euphemia_configuration", {})
+
+

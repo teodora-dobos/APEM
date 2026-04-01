@@ -1,7 +1,7 @@
-import pandas as pd
+﻿import pandas as pd
 import pytest
 
-from apem.US_market_model.evaluation.price_analysis import (
+from apem.unit_based_model.evaluation.price_analysis import (
     compare_price_algorithms,
     summarize_prices,
     validate_price_table,
@@ -56,3 +56,4 @@ def test_validate_price_table_rejects_missing_required_columns():
 
     with pytest.raises(ValueError, match="Missing required columns"):
         validate_price_table(invalid)
+

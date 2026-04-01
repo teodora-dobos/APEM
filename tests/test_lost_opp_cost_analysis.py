@@ -1,7 +1,7 @@
-import pandas as pd
+﻿import pandas as pd
 import pytest
 
-from apem.US_market_model.evaluation.lost_opp_cost_analysis import (
+from apem.unit_based_model.evaluation.lost_opp_cost_analysis import (
     load_lost_opp_cost_table,
     validate_lost_opp_cost_table,
 )
@@ -34,3 +34,4 @@ def test_load_lost_opp_cost_table_parses_stats_file(tmp_path):
     assert set(loaded["lost_opp_cost"]) == {"glocs"}
     assert set(loaded["component"]) == {"buyers", "sellers", "network", "total"}
     assert loaded["algorithm"].unique().tolist() == ["ELMP"]
+

@@ -1,23 +1,23 @@
-from types import SimpleNamespace
+﻿from types import SimpleNamespace
 from unittest.mock import patch
 
 import gurobipy as gp
 import pandas as pd
 import pytest
 
-from apem.EU_market_model.euphemia.data.conversion.data_conversion import DataConversion
-from apem.EU_market_model.euphemia.data.parsing.parse_eu import (
-    ParseEU,
+from apem.order_book_based_model.euphemia.data.conversion.data_conversion import DataConversion
+from apem.order_book_based_model.euphemia.data.parsing.parse_eu import (
+    ParseOrderBook,
     parse_fb_constraints,
     parse_fb_ptdf,
     transform_step_orders,
 )
-from apem.EU_market_model.euphemia.enums.cut_types import CutTypes
-from apem.EU_market_model.euphemia.enums.datasets import EU_Datasets
-from apem.EU_market_model.euphemia.euphemia_config import EuphemiaConfig
-from apem.EU_market_model.euphemia.master_problem.master_problem import MasterProblem
-from apem.EU_market_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
-from apem.EU_market_model.euphemia.runner import solve_euphemia
+from apem.order_book_based_model.euphemia.enums.cut_types import CutTypes
+from apem.order_book_based_model.euphemia.enums.datasets import OrderBookBased_Datasets
+from apem.order_book_based_model.euphemia.euphemia_config import EuphemiaConfig
+from apem.order_book_based_model.euphemia.master_problem.master_problem import MasterProblem
+from apem.order_book_based_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
+from apem.order_book_based_model.euphemia.runner import solve_euphemia
 
 
 def _dummy_conversion(periods=(1, 2, 3, 4)):
@@ -121,33 +121,33 @@ def test_set_dataset_updates_dataset_name_and_scenario():
     assert config.scenario == parsed_scenario
 
 
-@patch("apem.EU_market_model.euphemia.runner.MasterProblem")
-@patch("apem.EU_market_model.euphemia.runner.EuphemiaConfig")
+@patch("apem.order_book_based_model.euphemia.runner.MasterProblem")
+@patch("apem.order_book_based_model.euphemia.runner.EuphemiaConfig")
 def test_solve_euphemia_wires_config_and_runs(config_cls, master_problem_cls):
     """solve_euphemia should apply overrides, set dataset/cut type, and run master problem."""
     config = config_cls.return_value
     euphemia = master_problem_cls.return_value
     overrides = {"max_iterations": 11, "output_flag": 1}
 
-    solve_euphemia(EU_Datasets.GME, CutTypes.PB, overrides)
+    solve_euphemia(OrderBookBased_Datasets.GME, CutTypes.PB, overrides)
 
     config.apply_overrides.assert_called_once_with(overrides)
-    config.set_dataset.assert_called_once_with(EU_Datasets.GME)
+    config.set_dataset.assert_called_once_with(OrderBookBased_Datasets.GME)
     assert config.cutting_strategy == CutTypes.PB
     master_problem_cls.assert_called_once_with(config)
     euphemia.run.assert_called_once_with()
 
 
-@patch("apem.EU_market_model.euphemia.runner.MasterProblem")
-@patch("apem.EU_market_model.euphemia.runner.EuphemiaConfig")
+@patch("apem.order_book_based_model.euphemia.runner.MasterProblem")
+@patch("apem.order_book_based_model.euphemia.runner.EuphemiaConfig")
 def test_solve_euphemia_none_overrides_defaults_to_empty_dict(config_cls, master_problem_cls):
     """Passing None overrides should call apply_overrides with an empty dict."""
     config = config_cls.return_value
 
-    solve_euphemia(EU_Datasets.OMIE, CutTypes.CB, None)
+    solve_euphemia(OrderBookBased_Datasets.OMIE, CutTypes.CB, None)
 
     config.apply_overrides.assert_called_once_with({})
-    config.set_dataset.assert_called_once_with(EU_Datasets.OMIE)
+    config.set_dataset.assert_called_once_with(OrderBookBased_Datasets.OMIE)
 
 
 def test_transform_step_orders_sell_side_increments_are_computed_per_period():
@@ -237,7 +237,7 @@ def test_parse_fb_ptdf_accepts_aliases(tmp_path):
     assert parsed.iloc[0].to_dict() == {"cnec_id": "CNEC_1", "t": 2, "zone": "Z9", "ptdf": 0.25}
 
 
-def test_parse_eu_adds_zones_from_fb_ptdf(tmp_path):
+def test_parse_order_book_adds_zones_from_fb_ptdf(tmp_path):
     (tmp_path / "periods.csv").write_text("period\n1\n", encoding="utf-8")
     (tmp_path / "zones.csv").write_text("zone\nZ1\n", encoding="utf-8")
     (tmp_path / "step_orders.csv").write_text("id,t,p,q,zone\n1,1,10,1,Z1\n", encoding="utf-8")
@@ -259,7 +259,7 @@ def test_parse_eu_adds_zones_from_fb_ptdf(tmp_path):
         encoding="utf-8",
     )
 
-    scenario = ParseEU(tmp_path, "tmp").parse_data()
+    scenario = ParseOrderBook(tmp_path, "tmp").parse_data()
 
     assert scenario.zones == ["Z1", "Z9"]
     assert list(scenario.fb_constraints.columns) == ["cnec_id", "t", "ram"]
@@ -431,3 +431,4 @@ def test_resolve_zone_strips_quote_characters():
     assert MasterProblem.resolve_zone(master, " 'Z2' ") == "Z2"
     assert MasterProblem.resolve_zone(master, '"Z3"') == "Z3"
     assert MasterProblem.resolve_zone(master, None) == "Z1"
+

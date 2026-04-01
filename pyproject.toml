@@ -2,28 +2,38 @@
  requires = ["setuptools>=42"]
  build-backend = "setuptools.build_meta"
  
- [project]
- name = "APEM"
- version = "0.1.0"     # convention: major.minor.patch
- dependencies = [
+[project]
+name = "APEM"
+version = "0.1.0"     # convention: major.minor.patch
+dependencies = [
+  "numpy==1.26.4",
+  "pandas==2.2.3",
+  "networkx==3.4.2",
+  "matplotlib==3.9.2",
+  "gurobipy==12.0.0",
+  "pypsa==0.31.1",
+  "geopandas==1.0.1",
+  "shapely==2.0.6",
+  "openpyxl==3.1.5",
+  "pyarrow==17.0.0",
  ]
- requires-python = ">=3.10"
- authors = [
-   {name = "Teodora Dobos"},
-   {name = "Laura Mathews"},
- ]
- maintainers = [
-   {name = "Teodora Dobos", email = "teodora.dobos@tum.de"},
-   {name = "Laura Mathews", email = "laura.mathews@tum.de"},
- ]
+requires-python = ">=3.10"
  description = "Allocation and Pricing in Electricity Markets"
  readme = "README.md"
  license = {file = "LICENSE.txt"}
- keywords = ["day-ahead market", "zonal pricing", "nodal pricing", "electricity market"]
+keywords = ["day-ahead market", "zonal pricing", "nodal pricing", "electricity market"]
+
+[project.optional-dependencies]
+test = [
+  "pytest==8.3.3",
+]
+omie = [
+  "OMIEData",
+]
 
  [tool.setuptools.packages.find]      # ensures that all directories and files under `apem` are included in the package distribution
- where = ["."]
- include = ["apem*"]
+where = ["."]
+include = ["apem*"]
 
  [tool.setuptools]
 include-package-data = true

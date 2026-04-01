@@ -1,12 +1,12 @@
-import pandas as pd
+﻿import pandas as pd
 import networkx as nx
 import pytest
 from unittest.mock import MagicMock, patch
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import (
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import (
     Zonal_NTC_multiedge,
 )
-from apem.US_market_model.data.parsing.scenario import Scenario
+from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
 @pytest.fixture
@@ -48,9 +48,9 @@ def base_scenario_with_parallel(tmp_path):
     )
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.node_zone_mapper")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.node_zone_mapper")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, mock_mapper, base_scenario_with_parallel):
     mock_mapper.side_effect = lambda config, lat, lon: "Z1" if lat < 50.5 else "Z2"
 
@@ -66,7 +66,7 @@ def test_create_zonal_scenario_keeps_parallel_lines(mock_to_csv, mock_makedirs, 
     assert susceptances == [4.0, 5.0]
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.DCOPF")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.DCOPF")
 @patch.object(Zonal_NTC_multiedge, "create_zonal_scenario_NTC")
 def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario_with_parallel):
     mock_zonal = MagicMock()
@@ -88,8 +88,8 @@ def test_solve_uses_dcopf_with_multigraph(mock_create, mock_dcopf, base_scenario
     assert result is mock_alloc
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_raises_when_no_nodes_mapped(mock_to_csv, mock_makedirs):
     G = nx.MultiGraph()
     G.add_edge("n1", "n2", F_max=50.0, B=5.0)
@@ -112,3 +112,4 @@ def test_create_zonal_scenario_raises_when_no_nodes_mapped(mock_to_csv, mock_mak
 
     mock_makedirs.assert_not_called()
     mock_to_csv.assert_not_called()
+

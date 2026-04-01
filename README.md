@@ -1,4 +1,4 @@
-# APEM - Allocation and Pricing in Electricity Markets
+﻿# APEM - Allocation and Pricing in Electricity Markets
 ![alt text](framework_overview.png)
 
 
@@ -6,7 +6,7 @@
 <details>
   <summary> After cloning the code, the following setup steps need to be performed once before running the code. </summary>
 
-  <br>**Note:** The setup instructions assume a Linux-based or Windows OS and require Python 3.10 (or higher). 
+  <br>**Note:** The setup instructions assume macOS, Linux, or Windows and require Python 3.10 (or higher). 
 
   ### 1. Virtual environment
   - Create a virtual environment (alternatively, you can use `virtualenv` or whatever you prefer) - you may choose any name (e.g., "apem-venv"):
@@ -18,11 +18,14 @@
 
   - Activate the virtual environment:
   ```bash
-  # Linux:
+  # macOS / Linux:
   source ./<venv-name>/bin/activate        # Example: source ./apem-venv/bin/activate
 
-  # Windows: 
-  source <venv-name>/Scripts/activate      # Example: source apem-venv/Scripts/activate
+  # Windows (PowerShell):
+  .\<venv-name>\Scripts\Activate.ps1       # Example: .\apem-venv\Scripts\Activate.ps1
+
+  # Windows (cmd.exe):
+  .\<venv-name>\Scripts\activate.bat       # Example: .\apem-venv\Scripts\activate.bat
   ```
 
   **Note:** The virtual environment can be deactivated using `deactivate`- however, for the next steps, we want the virtual environment to be active.
@@ -48,17 +51,17 @@
 Before running the code, update the [`config.json`](./config.json) file.
 The config is model-scoped:
 - `run`: global run selection
-- `us_model`: US-model-specific settings
-- `eu_model`: EU-model-specific settings
+- `unit_based_model`: unit-based-model-specific settings
+- `order_book_based_model`: order-book-based-model-specific settings
 Only this model-scoped format is supported.
 
 ```jsonc
 {
   "run": {
-    "market_model": "EU_model",  // US_model or EU_model
+    "market_model": "order_book_based_model",  // unit_based_model or order_book_based_model
     "verbosity": true
   },
-  "us_model": {
+  "unit_based_model": {
     "dataset": "ARPA",
     "power_flow_model": { "type": "DCOPF" },
     "pricing_algorithm": "IP",
@@ -78,7 +81,7 @@ Only this model-scoped format is supported.
       "base_case": "BC4"
     }
   },
-  "eu_model": {
+  "order_book_based_model": {
     "dataset": "GME",
     "cut_type": "price based",
     "euphemia_configuration": {
@@ -90,22 +93,22 @@ Only this model-scoped format is supported.
 
 ### Available options
 
-- **Market models**: `US_model`, `EU_model`
+- **Market models**: `unit_based_model`, `order_book_based_model`
 - **Datasets**
-  - US: `IEEE_RTS`, `PJM`, `PyPSAEurSmall`, `PyPSAEurLarge`, `ARPA`
-  - EU: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`
-- **Power flow models** (only for ``US_model``): `DCOPF`, `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, `Zonal_FBMC` (base cases: `BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`)
-- **Cut types** (only for `EU_model`): `price based`, `combinatorial benders`, `no good`
-- **Pricing algorithms** (only for `US_model`): `ELMP`, `IP`, `MinMWP`, `Join`
-- **Redispatch algorithms** (only for `US_model/Zonal_NTC_aggregated`): `MinCostRD`, `MinAbsCostRD`, `MinAbsVolRD`
-- **Zonal configurations** (only for `US_model/Zonal_NTC_aggregated`, `US_model/Zonal_NTC_multiedge` and `US_model/Zonal_FBMC`): `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE5`
+  - unit-based: `IEEE_RTS`, `PJM`, `PyPSAEurSmall`, `PyPSAEurLarge`, `ARPA`
+  - order-book-based: `Generated Small`, `Generated Large`, `OMIE`, `GME`, `IEEE_RTS`, `ARPA`
+- **Power flow models** (only for ``unit_based_model``): `DCOPF`, `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, `Zonal_FBMC` (base cases: `BC1`, `BC2`, `BC3.1`, `BC3.2`, `BC4`)
+- **Cut types** (only for `order_book_based_model`): `price based`, `combinatorial benders`, `no good`
+- **Pricing algorithms** (only for `unit_based_model`): `ELMP`, `IP`, `MinMWP`, `Join`
+- **Redispatch algorithms** (only for `unit_based_model/Zonal_NTC_aggregated`): `MinCostRD`, `MinAbsCostRD`, `MinAbsVolRD`
+- **Zonal configurations** (only for `unit_based_model/Zonal_NTC_aggregated`, `unit_based_model/Zonal_NTC_multiedge` and `unit_based_model/Zonal_FBMC`): `national`, `zonal_DE2-k`, `zonal_DE2-s`, `zonal_DE3`, `zonal_DE4`, `zonal_DE5`
 
-US-model solver settings like tolerances, runtime limits, and slack-penalty scaling can be adjusted under `us_model.solver_configuration`.
-EU-model-specific hyperparameters can be adjusted under `eu_model.euphemia_configuration` (for example `max_iterations`,
+Unit-based-model solver settings like tolerances, runtime limits, and slack-penalty scaling can be adjusted under `unit_based_model.solver_configuration`.
+Order-book-based-model-specific hyperparameters can be adjusted under `order_book_based_model.euphemia_configuration` (for example `max_iterations`,
 `reinsertion_max_iterations`, price bounds, cut thresholds, and Gurobi parameters such as `time_limit`, `mip_gap`,
 `threads`, `seed`, `output_flag`).
-For EU-model internals (module structure, API, and run output contract), see [`apem/EU_market_model/euphemia/README.md`](./apem/EU_market_model/euphemia/README.md).
-Zonal-specific settings are under `us_model.zonal_configuration`.
+For order-book-based-model internals (module structure, API, and run output contract), see [`apem/order_book_based_model/euphemia/README.md`](./apem/order_book_based_model/euphemia/README.md).
+Zonal-specific settings are under `unit_based_model.zonal_configuration`.
 
 ---
 To run the configuration, execute:
@@ -113,40 +116,48 @@ To run the configuration, execute:
 python main.py
 ```
 
-Once the execution is done, a new `results` folder will be created storing detailed allocation and pricing results.
+Once the execution is done, outputs are written under a shared `results/` directory:
+- `results/unit_based_model/...` for unit-based-model runs
+- `results/order_book_based_model/...` for order-book-based-model runs
 
-For US-model-specific evaluation and comparison workflows, see the example scripts in
-[`scripts/US_model`](./scripts/US_model). These cover, for example, comparisons of
+For unit-based-model-specific evaluation and comparison workflows, see the example scripts in
+[`scripts/unit_based_model`](./scripts/unit_based_model). These cover, for example, comparisons of
 pricing algorithms, lost opportunity costs, redispatch costs, and cost-based
 comparisons across power-flow models.
 
-**Note:** If you ever run into the error "ModuleNotFoundError: No module named 'src'", this can likely be resolved by setting the PYTHONPATH inside your virtual environment. To do this, add the following line to <venv_name>/bin/activate: `export PYTHONPATH=/<path-to-APEM>`.
+**Note:** If you run into `ModuleNotFoundError: No module named 'apem'`, run commands from the repository root and install the package in editable mode once:
+`pip install -e .`
 
-## US-to-EU Dataset Conversion (Euphemia)
+## Unit-Based-to-Order-Book Dataset Conversion
 
-APEM includes a converter that transforms US-style `Scenario` data into the CSV format expected by the Euphemia implementation (`step_orders.csv`, `block_orders.csv`, etc.).
+APEM includes a converter that transforms unit-based `Scenario` data into the CSV format expected by the Euphemia implementation (`step_orders.csv`, `block_orders.csv`, etc.).
 
-Use this when you want to run `EU_model` on converted datasets such as `IEEE_RTS` or `ARPA`.
-In this repository, the `EU_model` versions of `IEEE_RTS` and `ARPA` are obtained via this conversion step (US parser output converted into Euphemia input CSVs).
+Use this when you want to run `order_book_based_model` on converted datasets such as `IEEE_RTS` or `ARPA`.
+In this repository, the `order_book_based_model` versions of `IEEE_RTS` and `ARPA` are obtained via this conversion step (unit-based parser output converted into order-book-based input CSVs).
 
-### High-level entrypoint: `run_us_eu_conversion.py`
+### High-level entrypoint: `run_unit_based_to_order_based_conversion.py`
 
-File: `apem/EU_market_model/euphemia/data/conversion/run_us_eu_conversion.py`
+Module: `apem/order_book_based_model/euphemia/data/conversion/`
 
 Run with its default (`ParseIEEERTS`):
 
 ```bash
-python -m apem.EU_market_model.euphemia.data.conversion.run_us_eu_conversion
+python - <<'PY'
+from apem.order_book_based_model.euphemia.data.conversion import run_unit_based_to_order_based_conversion
+from apem.unit_based_model.data.parsing.parse_ieee_rts import ParseIEEERTS
+
+run_unit_based_to_order_based_conversion(ParseIEEERTS)
+PY
 ```
 
-Run for a specific US parser:
+Run for a specific unit-based parser:
 
 ```bash
 python - <<'PY'
-from apem.US_market_model.data.parsing.parse_arpa import ParseARPA
-from apem.EU_market_model.euphemia.data.conversion.run_us_eu_conversion import run_us_eu_conversion
+from apem.unit_based_model.data.parsing.parse_arpa import ParseARPA
+from apem.order_book_based_model.euphemia.data.conversion import run_unit_based_to_order_based_conversion
 
-run_us_eu_conversion(
+run_unit_based_to_order_based_conversion(
     ParseARPA,
     generate_uptime_patterns=True,
     reduce_linked_blocks=True,
@@ -159,8 +170,8 @@ PY
 ### Advanced customization
 
 If you need custom conversion behavior, use `DataConversion` directly:
-`apem/EU_market_model/euphemia/data/conversion/data_conversion.py`.
-For standard usage, prefer `run_us_eu_conversion(...)`.
+`apem/order_book_based_model/euphemia/data/conversion/data_conversion.py`.
+For standard usage, prefer `run_unit_based_to_order_based_conversion(...)`.
 
 ### What gets written
 
@@ -176,7 +187,7 @@ The high-level converter writes these files:
 - `piecewise_linear_orders.csv` (empty placeholder)
 
 Output folders are chosen via `CONVERTED_DATASET_PATH_MAP` in
-`apem/EU_market_model/euphemia/utils/paths.py` (for example `.../data/datasets/ieee_rts`).
+`apem/order_book_based_model/euphemia/utils/paths.py` (for example `.../data/datasets/ieee_rts`).
 
 ### Notes
 
@@ -184,7 +195,7 @@ Output folders are chosen via `CONVERTED_DATASET_PATH_MAP` in
 - `compress_identical_blocks=True` merges identical linked-block chains to reduce model size.
 - Conversion complexity can be high on large instances: one seller can generate many commitment-pattern-based exclusive and linked block bids, so conversion time and output size can grow quickly with the number of units, periods, and bid blocks.
 
-## Using Your Own Data for the US Model
+## Using Your Own Data for the Unit-Based Model
 
 Besides the datasets that are already provided in APEM, you can run the available methods using other datasets.
 This guide shows how to plug **your custom dataset** into APEM so you can run allocation, pricing, and redispatch on top of your own bids and networks.
@@ -195,41 +206,41 @@ This guide shows how to plug **your custom dataset** into APEM so you can run al
 
 Your parser must return a `Scenario` object with the following pieces:
 
-- **df_sellers (DataFrame)** — one row per (seller, period).
+- **df_sellers (DataFrame)** - one row per (seller, period).
   - Required columns (minimum):
-    - `seller` *(int/str)* — unique generator/unit id  
-    - `period` *(int >= 1)* — time index (1..T)  
-    - `node` *(int/str)* — network bus or zone id  
-    - `max_prod` *(float, MW)* — total available production in the period  
-    - `min_prod` *(float, MW)* — technical minimum  
-    - `min_uptime` *(int, hours or periods)* — minimum up time (0 if not modeled)  
-    - `no_load_cost` *(float, cost/unit time)* — fixed on-cost  
+    - `seller` *(int/str)* - unique generator/unit id  
+    - `period` *(int >= 1)* - time index (1..T)  
+    - `node` *(int/str)* - network bus or zone id  
+    - `max_prod` *(float, MW)* - total available production in the period  
+    - `min_prod` *(float, MW)* - technical minimum  
+    - `min_uptime` *(int, hours or periods)* - minimum up time (0 if not modeled)  
+    - `no_load_cost` *(float, cost/unit time)* - fixed on-cost  
     - **Block offers used to create a stepwise cost curve:** `size1..sizeK` *(MW)* and `cost1..costK` *(currency/MWh)*
 
-- **df_buyers (DataFrame)** — one row per (buyer, period).
+- **df_buyers (DataFrame)** - one row per (buyer, period).
   - Required columns (minimum):
-    - `buyer` *(int/str)* — unique demand id  
+    - `buyer` *(int/str)* - unique demand id  
     - `period` *(int >= 1)*  
     - `node` *(int/str)*  
-    - `inelastic_dem` *(float, MW)* — must‐serve part of demand  
+    - `inelastic_dem` *(float, MW)* - must-serve part of demand  
     - **Block bids (if any) used to create a stepwise valuation curve:** `size1..sizeL` *(MW)* and `val1..valL` *(currency/MWh)*  
-    - `max_dem` *(float, MW)* — inelastic + sum of `size*`
+    - `max_dem` *(float, MW)* - inelastic + sum of `size*`
 
-- **network (networkx.Graph)** — buses as nodes, branches as edges.
-  - Edge attributes (for `US_model/DCOPF`):  
-    - `B` *(float)* — line susceptance  
-    - `F_max` *(float, MW)* — thermal limit 
+- **network (networkx.Graph)** - buses as nodes, branches as edges.
+  - Edge attributes (for `unit_based_model/DCOPF`):  
+    - `B` *(float)* - line susceptance  
+    - `F_max` *(float, MW)* - thermal limit 
   - For zonal networks you may pass a single node graph.
 
-- **nodes_agents (dict)** — mapping `node -> {"sellers": [...], "buyers": [...]}`.
+- **nodes_agents (dict)** - mapping `node -> {"sellers": [...], "buyers": [...]}`.
 
-- **periods (list[int])** — e.g., `[1, 2, ..., 24]`.
+- **periods (list[int])** - e.g., `[1, 2, ..., 24]`.
 
-- **blocks_buyers (range)** — e.g., `range(1, 3+1)` for 3 buyer blocks.
+- **blocks_buyers (range)** - e.g., `range(1, 3+1)` for 3 buyer blocks.
 
-- **blocks_sellers (range)** — e.g., `range(1, 4+1)` for 4 seller blocks.
+- **blocks_sellers (range)** - e.g., `range(1, 4+1)` for 4 seller blocks.
 
-- **r_star** — reference node (slack) id.
+- **r_star** - reference node (slack) id.
 
 Return them via:
 
@@ -243,7 +254,7 @@ Note: Period indexing in APEM examples starts at 1. Keep it consistent.
 
 Place your files under:
 ```python 
-apem/US_market_model/data/raw/<your_dataset_name>/
+apem/unit_based_model/data/raw_data/<your_dataset_name>/
 ```
 
 ### Minimal template:
@@ -252,9 +263,9 @@ from collections import defaultdict
 import pandas as pd
 import networkx as nx
 
-from apem.US_market_model.data.parsing.parse_data import ParseData
-from apem.US_market_model.data.parsing.scenario import Scenario
-from apem.US_market_model.utils.paths import RAW_DATA_DIR
+from apem.unit_based_model.data.parsing.parse_data import ParseData
+from apem.unit_based_model.data.parsing.scenario import Scenario
+from apem.unit_based_model.utils.paths import RAW_DATA_DIR
 
 class ParseMyDataset(ParseData):
     def parse_data(self, day=None) -> Scenario:
@@ -273,7 +284,7 @@ class ParseMyDataset(ParseData):
         network = nx.read_edgelist(path / "network.csv", delimiter=",", nodetype=str)
         # For DCOPF add edge attributes B and F_max
 
-        # --- Nodes→agents mapping ---
+        # --- Nodes->agents mapping ---
         nodes_agents = defaultdict(lambda: {"sellers": [], "buyers": []})
         for n, group in df_sellers.groupby("node"):
             nodes_agents[n]["sellers"].extend(sorted(group["seller"].unique()))
@@ -304,25 +315,25 @@ Use these patterns when adapting your own sources:
 * See: `ParseARPA`.
 
 ### Hooking your dataset into `config.json`
-1. Add your parser class (e.g., ParseMyDataset) in the `US_market_model/data/parsing` package.
-2. Add your dataset to `enums.py` in the `US_Datasets` class.
+1. Add your parser class (e.g., ParseMyDataset) in the `unit_based_model/data/parsing` package.
+2. Add your dataset to `enums.py` in the `UnitBased_Datasets` class.
 3. Select your dataset in `config.json`.
 
-## Using Your Own Data for the EU Model
+## Using Your Own Data for the Order-Book-Based Model
 
-Besides the datasets already bundled in APEM, you can run `EU_model` with your own Euphemia-style CSV dataset.
+Besides the datasets already bundled in APEM, you can run `order_book_based_model` with your own Euphemia-style CSV dataset.
 This section describes the expected dataset folder and how to register it.
 
 ---
 
 ### What APEM expects at runtime
 
-`EU_model` uses `ParseEU` and expects a dataset folder with CSV files that are loaded into a `ZonalScenario`.
+`order_book_based_model` uses `ParseOrderBook` and expects a dataset folder with CSV files that are loaded into a `ZonalScenario`.
 
 Folder location:
 
 ```text
-apem/EU_market_model/euphemia/data/datasets/<your_dataset_name>/
+apem/order_book_based_model/euphemia/data/datasets/<your_dataset_name>/
 ```
 
 Required files:
@@ -353,18 +364,18 @@ Notes:
 
 ### Quick template
 
-Use [`test_3node`](./apem/EU_market_model/euphemia/data/datasets/test_3node/) as a minimal reference dataset.
+Use [`test_3node`](./apem/order_book_based_model/euphemia/data/datasets/test_3node/) as a minimal reference dataset.
 Copy the folder structure and replace contents with your own orders/periods/zones/ATC.
 
 ### Hooking your dataset into `config.json`
 
-1. Add your dataset entry to [`datasets.py`](./apem/EU_market_model/euphemia/enums/datasets.py), e.g.:
+1. Add your dataset entry to [`datasets.py`](./apem/order_book_based_model/euphemia/enums/datasets.py), e.g.:
 
 ```python
-MY_DATASET = ParseEU(DATA_DIR / "my_dataset", "My Dataset")
+MY_DATASET = ParseOrderBook(DATA_DIR / "my_dataset", "My Dataset")
 ```
 
-2. Set `run.market_model` to `EU_model` and choose your dataset under `eu_model.dataset` in [`config.json`](./config.json).
+2. Set `run.market_model` to `order_book_based_model` and choose your dataset under `order_book_based_model.dataset` in [`config.json`](./config.json).
 3. Run:
 
 ```bash
@@ -372,6 +383,6 @@ python main.py
 ```
 
 For Euphemia internals and run-output details, see
-[`apem/EU_market_model/euphemia/README.md`](./apem/EU_market_model/euphemia/README.md).
-For EU order-type semantics, see the
-[`Order Types Glossary`](./apem/EU_market_model/euphemia/README.md#order-types-glossary).
+[`apem/order_book_based_model/euphemia/README.md`](./apem/order_book_based_model/euphemia/README.md).
+For order-book order-type semantics, see the
+[`Order Types Glossary`](./apem/order_book_based_model/euphemia/README.md#order-types-glossary).

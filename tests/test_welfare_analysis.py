@@ -1,7 +1,7 @@
-import pandas as pd
+﻿import pandas as pd
 import pytest
 
-from apem.US_market_model.evaluation.welfare_analysis import (
+from apem.unit_based_model.evaluation.welfare_analysis import (
     load_welfare_table,
     validate_welfare_table,
 )
@@ -33,3 +33,4 @@ def test_load_welfare_table_parses_stats_file(tmp_path):
     assert set(loaded["welfare_scope"]) == {"period", "total"}
     assert loaded["power_flow_model"].unique().tolist() == ["DCOPF"]
     assert loaded.loc[loaded["welfare_scope"] == "period", "period"].astype(int).tolist() == [1, 2]
+

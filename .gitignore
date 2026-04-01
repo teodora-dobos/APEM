@@ -4,8 +4,7 @@
 *.xml
 apem-venv/
 !requirements.txt
-US_results/
-EU_results/
+results/
 stats/
 launch.json
 

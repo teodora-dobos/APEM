@@ -1,7 +1,7 @@
-import pandas as pd
+﻿import pandas as pd
 import pytest
 
-from apem.US_market_model.evaluation.redispatch_analysis import (
+from apem.unit_based_model.evaluation.redispatch_analysis import (
     load_redispatch_metric_file,
     validate_redispatch_table,
 )
@@ -23,3 +23,4 @@ def test_load_redispatch_metric_file_parses_metric_file(tmp_path):
     assert loaded["redispatch_algorithm"].unique().tolist() == ["MinCostRD"]
     assert loaded["metric"].unique().tolist() == ["costs"]
     assert loaded["value"].tolist() == [15.5]
+

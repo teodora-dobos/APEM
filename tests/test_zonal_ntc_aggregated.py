@@ -1,10 +1,10 @@
-import pytest
+﻿import pytest
 import pandas as pd
 import networkx as nx
 from unittest.mock import MagicMock, patch
 
-from apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
-from apem.US_market_model.data.parsing.scenario import Scenario
+from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated import Zonal_NTC_aggregated
+from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
 @pytest.fixture
@@ -56,9 +56,9 @@ def test_str_repr():
     assert pytest.approx(ntc.factor) == 0.8
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
 def test_create_zonal_scenario(mock_to_csv, mock_makedirs, mock_mapper, base_scenario):
     """Check zonal scenario is created and network aggregated correctly."""
     # Make both nodes map to distinct zones
@@ -83,9 +83,9 @@ def test_create_zonal_scenario(mock_to_csv, mock_makedirs, mock_mapper, base_sce
     assert "Z1" in zonal_scenario.nodes_agents and "Z2" in zonal_scenario.nodes_agents
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_single_zone(mock_to_csv, mock_makedirs, mock_mapper, base_scenario):
     """Case where all nodes map to the same zone (no edges)."""
     mock_mapper.return_value = "Z1"
@@ -99,9 +99,9 @@ def test_create_zonal_scenario_single_zone(mock_to_csv, mock_makedirs, mock_mapp
     mock_to_csv.assert_called()
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.node_zone_mapper")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_skips_nodes_without_coords(mock_to_csv, mock_makedirs, mock_mapper):
     """Nodes without coordinates should be ignored without raising KeyError."""
     G = nx.Graph()
@@ -143,8 +143,8 @@ def test_create_zonal_scenario_skips_nodes_without_coords(mock_to_csv, mock_make
     mock_to_csv.assert_called()
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.os.makedirs")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.pd.DataFrame.to_csv")
 def test_create_zonal_scenario_raises_when_no_nodes_mapped(mock_to_csv, mock_makedirs):
     G = nx.Graph()
     G.add_edge("n1", "n2", F_max=100.0, B=5.0)
@@ -169,7 +169,7 @@ def test_create_zonal_scenario_raises_when_no_nodes_mapped(mock_to_csv, mock_mak
     mock_to_csv.assert_not_called()
 
 
-@patch("apem.US_market_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.DCOPF")
+@patch("apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggregated.DCOPF")
 @patch.object(Zonal_NTC_aggregated, "create_zonal_scenario_NTC")
 def test_solve_calls_dcopf(mock_create, mock_dcopf, base_scenario):
     """Ensure Zonal_NTC_aggregated.solve delegates to DCOPF.solve."""
@@ -189,3 +189,4 @@ def test_solve_calls_dcopf(mock_create, mock_dcopf, base_scenario):
     mock_dcopf_instance.solve.assert_called_once()
     assert zonal_scenario is mock_zonal
     assert result is mock_alloc
+

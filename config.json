@@ -1,16 +1,16 @@
-{
+﻿{
     "_available_market_models": [
-        "US_model",
-        "EU_model"
+        "unit_based_model",
+        "order_book_based_model"
     ],
-    "_available_us_datasets": [
+    "_available_unit_based_datasets": [
         "IEEE_RTS",
         "PJM",
         "PyPSAEurSmall",
         "PyPSAEurLarge",
         "ARPA"
     ],
-    "_available_eu_datasets": [
+    "_available_order_book_datasets": [
         "GENERATED_SMALL",
         "GENERATED_LARGE",
         "OMIE",
@@ -59,10 +59,10 @@
         "BC4"
     ],
     "run": {
-        "market_model": "US_model",
+        "market_model": "order_book_based_model",
         "verbosity": true
     },
-    "us_model": {
+    "unit_based_model": {
         "dataset": "PyPSAEurLarge",
         "power_flow_model": {
             "type": "DCOPF"
@@ -92,7 +92,7 @@
             "base_case": "BC4"
         }
     },
-    "eu_model": {
+    "order_book_based_model": {
         "dataset": "TEST_3NODE",
         "cut_type": "price based",
         "euphemia_configuration": {
@@ -118,3 +118,4 @@
         }
     }
 }
+

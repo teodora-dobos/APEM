@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+﻿from abc import ABC, abstractmethod
 
 
 class MarketModel(ABC):
@@ -11,11 +11,12 @@ class MarketModel(ABC):
         pass
 
 
-class US_model(MarketModel):
+class unit_based_model(MarketModel):
     def __str__(self):
-        return 'US_model'
+        return 'unit_based_model'
 
 
-class EU_model(MarketModel):
+class order_book_based_model(MarketModel):
     def __str__(self):
-        return 'EU_model'
+        return 'order_book_based_model'
+

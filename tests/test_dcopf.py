@@ -1,11 +1,11 @@
-import pytest
+﻿import pytest
 from unittest.mock import MagicMock, patch
 import pandas as pd
 import networkx as nx
 from collections import defaultdict
 
-from apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.US_market_model.allocation.error import Error
+from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
+from apem.unit_based_model.allocation.error import Error
 
 
 # ---------- Minimal, valid scenario ----------
@@ -127,7 +127,7 @@ def test_compute_redispatch_volumes(tmp_path):
     assert "Redispatch volumes" in file.read_text()
 
 
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
 def test_add_redispatch_constraints_objective_minabsvol_uses_slack_penalty(mock_quicksum, dummy_scenario):
     mock_quicksum.side_effect = lambda terms: sum(terms)
     model = MagicMock()
@@ -156,9 +156,9 @@ def test_add_redispatch_constraints_objective_minabsvol_uses_slack_penalty(mock_
     assert set_obj_args[0] == pytest.approx(slack_penalty * (2.0 + 3.0))
 
 
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
 def test_solve_returns_error(mock_preproc, GRB, MockModel, dummy_scenario, dummy_config):
     from collections import defaultdict
 
@@ -185,10 +185,10 @@ def test_solve_returns_error(mock_preproc, GRB, MockModel, dummy_scenario, dummy
     assert isinstance(res, Error)
 
 
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.gp.quicksum")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
 def test_solve_uses_configured_slack_penalty_in_objective(
     mock_preproc, mock_quicksum, GRB, MockModel, dummy_scenario, dummy_config
 ):
@@ -226,9 +226,9 @@ def test_solve_uses_configured_slack_penalty_in_objective(
     assert sense == GRB.MAXIMIZE
 
 
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
-@patch("apem.US_market_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.gp.Model")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.GRB")
+@patch("apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf.preprocess_as_dict")
 def test_solve_error_writes_status_message_csv(mock_preproc, GRB, MockModel, dummy_scenario, dummy_config, tmp_path):
     mock_preproc.side_effect = lambda *a, **kw: defaultdict(float)
 
@@ -258,3 +258,4 @@ def test_solve_error_writes_status_message_csv(mock_preproc, GRB, MockModel, dum
     assert list(df.columns) == ["status", "message"]
     assert int(df.loc[0, "status"]) == GRB.INFEASIBLE
     assert "infeasible" in str(df.loc[0, "message"]).lower()
+
