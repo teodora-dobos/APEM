@@ -13,10 +13,10 @@ project_structure
 ```
 
 ```{toctree}
-:maxdepth: 2
+:maxdepth: 3
 :caption: API
 
-api_reference
+apem/index
 node_ranking/index
 ```
 

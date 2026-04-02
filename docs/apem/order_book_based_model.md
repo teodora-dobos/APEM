@@ -1,20 +1,33 @@
-# `order_book_based_model` Package
+# Order-Book-Based Model
 
-```{toctree}
-:maxdepth: 1
+Documentation for the `apem.order_book_based_model` module family.
 
-order_book_based_model/overview
-order_book_based_model/euphemia
-order_book_based_model/runner
-order_book_based_model/euphemia_config
-order_book_based_model/master_problem
-order_book_based_model/model
-order_book_based_model/pricing
-order_book_based_model/data
-order_book_based_model/data_parsing
-order_book_based_model/data_conversion
-order_book_based_model/cutting_strategies
-order_book_based_model/reinsertions
-order_book_based_model/enums
-order_book_based_model/utils
+## Scope
+
+- Euphemia-style order-book clearing workflow.
+- Cut strategy, pricing, and reinsertion routines.
+- Dataset parsing and conversion for order-book inputs.
+
+## API: `apem.order_book_based_model`
+
+```{eval-rst}
+.. automodule:: apem.order_book_based_model
+   :members:
+   :show-inheritance:
+```
+
+## API: `apem.order_book_based_model.euphemia.runner`
+
+```{eval-rst}
+.. automodule:: apem.order_book_based_model.euphemia.runner
+   :members:
+   :show-inheritance:
+```
+
+## API: `apem.order_book_based_model.euphemia.euphemia_config`
+
+```{eval-rst}
+.. automodule:: apem.order_book_based_model.euphemia.euphemia_config
+   :members:
+   :show-inheritance:
 ```

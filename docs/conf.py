@@ -77,7 +77,7 @@ html_css_files = ["custom.css"]
 html_theme_options = {
     "show_toc_level": 2,
     "use_repository_button": False,
-    "show_navbar_depth": 2,
-    "max_navbar_depth": 2,
+    "show_navbar_depth": 4,
+    "max_navbar_depth": 4,
     "collapse_navbar": False,
 }
