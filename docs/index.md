@@ -20,8 +20,17 @@ apem/index
 node_ranking/index
 ```
 
+```{toctree}
+:maxdepth: 1
+:caption: Workflows
+
+workflows/unit_based_model
+workflows/order_book_based_model
+```
+
 ## What You Can Find Here
 
 - Setup and first-run instructions.
 - Configuration reference for model-scoped `config.json`.
 - Package/module API pages generated from Python docstrings.
+- Workflow-oriented script entry points and usage paths.
