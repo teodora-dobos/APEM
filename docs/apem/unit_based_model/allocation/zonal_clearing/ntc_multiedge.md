@@ -1,4 +1,4 @@
-# NTC_multiedge
+# NTC Multiedge
 
 Zonal NTC-clearing algorithm on multi-edge interzonal representations.
 

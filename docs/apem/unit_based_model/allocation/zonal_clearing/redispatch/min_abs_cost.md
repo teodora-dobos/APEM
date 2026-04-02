@@ -1,4 +1,4 @@
-# Min Abs Cost
+# Min Absolute Cost
 
 Minimum absolute-cost redispatch algorithm.
 

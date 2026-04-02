@@ -1,4 +1,4 @@
-# NTC_aggregated
+# NTC Aggregated
 
 Zonal NTC-clearing algorithm on aggregated interzonal capacities.
 

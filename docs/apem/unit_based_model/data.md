@@ -2,6 +2,12 @@
 
 APIs for data loading, parsing, and analysis helpers in the unit-based workflow.
 
+```{toctree}
+:maxdepth: 1
+
+data/scenario
+```
+
 ## API: `apem.unit_based_model.data`
 
 ```{eval-rst}
@@ -15,5 +21,6 @@ APIs for data loading, parsing, and analysis helpers in the unit-based workflow.
 ```{eval-rst}
 .. automodule:: apem.unit_based_model.data.parsing
    :members:
+   :exclude-members: Scenario
    :show-inheritance:
 ```

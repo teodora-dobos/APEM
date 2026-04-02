@@ -4,6 +4,7 @@ Documentation for the `apem.order_book_based_model` module family.
 
 ```{toctree}
 :maxdepth: 1
+:hidden:
 
 order_book_based_model/runner
 order_book_based_model/euphemia_config

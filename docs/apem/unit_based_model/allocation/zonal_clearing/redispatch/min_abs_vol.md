@@ -1,4 +1,4 @@
-# Min Abs Vol
+# Min Absolute Volume
 
 Minimum absolute-volume redispatch algorithm.
 
