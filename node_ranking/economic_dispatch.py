@@ -110,6 +110,7 @@ def solve_economic_dispatch(
     inputs.
 
     Interdiction semantics in this model:
+
     - A node listed in `fail_nodes` is *not* removed from the network.
     - Transmission lines incident to that node remain available.
     - Demand at that node is still present and must be served or shed.
