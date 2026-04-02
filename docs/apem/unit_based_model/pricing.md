@@ -2,18 +2,20 @@
 
 APIs for pricing logic and pricing algorithms in unit-based runs.
 
+```{toctree}
+:maxdepth: 1
+
+pricing/elmp
+pricing/ip
+pricing/join
+pricing/markup
+pricing/min_mwp
+```
+
 ## API: `apem.unit_based_model.pricing`
 
 ```{eval-rst}
 .. automodule:: apem.unit_based_model.pricing
-   :members:
-   :show-inheritance:
-```
-
-## API: `apem.unit_based_model.pricing.algorithms`
-
-```{eval-rst}
-.. automodule:: apem.unit_based_model.pricing.algorithms
    :members:
    :show-inheritance:
 ```
