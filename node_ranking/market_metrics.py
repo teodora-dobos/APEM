@@ -292,7 +292,7 @@ def ptdf_stress_score(
     Compute PTDF stress score (PTDFS) per node.
 
     For each non-slack node v:
-      kappa_v = (sum_{g in G(v)} Pmax_g) * sum_l |PTDF_{l,v}| / (m_l + epsilon)
+      kappa_v = (sum_{g in G(v)} Pmax_g) * sum_l abs(PTDF_{l,v}) / (m_l + epsilon)
 
     where m_l is the residual line margin and epsilon avoids division by zero.
     Slack node score is set to 0 because PTDF is provided only for non-slack

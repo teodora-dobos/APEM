@@ -366,16 +366,11 @@ class MasterProblem:
 
     def run(self) -> None:
         """
-        Compute market clearing prices, matched volumes, selection of block and complex orders that will be executed,
-        accepted percentage for each curtailable block.
-        Determine the market clearing price for each zone while ensuring that no block and complex MIC orders are
-        paradoxically accepted and the primal-dual relations are satisfied.
-        Add cut to the master problem that renders the current solution infeasible if no prices were found.
-        The prices computed satisfy:
-            - complementary slackness conditions
-            - price bounds
-            - no PAB constraints
-            - MIC
+        Execute one Euphemia solve run.
+
+        The routine formulates and optimizes the master problem, repeatedly solves
+        the pricing subproblem, applies the configured cut strategy when needed,
+        and stores final allocation/price outputs and run metadata.
         """
         self.start_time = time.time()
         self.started_at_utc = datetime.now(timezone.utc)
@@ -973,4 +968,3 @@ class MasterProblem:
 
     def __str__(self):
         return 'Euphemia'
-

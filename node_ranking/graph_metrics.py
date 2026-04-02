@@ -69,9 +69,9 @@ def compute_node_ptdf_contribution_scores(
     G : nx.Graph
         Graph with edge attribute fmax_attr.
     method : {"sum","max","weighted_sum"}
-        - "sum":          sum_l |PTDF_{l,k}|
-        - "max":          max_l |PTDF_{l,k}|
-        - "weighted_sum": sum_l |PTDF_{l,k}| * F_max(l)
+        - "sum":          sum_l abs(PTDF_{l,k})
+        - "max":          max_l abs(PTDF_{l,k})
+        - "weighted_sum": sum_l abs(PTDF_{l,k}) * F_max(l)
     fmax_attr : str
         Edge attribute used as weight for "weighted_sum".
 

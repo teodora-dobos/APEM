@@ -272,21 +272,15 @@ def add_network_constraints(self) -> None:
     """
     Formulate network constraints for the selected model.
 
-    This function is skipped when ``network_constraints_enabled`` is False.
+    If ``network_constraints_enabled`` is false, the function returns immediately.
 
-    ATC model:
-    - Capacity limits on directed interconnectors:
-        f_{i,j,t} <= CAP_{i,j,t}
-      (non-negativity f_{i,j,t} >= 0 comes from variable bounds)
-    - Optional directional ramping between consecutive periods:
-        f_{i,j,t} - f_{i,j,t-1} <= RAMP_UP_{i,j}
-        f_{i,j,t-1} - f_{i,j,t} <= RAMP_DOWN_{i,j}
+    ATC mode adds:
+    - directed flow capacity limits;
+    - optional directional ramp-up and ramp-down limits across periods.
 
-    FBMC model:
-    - For each CNEC c and period t:
-        sum_z PTDF_{c,t,z} * NP_{z,t} <= RAM_{c,t}
-    - Optional lower bound (if provided in input):
-        sum_z PTDF_{c,t,z} * NP_{z,t} >= LB_{c,t}
+    FBMC mode adds:
+    - PTDF * net-position upper constraints (RAM);
+    - optional PTDF * net-position lower bounds (LB).
     """
     if not self.network_constraints_enabled:
         return
@@ -337,4 +331,3 @@ def add_network_constraints(self) -> None:
             ),
             name="fbmc_lb",
         )
-
