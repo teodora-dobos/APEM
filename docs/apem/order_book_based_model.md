@@ -2,6 +2,22 @@
 
 Documentation for the `apem.order_book_based_model` module family.
 
+```{toctree}
+:maxdepth: 1
+
+order_book_based_model/runner
+order_book_based_model/euphemia_config
+order_book_based_model/cutting_strategies
+order_book_based_model/data_parsing
+order_book_based_model/data_conversion
+order_book_based_model/enums
+order_book_based_model/master_problem
+order_book_based_model/model
+order_book_based_model/pricing
+order_book_based_model/reinsertions
+order_book_based_model/utilities
+```
+
 ## Scope
 
 - Euphemia-style order-book clearing workflow.
@@ -12,22 +28,6 @@ Documentation for the `apem.order_book_based_model` module family.
 
 ```{eval-rst}
 .. automodule:: apem.order_book_based_model
-   :members:
-   :show-inheritance:
-```
-
-## API: `apem.order_book_based_model.euphemia.runner`
-
-```{eval-rst}
-.. automodule:: apem.order_book_based_model.euphemia.runner
-   :members:
-   :show-inheritance:
-```
-
-## API: `apem.order_book_based_model.euphemia.euphemia_config`
-
-```{eval-rst}
-.. automodule:: apem.order_book_based_model.euphemia.euphemia_config
    :members:
    :show-inheritance:
 ```
