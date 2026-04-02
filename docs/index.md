@@ -4,7 +4,7 @@ APEM is a framework for allocation and pricing in electricity markets, with both
 
 ```{toctree}
 :maxdepth: 1
-:caption: User Guide
+:caption: Getting Started
 
 introduction
 installation
