@@ -20,3 +20,7 @@
 .bd-sidebar-primary .bd-sidenav ul {
   display: block !important;
 }
+/* Hidden toctrees still emit empty wrapper nodes; suppress them in page content. */
+.toctree-wrapper:empty {
+  display: none;
+}

@@ -71,7 +71,7 @@ myst_enable_extensions = [
 ]
 
 html_theme = "sphinx_book_theme"
-html_title = f"{project} Documentation"
+html_title = project
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_theme_options = {
