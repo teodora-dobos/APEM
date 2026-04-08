@@ -1,4 +1,4 @@
-"""Utilities for loading and validating lost opportunity cost tables and legacy stats files."""
+"""Utilities for loading and validating lost opportunity cost tables."""
 
 from __future__ import annotations
 
