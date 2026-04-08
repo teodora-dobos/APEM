@@ -149,11 +149,19 @@ def rent_weighted_dispatch_score(
     generators: dict[str, dict[str, float | str]],
     baseline_result: dict[str, dict[str, float]],
 ) -> tuple[dict[str, float], dict[str, float]]:
-    """
+    r"""
     Compute rent-weighted dispatch scores from a baseline dispatch.
 
-    Generator score is `max(0, lambda_node - cost_g) * dispatch_g`.
-    Node score is the sum of generator scores connected to that node.
+    Score definition:
+
+    .. math::
+       s_g = \max(0, \lambda_{n(g)} - c_g)\, d_g
+
+    .. math::
+       S_v = \sum_{g \in G(v)} s_g
+
+    where :math:`d_g` is dispatch, :math:`c_g` is generator cost, and
+    :math:`\lambda_{n(g)}` is the nodal price at the generator's node.
 
     Returns `(node_scores, gen_scores)`.
     """
@@ -178,10 +186,13 @@ def dispatch_volume_score(
     generators: dict[str, dict[str, float | str]],
     baseline_result: dict[str, dict[str, float]],
 ) -> dict[str, float]:
-    """
+    r"""
     Compute node dispatch-volume scores from a baseline dispatch.
 
-    Node score is `sum(dispatch_g)` over generators located at the node.
+    Score definition:
+
+    .. math::
+       S_v = \sum_{g \in G(v)} d_g
     """
     dispatch = baseline_result["dispatch"]
     node_scores: dict[str, float] = {str(v): 0.0 for v in nodes}
@@ -197,11 +208,16 @@ def gamma_capacity_score(
     generators: dict[str, dict[str, float | str]],
     baseline_result: dict[str, dict[str, float]],
 ) -> tuple[dict[str, float], dict[str, float]]:
-    """
+    r"""
     Compute gamma-capacity scores from a baseline dispatch.
 
-    Generator score is `gamma_g * p_max_g`.
-    Node score is the sum of generator scores connected to that node.
+    Score definition:
+
+    .. math::
+       s_g = \gamma_g P_g^{\max}
+
+    .. math::
+       S_v = \sum_{g \in G(v)} s_g
 
     Returns `(node_scores, gen_scores)`.
     """
@@ -224,12 +240,13 @@ def gamma_capacity_congestion_score(
     lines: dict[str, dict[str, float | tuple[str, str]]],
     baseline_result: dict[str, dict[str, float]],
 ) -> dict[str, float]:
-    """
+    r"""
     Compute gamma-capacity-congestion score (GCCS) per node.
 
     Score definition:
-      kappa_v = sum_{g in G(v)} gamma_g * Pmax_g
-              + sum_{(v,w) in delta(v)} Fmax_vw * (mu_plus_vw + mu_minus_vw)
+
+    .. math::
+       S_v = \sum_{g \in G(v)} \gamma_g P_g^{\max} + \sum_{(v,w) \in \delta(v)} F_{vw}^{\max}\left(\mu_{vw}^{+} + \mu_{vw}^{-}\right)
 
     Returns node-level scores.
     """
@@ -262,11 +279,18 @@ def load_weighted_lmp_score(
     VOLL: float = 500.0,
     cap_lambda: bool = True,
 ) -> dict[str, float]:
-    """
+    r"""
     Compute load-weighted LMP scores from baseline nodal prices and load.
 
-    Node score is `lambda_v * load_v` or `min(lambda_v, VOLL) * load_v`
-    when `cap_lambda` is enabled.
+    Score definition:
+
+    .. math::
+       S_v = \lambda_v L_v
+
+    When ``cap_lambda`` is enabled, the score becomes:
+
+    .. math::
+       S_v = \min(\lambda_v, \mathrm{VOLL}) L_v
     """
     lambdas = baseline_result["lambdas"]
 
@@ -288,13 +312,16 @@ def ptdf_stress_score(
     line_margins: np.ndarray | list[float],
     epsilon: float = 1e-6,
 ) -> dict[Hashable, float]:
-    """
+    r"""
     Compute PTDF stress score (PTDFS) per node.
 
-    For each non-slack node v:
-      kappa_v = (sum_{g in G(v)} Pmax_g) * sum_l abs(PTDF_{l,v}) / (m_l + epsilon)
+    For each non-slack node :math:`v`:
 
-    where m_l is the residual line margin and epsilon avoids division by zero.
+    .. math::
+       S_v = \left(\sum_{g \in G(v)} P_g^{\max}\right)\sum_{\ell}\frac{\left|\mathrm{PTDF}_{\ell,v}\right|}{m_{\ell} + \varepsilon}
+
+    where :math:`m_{\ell}` is the residual line margin and
+    :math:`\varepsilon` avoids division by zero.
     Slack node score is set to 0 because PTDF is provided only for non-slack
     columns (given by `mask`).
     """

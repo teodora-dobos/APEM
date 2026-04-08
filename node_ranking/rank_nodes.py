@@ -4,12 +4,12 @@ from typing import Any
 import networkx as nx
 import numpy as np
 
-from node_ranking.graph_metrics import (
+from node_ranking.network_scores import (
     compute_node_ptdf_contribution_scores,
     compute_node_betweenness_centrality,
     compute_node_degree_centrality,
 )
-from node_ranking.market_metrics import (
+from node_ranking.market_scores import (
     dispatch_volume_score,
     gamma_capacity_score,
     gamma_capacity_congestion_score,
