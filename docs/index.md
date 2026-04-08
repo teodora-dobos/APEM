@@ -9,7 +9,7 @@ APEM is a research and experimentation framework for electricity-market clearing
 
 installation
 configuration
-project_structure
+custom_datasets
 ```
 
 ```{toctree}

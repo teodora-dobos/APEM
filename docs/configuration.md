@@ -1,6 +1,6 @@
 # Configuration
 
-APEM is configured through a single file at the repository root: [`config.json`](../config.json).
+APEM is configured through a single file at the repository root: [`config.json`](https://github.com/teodora-dobos/APEM/blob/main/config.json).
 
 If you are new to the project, the most important thing to understand is this:
 
@@ -15,7 +15,7 @@ If you are new to the project, the most important thing to understand is this:
 
 In practice, a normal workflow looks like this:
 
-1. Open [`config.json`](../config.json).
+1. Open [`config.json`](https://github.com/teodora-dobos/APEM/blob/main/config.json).
 2. Choose which market model you want to run under `run.market_model`.
 3. Edit the settings for that model.
 4. Save the file and run:
@@ -90,7 +90,9 @@ If you use a **zonal** power-flow model, you will also adjust:
 - `unit_based_model.redispatch.algorithm`
 - `unit_based_model.zonal_configuration`
 
+```{note}
 Redispatch is only used for zonal power-flow models such as `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, and `Zonal_FBMC`. It is **not** used with `DCOPF`. These zonal models are only supported for `PyPSAEurSmall` and `PyPSAEurLarge`.
+```
 
 You will mainly adjust `solver_configuration` when you need to change runtime limits, tolerances, or solver behavior.
 
@@ -215,11 +217,10 @@ These are only relevant for zonal unit-based models, not for `DCOPF`.
 - `combinatorial benders`
 - `no good`
 
-## Allowed Combinations
-
+```{warning}
 Not every configuration combination is supported.
 
-For the **unit-based workflow**, the main rule is:
+For the **unit-based workflow**:
 
 - `DCOPF` is the nodal model. Use it without redispatch.
 - `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, and `Zonal_FBMC` are zonal models. They only work with `PyPSAEurSmall` and `PyPSAEurLarge`.
@@ -229,6 +230,7 @@ In practice:
 
 - choose `DCOPF` if you want a nodal run
 - choose a zonal model only together with `PyPSAEurSmall` or `PyPSAEurLarge`
+```
 
 ## Validation
 
