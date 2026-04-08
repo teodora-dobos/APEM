@@ -35,7 +35,23 @@ def load_lost_opp_cost_table(
     value_column: str = "value",
     sheet_name: str = "Sheet1",
 ) -> pd.DataFrame:
-    """Load a lost-opportunity-cost table from disk and normalize the core columns."""
+    """
+    Load a lost-opportunity-cost table from disk and normalize core columns.
+
+    Supported file types are ``.csv``, ``.parquet``, ``.txt``, ``.xlsx``,
+    and ``.xls``.
+
+    :param path: file path to load
+    :param algorithm_column: source column name mapped to ``algorithm``
+    :param lost_opp_cost_column: source column name mapped to ``lost_opp_cost``
+    :param component_column: source column name mapped to ``component``
+    :param value_column: source column name mapped to ``value``
+    :param sheet_name: Excel sheet name when loading ``.xlsx``/``.xls``
+    :return: validated normalized table with columns
+             ``algorithm``, ``lost_opp_cost``, ``component``, ``value``
+    :raises ValueError: if the file type is unsupported or parsed data fails
+                        validation
+    """
     file_path = Path(path)
     suffix = file_path.suffix.lower()
     supported_suffixes = {".csv", ".parquet", ".txt", ".xlsx", ".xls"}
@@ -74,7 +90,17 @@ def load_lost_opp_cost_table(
 
 
 def validate_lost_opp_cost_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate and normalize the generic lost-opportunity-cost input table."""
+    """
+    Validate and normalize a generic lost-opportunity-cost input table.
+
+    :param df: input table expected to contain ``algorithm``,
+               ``lost_opp_cost``, ``component``, and ``value``
+    :return: normalized copy with lowercase categorical values and numeric
+             ``value``
+    :raises ValueError: if required columns are missing, unsupported categories
+                        are present, labels are empty, or no numeric values are
+                        available
+    """
     normalized = df.copy()
     normalized.columns = [str(column).strip() for column in normalized.columns]
 

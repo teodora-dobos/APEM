@@ -12,7 +12,37 @@ from apem.unit_based_model.utils.paths import RAW_DATA_DIR
 
 class Scenario:
     """
-    Buyers, sellers and network data.
+    Container for all inputs that define one unit-based market scenario.
+
+    A scenario bundles bid tables, network topology, node metadata, and time/block
+    structure into a single object passed through allocation, pricing, and
+    evaluation workflows.
+
+    The object is intentionally lightweight and mutable so parsing steps and
+    algorithms can derive adjusted views (for example, relaxed or scaled variants)
+    from the same base scenario.
+
+    Expected table structure:
+
+    - ``df_buyers`` typically includes at least ``buyer``, ``period``, ``node``,
+      ``max_dem`` and one or more valuation block columns (for example ``val1``,
+      ``val2``, ...).
+    - ``df_sellers`` typically includes at least ``seller``, ``period``, ``node``,
+      ``max_prod`` and one or more production cost block columns.
+    - ``network`` edges are expected to carry electrical attributes used by
+      clearing/flow models (for example susceptance and capacity limits).
+
+    :param name: human-readable scenario identifier used in logs and output paths
+    :param df_buyers: buyer-side bids or demand blocks by period and node
+    :param df_sellers: seller-side offers or generation blocks by period and node
+    :param network: transmission graph used by nodal/zonal clearing models
+    :param nodes_agents: node metadata and node-to-agent mapping; entries are
+                         keyed by node and commonly include ``buyers``,
+                         ``sellers``, ``latitude`` and ``longitude``
+    :param periods: ordered list of market periods represented in the scenario
+    :param blocks_buyers: buyer block index range used by multi-block demand bids
+    :param blocks_sellers: seller block index range used by multi-block supply bids
+    :param r_star: identifier of the reference node used by DC-style formulations
     """
 
     def __init__(self, name: str, df_buyers: pd.DataFrame, df_sellers: pd.DataFrame, network: nx.Graph,
@@ -33,7 +63,15 @@ class Scenario:
 
     def analyse_scenario(self, results_root: str = "") -> None:
         """
-        Computes scenario statistics.
+        Compute and persist descriptive scenario statistics.
+
+        The method writes aggregate counts and demand/supply totals (overall and
+        per period) to ``<results_root>/<scenario>_base_scenario.txt``. If
+        seller carrier information is available, renewable shares are included.
+
+        :param results_root: output directory; if empty, a default scenario result
+                             folder under ``./results/unit_based_model`` is used
+        :return: ``None``
         """
         count_sellers = len(self.df_sellers['seller'].unique())
         count_buyers = len(self.df_buyers['buyer'].unique())
@@ -89,10 +127,20 @@ class Scenario:
 
     def plot_network(self, power_flow_model, zonal_config: str = "", results_root: str = "") -> None:
         """
-        Plots the electricity network for the underlying scenario.
-        
-        Args:
-            zonal_config (str, optional): if provided, nodes are colored according to their zonal assignments. Otherwise, they are colored black.
+        Plot the scenario network and optionally color nodes by zone.
+
+        The figure is stored in the scenario results directory and uses node
+        coordinates from ``nodes_agents`` together with line endpoints from
+        ``network``.
+
+        :param power_flow_model: selected power-flow model name, used in output
+                                 directory routing
+        :param zonal_config: optional zonal configuration identifier; when
+                             provided, nodes are colored by ``node_to_zone.csv``
+        :param results_root: base output directory; if empty, a default scenario
+                             result folder under ``./results/unit_based_model``
+                             is used
+        :return: ``None``
         """
 
         # Define power flow model and create results directory, if not exists
@@ -203,4 +251,3 @@ class Scenario:
         file_name = f"{self.name}_{zonal_config}" if zonal_config else self.name
         plt.savefig(f"{results_directory}/{file_name}_network.png", bbox_inches='tight', dpi=300)
         plt.close(fig)
-

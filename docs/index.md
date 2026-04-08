@@ -53,6 +53,7 @@ At a high level, APEM supports the full path from input data to interpretable ma
 
 ## Two Main Modeling Workflows
 
+(main-unit-based-model)=
 ### Unit-Based Model
 
 In a unit-based model, bids are tied to physical generation units. The market sees individual plants together with their technical and economic characteristics, such as capacity, marginal cost, and operational limits.
@@ -65,6 +66,7 @@ The unit-based workflow is the part of the framework used for questions such as:
 - How do different zonal clearing approaches affect welfare, prices, and redispatch?
 - How do pricing rules such as Integer Programming (`IP`) and Extended Locational Marginal Pricing (`ELMP`) change the final price signals?
 
+(main-order-book-based-model)=
 ### Order-Book-Based Model
 
 In an order-book-based model, the market is represented through buy and sell orders rather than explicit plant identities. The market sees prices, quantities, and order structures such as step orders, block orders, complex orders, and scalable orders, but not the full physical detail behind each bid.

@@ -16,7 +16,17 @@ def plot_average_prices_by_period(
     algorithm_order: Sequence[str] | None = None,
     statistic_fn: Callable[[np.ndarray], float] = np.mean,
 ) -> None:
-    """Plot one price statistic by period for each algorithm on one figure."""
+    """
+    Plot one aggregated price statistic by period for each algorithm.
+
+    :param prices: price table containing at least ``period``, ``algorithm``,
+                   and ``price``
+    :param output_file: output image path
+    :param algorithm_order: optional plotting order for algorithms
+    :param statistic_fn: aggregation function applied to price values
+                         (for example ``np.mean`` or ``np.median``)
+    :return: ``None``
+    """
     statistic_label = _statistic_label(statistic_fn)
     aggregated_prices = _aggregate_prices(prices, ["period", "algorithm"], statistic_fn).pivot(
         index="period",
@@ -45,7 +55,16 @@ def plot_average_prices_by_node(
     algorithm_order: Sequence[str] | None = None,
     statistic_fn: Callable[[np.ndarray], float] = np.mean,
 ) -> None:
-    """Plot one price statistic by node for each algorithm on one figure."""
+    """
+    Plot one aggregated price statistic by node for each algorithm.
+
+    :param prices: price table containing at least ``node``, ``algorithm``,
+                   and ``price``
+    :param output_file: output image path
+    :param algorithm_order: optional plotting order for algorithms
+    :param statistic_fn: aggregation function applied to price values
+    :return: ``None``
+    """
     statistic_label = _statistic_label(statistic_fn)
     aggregated_prices = _aggregate_prices(prices, ["node", "algorithm"], statistic_fn).pivot(
         index="node",
@@ -94,7 +113,15 @@ def plot_price_boxplot_by_period(
     algorithm_order: Sequence[str] | None = None,
     statistic_fn: Callable[[np.ndarray], float] = np.mean,
 ) -> None:
-    """Create a boxplot across algorithms using one aggregated value per period."""
+    """
+    Create a boxplot across algorithms using one aggregated value per period.
+
+    :param prices: price table containing ``period``, ``algorithm``, ``price``
+    :param output_file: output image path
+    :param algorithm_order: optional plotting order for algorithms
+    :param statistic_fn: aggregation function applied within each period
+    :return: ``None``
+    """
     aggregated_prices = _aggregate_prices(prices, ["period", "algorithm"], statistic_fn).pivot(
         index="period",
         columns="algorithm",
@@ -115,7 +142,15 @@ def plot_price_boxplot_by_node(
     algorithm_order: Sequence[str] | None = None,
     statistic_fn: Callable[[np.ndarray], float] = np.mean,
 ) -> None:
-    """Create a boxplot across algorithms using one aggregated value per node."""
+    """
+    Create a boxplot across algorithms using one aggregated value per node.
+
+    :param prices: price table containing ``node``, ``algorithm``, ``price``
+    :param output_file: output image path
+    :param algorithm_order: optional plotting order for algorithms
+    :param statistic_fn: aggregation function applied within each node
+    :return: ``None``
+    """
     aggregated_prices = _aggregate_prices(prices, ["node", "algorithm"], statistic_fn).pivot(
         index="node",
         columns="algorithm",
@@ -137,7 +172,18 @@ def plot_lost_opp_cost_by_component(
     lost_opp_cost_type: str,
     algorithm_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot one lost opportunity cost type across components for each algorithm."""
+    """
+    Plot one lost-opportunity-cost type across components for each algorithm.
+
+    :param lost_opp_costs: table containing at least ``lost_opp_cost``,
+                           ``component``, ``algorithm``, ``value``
+    :param output_file: output image path
+    :param lost_opp_cost_type: selected type to plot (for example ``glocs``)
+    :param algorithm_order: optional plotting order for algorithms
+    :return: ``None``
+    :raises ValueError: if filtered data is empty or duplicates exist per
+                        component and algorithm
+    """
     filtered = lost_opp_costs.loc[
         lost_opp_costs["lost_opp_cost"].astype(str).str.lower() == str(lost_opp_cost_type).lower()
     ].copy()
@@ -185,7 +231,16 @@ def plot_welfare_by_period(
     output_file: str | Path,
     power_flow_model_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot welfare by period for each power-flow model on one figure."""
+    """
+    Plot period welfare trajectories for each power-flow model.
+
+    :param welfare_table: welfare table containing ``welfare_scope``, ``period``,
+                          ``power_flow_model``, and ``welfare``
+    :param output_file: output image path
+    :param power_flow_model_order: optional plotting order for models
+    :return: ``None``
+    :raises ValueError: if no period-level welfare rows are found
+    """
     period_welfare = welfare_table.loc[welfare_table["welfare_scope"] == "period"].copy()
     if period_welfare.empty:
         raise ValueError("No period welfare rows found.")
@@ -216,7 +271,16 @@ def plot_total_welfare_by_power_flow_model(
     output_file: str | Path,
     power_flow_model_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot total welfare for each power-flow model as a bar chart."""
+    """
+    Plot total welfare for each power-flow model as a bar chart.
+
+    :param welfare_table: welfare table containing ``welfare_scope``,
+                          ``power_flow_model``, and ``welfare``
+    :param output_file: output image path
+    :param power_flow_model_order: optional plotting order for models
+    :return: ``None``
+    :raises ValueError: if no total rows exist or duplicates exist per model
+    """
     total_welfare = welfare_table.loc[welfare_table["welfare_scope"] == "total"].copy()
     if total_welfare.empty:
         raise ValueError("No total welfare rows found.")
@@ -253,7 +317,20 @@ def plot_value_by_period_and_power_flow_model(
     title: str,
     power_flow_model_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot one value by period for each power-flow model on one figure."""
+    """
+    Plot a generic value by period for each power-flow model.
+
+    :param table: input table
+    :param output_file: output image path
+    :param period_column: column name used as x-axis period
+    :param model_column: column name used for model grouping
+    :param value_column: numeric value column to plot
+    :param ylabel: y-axis label
+    :param title: chart title
+    :param power_flow_model_order: optional plotting order for models
+    :return: ``None``
+    :raises ValueError: if required columns are missing
+    """
     if period_column not in table.columns:
         raise ValueError(f"Input table must contain the period column '{period_column}'.")
     if model_column not in table.columns:
@@ -289,7 +366,18 @@ def plot_redispatch_metric_by_algorithm(
     metric: str,
     redispatch_algorithm_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot one redispatch metric as a bar chart across redispatch algorithms."""
+    """
+    Plot one redispatch metric as a bar chart across redispatch algorithms.
+
+    :param redispatch_table: redispatch table containing ``metric``,
+                             ``redispatch_algorithm``, and ``value``
+    :param output_file: output image path
+    :param metric: selected metric label (for example ``costs``)
+    :param redispatch_algorithm_order: optional plotting order for algorithms
+    :return: ``None``
+    :raises ValueError: if filtered data is empty or duplicates exist per
+                        redispatch algorithm
+    """
     filtered = redispatch_table.loc[redispatch_table["metric"] == metric].copy()
     if filtered.empty:
         raise ValueError(f"No rows found for redispatch metric '{metric}'.")
@@ -322,7 +410,18 @@ def plot_redispatch_metric_by_power_flow_model(
     metric: str,
     power_flow_model_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot one redispatch metric as a bar chart across power-flow models."""
+    """
+    Plot one redispatch metric as a bar chart across power-flow models.
+
+    :param redispatch_table: redispatch table containing ``metric``,
+                             ``power_flow_model``, and ``value``
+    :param output_file: output image path
+    :param metric: selected metric label (for example ``costs``)
+    :param power_flow_model_order: optional plotting order for models
+    :return: ``None``
+    :raises ValueError: if filtered data is empty or duplicates exist per
+                        power-flow model
+    """
     filtered = redispatch_table.loc[redispatch_table["metric"] == metric].copy()
     if filtered.empty:
         raise ValueError(f"No rows found for redispatch metric '{metric}'.")
@@ -357,7 +456,20 @@ def plot_value_by_power_flow_model(
     title: str,
     power_flow_model_order: Sequence[str] | None = None,
 ) -> None:
-    """Plot one value column as a bar chart across power-flow models."""
+    """
+    Plot one value column as a bar chart across power-flow models.
+
+    :param table: input table containing ``power_flow_model`` and one value
+                  column
+    :param output_file: output image path
+    :param value_column: column name to plot on the y-axis
+    :param ylabel: y-axis label
+    :param title: chart title
+    :param power_flow_model_order: optional plotting order for models
+    :return: ``None``
+    :raises ValueError: if required columns are missing or duplicates exist per
+                        power-flow model
+    """
     if "power_flow_model" not in table.columns:
         raise ValueError("Input table must contain a 'power_flow_model' column.")
     if value_column not in table.columns:
@@ -418,7 +530,12 @@ def _statistic_label(statistic_fn: Callable[[np.ndarray], float]) -> str:
 
 
 def statistic_name(statistic_fn: Callable[[np.ndarray], float]) -> str:
-    """Return a lowercase filename-safe name for the selected statistic."""
+    """
+    Return a lowercase filename-safe name for the selected statistic function.
+
+    :param statistic_fn: aggregation callable (for example ``np.mean``)
+    :return: lowercase snake-case statistic label
+    """
     return _statistic_label(statistic_fn).lower().replace(" ", "_")
 
 

@@ -22,7 +22,13 @@ from apem.unit_based_model.enums import PricingAlgorithms, RedispatchAlgorithms,
 
 
 def normalize_run_dir(path: Path | str, repo_root: Path) -> Path:
-    """Resolve run directories relative to the repository root when needed."""
+    """
+    Resolve a run directory path, using ``repo_root`` for relative paths.
+
+    :param path: absolute or relative run-directory path
+    :param repo_root: repository root used to resolve relative paths
+    :return: normalized absolute-like path rooted at ``repo_root`` when needed
+    """
     run_dir = Path(path)
     if not run_dir.is_absolute():
         run_dir = repo_root / run_dir
@@ -30,7 +36,12 @@ def normalize_run_dir(path: Path | str, repo_root: Path) -> Path:
 
 
 def parse_run_config(run_config_path: Path) -> dict[str, str]:
-    """Parse the key-value metadata written next to each run."""
+    """
+    Parse key-value run metadata stored in ``run_config.txt``.
+
+    :param run_config_path: path to a run configuration file
+    :return: dictionary with parsed metadata entries
+    """
     metadata: dict[str, str] = {}
     with open(run_config_path, "r", encoding="utf-8") as handle:
         for line in handle:
@@ -60,7 +71,16 @@ def find_latest_matching_run(
     power_flow_model_name: str,
     zonal_path: str = "",
 ) -> Path | None:
-    """Return the newest run folder matching the requested dataset/model/pricing configuration."""
+    """
+    Return the newest run folder for a dataset, pricing algorithm, and model.
+
+    :param results_root: root directory containing run folders
+    :param dataset: dataset enum expected in run metadata
+    :param pricing_algorithm: pricing algorithm enum expected in run metadata
+    :param power_flow_model_name: selected power-flow model name
+    :param zonal_path: expected zonal path metadata value (empty for non-zonal)
+    :return: latest matching run directory, or ``None`` if no match is found
+    """
     if not results_root.exists():
         return None
 
@@ -104,7 +124,16 @@ def find_latest_matching_lost_opp_cost_run(
     power_flow_model_name: str,
     zonal_path: str = "",
 ) -> Path | None:
-    """Return the newest run folder matching the requested configuration with lost opportunity cost stats available."""
+    """
+    Return the newest matching run folder with lost-opportunity-cost stats.
+
+    :param results_root: root directory containing run folders
+    :param dataset: dataset enum expected in run metadata
+    :param pricing_algorithm: pricing algorithm enum expected in run metadata
+    :param power_flow_model_name: selected power-flow model name
+    :param zonal_path: expected zonal path metadata value
+    :return: latest matching run directory with stats file, or ``None``
+    """
     if not results_root.exists():
         return None
 
@@ -149,7 +178,18 @@ def ensure_run_for_configuration(
     power_flow_model,
     power_flow_model_name: str,
 ) -> tuple[Path, str]:
-    """Return the latest matching run folder, computing it first if necessary."""
+    """
+    Reuse or compute a run for one dataset/pricing/model configuration.
+
+    :param results_root: root directory containing run folders
+    :param repo_root: repository root used to normalize computed paths
+    :param dataset: dataset enum to solve
+    :param pricing_algorithm: pricing algorithm enum to solve
+    :param power_flow_model: instantiated power-flow model object
+    :param power_flow_model_name: model name used in run folder structure
+    :return: tuple ``(run_dir, status)`` where status is ``"reused"`` or
+             ``"computed"``
+    """
     zonal_path = expected_zonal_path(power_flow_model)
     existing_run = find_latest_matching_run(
         results_root,
@@ -177,7 +217,18 @@ def ensure_lost_opp_cost_run_for_configuration(
     power_flow_model,
     power_flow_model_name: str,
 ) -> tuple[Path, str]:
-    """Return the latest matching run folder with lost opportunity cost stats, computing analysis first if necessary."""
+    """
+    Reuse or compute a run that includes lost-opportunity-cost analysis outputs.
+
+    :param results_root: root directory containing run folders
+    :param repo_root: repository root used to normalize computed paths
+    :param dataset: dataset enum to solve
+    :param pricing_algorithm: pricing algorithm enum to solve
+    :param power_flow_model: instantiated power-flow model object
+    :param power_flow_model_name: model name used in run folder structure
+    :return: tuple ``(run_dir, status)`` where status is ``"reused"`` or
+             ``"computed"``
+    """
     zonal_path = expected_zonal_path(power_flow_model)
     existing_run = find_latest_matching_lost_opp_cost_run(
         results_root,
@@ -213,7 +264,16 @@ def load_prices_from_run(
     pricing_algorithm: PricingAlgorithms,
     power_flow_model_name: str,
 ) -> pd.DataFrame:
-    """Load one algorithm's price CSV from a selected run folder."""
+    """
+    Load one pricing algorithm's node-period prices from a selected run folder.
+
+    :param run_dir: run directory containing ``run_config.txt``
+    :param scenario_name: dataset/scenario label added to the output table
+    :param pricing_algorithm: pricing algorithm enum
+    :param power_flow_model_name: model name used in run folder structure
+    :return: normalized price table with ``dataset``, ``algorithm``, ``node``,
+             ``period``, and ``price``
+    """
     metadata = parse_run_config(run_dir / "run_config.txt")
     zonal_path = metadata.get("zonal_path", "")
     price_file = (
@@ -235,7 +295,16 @@ def load_lost_opp_costs_from_run(
     pricing_algorithm: PricingAlgorithms,
     power_flow_model_name: str,
 ) -> pd.DataFrame:
-    """Load one algorithm's GLOC/LLOC/MWP values from a selected run folder."""
+    """
+    Load one pricing algorithm's lost-opportunity-cost components from a run.
+
+    :param run_dir: run directory containing ``run_config.txt``
+    :param scenario_name: dataset/scenario label added to the output table
+    :param pricing_algorithm: pricing algorithm enum
+    :param power_flow_model_name: model name used in run folder structure
+    :return: normalized table with ``dataset``, ``algorithm``,
+             ``lost_opp_cost``, ``component``, ``value``
+    """
     metadata = parse_run_config(run_dir / "run_config.txt")
     zonal_path = metadata.get("zonal_path", "")
     stats_file = (
@@ -257,7 +326,15 @@ def find_latest_matching_welfare_run(
     power_flow_model_name: str,
     zonal_path: str = "",
 ) -> Path | None:
-    """Return the newest run folder matching the requested dataset/model with allocation stats available."""
+    """
+    Return the newest matching run folder with allocation welfare stats.
+
+    :param results_root: root directory containing run folders
+    :param dataset: dataset enum expected in run metadata
+    :param power_flow_model_name: selected power-flow model name
+    :param zonal_path: expected zonal path metadata value
+    :return: latest matching run directory with allocation stats, or ``None``
+    """
     if not results_root.exists():
         return None
 
@@ -299,7 +376,17 @@ def ensure_welfare_run_for_configuration(
     power_flow_model,
     power_flow_model_name: str,
 ) -> tuple[Path, str]:
-    """Return the latest matching run folder with welfare stats, computing it first if necessary."""
+    """
+    Reuse or compute a run that includes allocation welfare stats.
+
+    :param results_root: root directory containing run folders
+    :param repo_root: repository root used to normalize computed paths
+    :param dataset: dataset enum to solve
+    :param power_flow_model: instantiated power-flow model object
+    :param power_flow_model_name: model name used in run folder structure
+    :return: tuple ``(run_dir, status)`` where status is ``"reused"`` or
+             ``"computed"``
+    """
     zonal_path = expected_zonal_path(power_flow_model)
     existing_run = find_latest_matching_welfare_run(
         results_root,
@@ -322,7 +409,15 @@ def load_welfare_from_run(
     scenario_name: str,
     power_flow_model_name: str,
 ) -> pd.DataFrame:
-    """Load welfare values from a selected run folder."""
+    """
+    Load welfare values from a selected run folder.
+
+    :param run_dir: run directory containing ``run_config.txt``
+    :param scenario_name: dataset/scenario label added to the output table
+    :param power_flow_model_name: model name used in run folder structure
+    :return: normalized welfare table with ``dataset``, ``power_flow_model``,
+             ``welfare_scope``, ``period``, and ``welfare``
+    """
     metadata = parse_run_config(run_dir / "run_config.txt")
     zonal_path = metadata.get("zonal_path", "")
     stats_file = (
@@ -346,7 +441,18 @@ def find_latest_matching_redispatch_run(
     redispatch_threshold: float = 0,
     zonal_path: str = "",
 ) -> Path | None:
-    """Return the newest run folder matching the requested redispatch configuration."""
+    """
+    Return the newest matching run folder with redispatch metric outputs.
+
+    :param results_root: root directory containing run folders
+    :param dataset: dataset enum expected in run metadata
+    :param power_flow_model_name: selected power-flow model name
+    :param redispatch_algorithm: redispatch algorithm enum
+    :param redispatch_constraint_units: redispatch option expected in run output
+    :param redispatch_threshold: threshold option expected in run output
+    :param zonal_path: expected zonal path metadata value
+    :return: latest matching run directory with redispatch files, or ``None``
+    """
     if not results_root.exists():
         return None
 
@@ -397,7 +503,20 @@ def ensure_redispatch_run_for_configuration(
     redispatch_constraint_units: bool = False,
     redispatch_threshold: float = 0,
 ) -> tuple[Path, str]:
-    """Return the latest matching run folder with redispatch metrics, computing it first if necessary."""
+    """
+    Reuse or compute a run that includes redispatch metrics.
+
+    :param results_root: root directory containing run folders
+    :param repo_root: repository root used to normalize computed paths
+    :param dataset: dataset enum to solve
+    :param power_flow_model: instantiated power-flow model object
+    :param power_flow_model_name: model name used in run folder structure
+    :param redispatch_algorithm: redispatch algorithm enum
+    :param redispatch_constraint_units: redispatch option forwarded to solver
+    :param redispatch_threshold: threshold option forwarded to solver
+    :return: tuple ``(run_dir, status)`` where status is ``"reused"`` or
+             ``"computed"``
+    """
     zonal_path = expected_zonal_path(power_flow_model)
     existing_run = find_latest_matching_redispatch_run(
         results_root,
@@ -429,7 +548,21 @@ def load_redispatch_metrics_from_run(
     redispatch_constraint_units: bool = False,
     redispatch_threshold: float = 0,
 ) -> pd.DataFrame:
-    """Load redispatch metrics from a selected run folder."""
+    """
+    Load redispatch costs/volumes from a selected run folder.
+
+    :param run_dir: run directory containing ``run_config.txt``
+    :param scenario_name: dataset/scenario label added to the output table
+    :param power_flow_model_name: model name used in run folder structure
+    :param redispatch_algorithm: redispatch algorithm enum
+    :param redispatch_constraint_units: redispatch option used to build file
+                                        names and output metadata
+    :param redispatch_threshold: threshold used to build file names and output
+                                 metadata
+    :return: normalized table with ``dataset``, ``power_flow_model``,
+             ``redispatch_algorithm``, redispatch options, ``metric``, and
+             ``value``
+    """
     metadata = parse_run_config(run_dir / "run_config.txt")
     zonal_path = metadata.get("zonal_path", "")
     redispatch_root = (
@@ -469,5 +602,4 @@ def load_redispatch_metrics_from_run(
             "value",
         ]
     ]
-
 

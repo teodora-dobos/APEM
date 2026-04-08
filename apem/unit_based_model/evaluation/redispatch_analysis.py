@@ -16,7 +16,16 @@ REDISPATCH_FILE_PATTERNS = {
 
 
 def validate_redispatch_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate and normalize the generic redispatch-analysis input table."""
+    """
+    Validate and normalize a generic redispatch-analysis input table.
+
+    :param df: input table expected to contain ``redispatch_algorithm``,
+               ``metric``, and ``value``
+    :return: normalized copy with lowercase metric labels and numeric ``value``
+    :raises ValueError: if required columns are missing, metric values are
+                        unsupported, algorithm labels are empty, or no numeric
+                        values are available
+    """
     normalized = df.copy()
     normalized.columns = [str(column).strip() for column in normalized.columns]
 
@@ -49,7 +58,20 @@ def load_redispatch_metric_file(
     redispatch_algorithm: str | None = None,
     metric: str | None = None,
 ) -> pd.DataFrame:
-    """Load one redispatch metric file and normalize it to the generic table format."""
+    """
+    Load one redispatch metric file and normalize it to tabular format.
+
+    The file is expected to contain one ``<label>: <value>`` line.
+
+    :param path: redispatch metric file path
+    :param redispatch_algorithm: algorithm label override; inferred from the
+                                 file name when omitted
+    :param metric: metric label override (for example ``costs`` or ``volumes``);
+                   inferred from the file name when omitted
+    :return: validated one-row table with
+             ``redispatch_algorithm``, ``metric``, ``value``
+    :raises ValueError: if parsing fails or inferred values are invalid
+    """
     file_path = Path(path)
     metric_name = metric or _infer_metric_name(file_path)
     algorithm_name = redispatch_algorithm or _infer_redispatch_algorithm_name(file_path)
