@@ -13,28 +13,31 @@ If you are new to the project, the most important thing to understand is this:
 
 `config.json` is the runtime input for `main.py`.
 
-In practice, a normal workflow looks like this:
-
 1. Open [`config.json`](https://github.com/teodora-dobos/APEM/blob/main/config.json).
-2. Choose which market model you want to run under `run.market_model`.
-3. Edit the settings for that model.
-4. Save the file and run:
+2. Set `run.market_model`.
+3. Edit the corresponding model section.
+4. Run:
 
 ```bash
 python main.py
 ```
 
-APEM then loads `config.json`, validates it, and runs the selected workflow with those settings.
+APEM loads the file, validates it, and executes the selected workflow.
 
 ## Basic Structure
 
-The configuration file is model-scoped and has three main sections:
+`config.json` is model-scoped and has three main sections:
 
 - `run`: global run selection
-- `unit_based_model`: settings used when `run.market_model = "unit_based_model"`
-- `order_book_based_model`: settings used when `run.market_model = "order_book_based_model"`
+- `unit_based_model`: used when `run.market_model = "unit_based_model"`
+- `order_book_based_model`: used when `run.market_model = "order_book_based_model"`
 
-Only one market model is active in a given run. The inactive section can stay in the file, but it is not used for that run.
+```text
+config.json
+├── run
+├── unit_based_model
+└── order_book_based_model
+```
 
 ## Minimal Example
 
@@ -64,52 +67,54 @@ Only one market model is active in a given run. The inactive section can stay in
 }
 ```
 
-This example runs the **unit-based workflow** because `run.market_model` is set to `unit_based_model`. More specifically, APEM will load the `PyPSAEurLarge` dataset, solve the market-clearing problem with the `DCOPF` power-flow model, and apply the `ELMP` pricing algorithm. The `order_book_based_model` section remains in the file as an inactive configuration block for future runs, but it is ignored in this run.
+This example runs the unit-based workflow because `run.market_model` is `unit_based_model`.
 
 ## What To Edit First
 
-If you only want to get started, focus on these fields:
+::::{tab-set}
+:::{tab-item} Global (`run`)
+| field | required | purpose | typical values |
+|---|---|---|---|
+| `run.market_model` | yes | Select active workflow. | `unit_based_model`, `order_book_based_model` |
+| `run.verbosity` | recommended | Control console output level. | `true`, `false` |
+:::
 
-### Global run selection
+:::{tab-item} Unit-Based
+If `run.market_model = "unit_based_model"`, edit these first:
 
-- `run.market_model`
-  - choose `unit_based_model` or `order_book_based_model`
-- `run.verbosity`
-  - enables or reduces console output during the run
+| field | required | purpose | examples |
+|---|---|---|---|
+| `unit_based_model.dataset` | yes | Choose input dataset. | `PyPSAEurLarge`, `PJM` |
+| `unit_based_model.power_flow_model.type` | yes | Choose nodal vs zonal power-flow model. | `DCOPF`, `Zonal_NTC_aggregated` |
+| `unit_based_model.pricing_algorithm` | yes | Choose pricing method. | `ELMP`, `IP` |
+| `unit_based_model.solver_configuration` | recommended | Runtime, tolerance, and solver behavior. | `time_limit`, `MIP_gap`, `threads` |
 
-### Unit-based workflow
+For zonal runs, also configure:
 
-If `run.market_model` is `unit_based_model`, the most important fields are:
-
-- `unit_based_model.dataset`
-- `unit_based_model.power_flow_model.type`
-- `unit_based_model.pricing_algorithm`
-
-If you use a **zonal** power-flow model, you will also adjust:
-
-- `unit_based_model.redispatch.algorithm`
+- `unit_based_model.redispatch`
 - `unit_based_model.zonal_configuration`
+:::
+
+:::{tab-item} Order-Book
+If `run.market_model = "order_book_based_model"`, edit these first:
+
+| field | required | purpose | examples |
+|---|---|---|---|
+| `order_book_based_model.dataset` | yes | Select order-book dataset. | `TEST_3NODE`, `OMIE` |
+| `order_book_based_model.cut_type` | yes | Select cut strategy. | `price based`, `no good` |
+| `order_book_based_model.euphemia_configuration.network_model` | yes | Select network representation. | `ATC`, `FBMC` |
+| `order_book_based_model.euphemia_configuration` | recommended | Iteration/reinsertion/solver controls. | `max_iterations`, `time_limit`, `price_lower_bound` |
+:::
+::::
 
 ```{note}
-Redispatch is only used for zonal power-flow models such as `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, and `Zonal_FBMC`. It is **not** used with `DCOPF`. These zonal models are only supported for `PyPSAEurSmall` and `PyPSAEurLarge`.
+Redispatch is only used for zonal unit-based models (`Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, `Zonal_FBMC`). It is not used with `DCOPF`. These zonal models are only supported for `PyPSAEurSmall` and `PyPSAEurLarge`.
 ```
-
-You will mainly adjust `solver_configuration` when you need to change runtime limits, tolerances, or solver behavior.
-
-### Order-book workflow
-
-If `run.market_model` is `order_book_based_model`, the most important fields are:
-
-- `order_book_based_model.dataset`
-- `order_book_based_model.cut_type`
-- `order_book_based_model.euphemia_configuration.network_model`
-
-The rest of `euphemia_configuration` controls details such as iteration limits, reinsertion behavior, price bounds, and solver options.
 
 ## Two Common Starting Points
 
-### Example: unit-based run
-
+::::{tab-set}
+:::{tab-item} Unit-Based Template
 ```json
 {
   "run": {
@@ -138,11 +143,12 @@ The rest of `euphemia_configuration` controls details such as iteration limits, 
   }
 }
 ```
+Use this for zonal unit-based runs with redispatch.
 
-Use this when you want to run a **zonal** unit-based market model with redispatch. If you instead want a nodal `DCOPF` run, you typically omit `redispatch` and `zonal_configuration`.
+For nodal runs, switch `power_flow_model.type` to `DCOPF` and usually omit `redispatch` and `zonal_configuration`.
+:::
 
-### Example: order-book-based run
-
+:::{tab-item} Order-Book Template
 ```json
 {
   "run": {
@@ -159,17 +165,20 @@ Use this when you want to run a **zonal** unit-based market model with redispatc
   }
 }
 ```
-
-Use this when you want to run the simplified EUPHEMIA-style order-book workflow.
+Use this for the simplified EUPHEMIA-style order-book workflow.
+:::
+::::
 
 ## Main Option Groups
 
-### Market models
+::::{tab-set}
+:::{tab-item} Model + Datasets
+`run.market_model`
 
 - `unit_based_model`
 - `order_book_based_model`
 
-### Unit-based datasets
+`unit_based_model.dataset`
 
 - `IEEE_RTS`
 - `PJM`
@@ -177,7 +186,7 @@ Use this when you want to run the simplified EUPHEMIA-style order-book workflow.
 - `PyPSAEurLarge`
 - `ARPA`
 
-### Order-book datasets
+`order_book_based_model.dataset`
 
 - `GENERATED_SMALL`
 - `GENERATED_LARGE`
@@ -187,15 +196,17 @@ Use this when you want to run the simplified EUPHEMIA-style order-book workflow.
 - `TEST_3NODE_LOWCAP`
 - `IEEE_RTS`
 - `ARPA`
+:::
 
-### Unit-based power-flow models
+:::{tab-item} Unit-Based Algorithms
+`unit_based_model.power_flow_model.type`
 
 - `DCOPF`
 - `Zonal_NTC_aggregated`
 - `Zonal_NTC_multiedge`
 - `Zonal_FBMC`
 
-### Pricing algorithms
+`unit_based_model.pricing_algorithm`
 
 - `ELMP`
 - `IP`
@@ -203,37 +214,39 @@ Use this when you want to run the simplified EUPHEMIA-style order-book workflow.
 - `Join`
 - `Markup`
 
-### Redispatch algorithms
-
-These are only relevant for zonal unit-based models, not for `DCOPF`.
+`unit_based_model.redispatch.algorithm` (zonal only)
 
 - `MinCostRD`
 - `MinAbsCostRD`
 - `MinAbsVolRD`
+:::
 
-### Order-book cut types
+:::{tab-item} Order-Book Algorithms
+`order_book_based_model.cut_type`
 
 - `price based`
 - `combinatorial benders`
 - `no good`
+:::
+::::
 
 ```{warning}
-Not every configuration combination is supported.
+Not every combination is supported.
 
-For the **unit-based workflow**:
+For the unit-based workflow:
 
-- `DCOPF` is the nodal model. Use it without redispatch.
-- `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, and `Zonal_FBMC` are zonal models. They only work with `PyPSAEurSmall` and `PyPSAEurLarge`.
-- `redispatch` and `zonal_configuration` are only relevant for those zonal runs.
+- `DCOPF` is nodal. Use it without redispatch.
+- `Zonal_NTC_aggregated`, `Zonal_NTC_multiedge`, and `Zonal_FBMC` are zonal and only supported with `PyPSAEurSmall` and `PyPSAEurLarge`.
+- `redispatch` and `zonal_configuration` are relevant only for zonal runs.
 
 In practice:
 
-- choose `DCOPF` if you want a nodal run
-- choose a zonal model only together with `PyPSAEurSmall` or `PyPSAEurLarge`
+- choose `DCOPF` for nodal runs
+- choose zonal models only with `PyPSAEurSmall` or `PyPSAEurLarge`
 ```
 
 ## Validation
 
-APEM validates the configuration before running. If something is missing or inconsistent, it will raise an error instead of silently using a broken setup.
+APEM validates `config.json` before running. Missing or inconsistent settings raise errors instead of running with a broken setup.
 
 Validation is implemented in `apem.config_loader.ConfigLoader`.
