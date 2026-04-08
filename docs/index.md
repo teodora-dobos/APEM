@@ -1,6 +1,6 @@
 # APEM: Allocation and Pricing in Electricity Markets
 
-APEM is a research and experimentation framework for electricity-market clearing, pricing, and analysis. It brings together optimization-based market models, pricing methods, network-aware post-processing, and supporting evaluation tools in a single codebase.
+APEM is a framework for electricity-market clearing, pricing, and analysis. It brings together optimization-based market models, pricing methods, network-aware post-processing, and supporting evaluation tools in a single codebase.
 
 ```{toctree}
 :maxdepth: 1
@@ -30,7 +30,7 @@ workflows/unit_based_model
 workflows/order_book_based_model
 ```
 
-![Framework overview](_static/framework_overview.png)
+![Framework overview](../framework_overview.png)
 
 ## What APEM Includes
 
