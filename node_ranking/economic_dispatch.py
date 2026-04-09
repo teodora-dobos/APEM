@@ -1,3 +1,10 @@
+"""Helpers for building and solving the baseline DC economic-dispatch model.
+
+These utilities convert APEM unit-based datasets into the simplified input
+format used by the node-ranking routines and solve the baseline dispatch model
+that feeds several market-based node scores.
+"""
+
 import gurobipy as gp
 from gurobipy import GRB
 
@@ -8,7 +15,18 @@ def _build_dispatch_inputs_from_scenario(scenario, period: int | None):
     """
     Build dispatch input dictionaries from a parsed unit-based scenario.
 
-    Returns `(nodes, gens, lines)` with normalized string node identifiers.
+    Parameters
+    ----------
+    scenario
+        Parsed APEM unit-based scenario.
+    period : int or None
+        If provided, extract inputs for that single period. Otherwise, build a
+        period-aggregated representation.
+
+    Returns
+    -------
+    tuple[dict, dict, dict]
+        ``(nodes, gens, lines)`` with normalized string node identifiers.
     """
     df_buyers = scenario.df_buyers.copy()
     df_sellers = scenario.df_sellers.copy()
@@ -91,7 +109,18 @@ def build_dispatch_inputs(
     """
     Build dispatch input dictionaries from a unit-based dataset.
 
-    Returns `(nodes, gens, lines)` for the selected period or period-average.
+    Parameters
+    ----------
+    dataset : UnitBased_Datasets
+        Dataset enum entry to parse.
+    period : int or None
+        If provided, extract inputs for that single period. Otherwise, build a
+        period-aggregated representation.
+
+    Returns
+    -------
+    tuple[dict, dict, dict]
+        ``(nodes, gens, lines)`` for the selected period or period-average.
     """
     scenario = dataset.value.parse_data()
     return _build_dispatch_inputs_from_scenario(scenario, period=period)
@@ -120,8 +149,26 @@ def solve_economic_dispatch(
     In other words, this is a generator-node interdiction (GNI) model, not
     a bus-outage or line-outage model.
 
-    Returns `None` if the optimization is not optimal; otherwise returns a dict
-    containing objective value, dispatch, nodal prices, duals, flows, and shed.
+    Parameters
+    ----------
+    dataset : UnitBased_Datasets
+        Dataset enum entry to parse and solve.
+    fail_nodes : iterable or None, default=None
+        Node labels whose generators should be disabled.
+    period : int or None, default=None
+        If provided, solve a single-period problem. Otherwise, solve on the
+        period-aggregated representation built by
+        :func:`build_dispatch_inputs`.
+    VOLL : float, default=500.0
+        Value of lost load used as the load-shedding penalty.
+
+    Returns
+    -------
+    dict or None
+        ``None`` if the optimization is not optimal. Otherwise a dictionary
+        containing at least ``cost``, ``shed_total``, ``dispatch``,
+        ``lambdas``, ``gamma``, ``shed``, ``flows``, ``mu_plus``, and
+        ``mu_minus``.
     """
     fail_nodes = {str(node) for node in (fail_nodes or [])}
     scenario = dataset.value.parse_data()
@@ -204,8 +251,22 @@ def economic_dispatch_cost(
     """
     Compute total dispatch cost and total load shed.
 
-    Returns `(cost, shed_total)` or `None` if the dispatch problem is not solved
-    to optimality.
+    Parameters
+    ----------
+    dataset : UnitBased_Datasets
+        Dataset enum entry to solve.
+    fail_nodes : iterable or None, default=None
+        Node labels whose generators should be disabled.
+    period : int or None, default=None
+        If provided, solve a single-period problem.
+    VOLL : float, default=500.0
+        Value of lost load used as the load-shedding penalty.
+
+    Returns
+    -------
+    tuple[float, float] or None
+        ``(cost, shed_total)`` if the dispatch problem is solved to optimality,
+        otherwise ``None``.
     """
     result = solve_economic_dispatch(dataset, fail_nodes=fail_nodes, period=period, VOLL=VOLL)
     if result is None:

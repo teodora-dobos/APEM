@@ -1,3 +1,13 @@
+"""Market-based score functions and PTDF utilities for node ranking.
+
+This module contains:
+
+- PTDF construction helpers for DC network representations
+- node-level scores based on baseline dispatch outputs
+- score formulations that use dispatch, nodal prices, scarcity duals, and
+  congestion duals
+"""
+
 from collections.abc import Hashable
 from typing import Any
 
@@ -27,6 +37,12 @@ def build_B_matrix(
         Node labels in the order used for B.
     node_index : dict
         Map node label -> row/col index in B.
+
+    Notes
+    -----
+    For each edge ``(u, v)``, the edge susceptance is added to the diagonal
+    entries of ``u`` and ``v`` and subtracted from the corresponding
+    off-diagonal entries.
     """
     nodes = list(G.nodes())
     n = len(nodes)
@@ -54,6 +70,13 @@ def invert_reduced_B(
 ) -> tuple[np.ndarray, list[int], np.ndarray]:
     """
     Invert the reduced B matrix after removing the slack row/column.
+
+    Parameters
+    ----------
+    B : np.ndarray
+        Full nodal susceptance matrix.
+    slack_idx : int
+        Index of the slack bus in ``B``.
 
     Returns
     -------
@@ -83,6 +106,19 @@ def compute_bus_angle_basis(
     """
     Compute bus-angle responses for unit injections at non-slack buses.
 
+    Parameters
+    ----------
+    Binv : np.ndarray
+        Inverse of the reduced susceptance matrix.
+    n : int
+        Number of buses in the original full system.
+    slack_idx : int
+        Index of the slack bus in the full system. This argument is included
+        for interface clarity; the slack angle is fixed implicitly by
+        reinserting a zero row.
+    mask : list[int]
+        Full-system indices of the non-slack buses.
+
     Returns
     -------
     theta_full : (n, n-1) np.ndarray
@@ -105,6 +141,16 @@ def compute_ptdf(
     """
     Compute the PTDF matrix (1 MW injection, slack withdrawal convention).
 
+    Parameters
+    ----------
+    G : nx.Graph
+        Network with line susceptance stored in ``b_attr``.
+    slack : hashable or None, default=None
+        Label of the slack node. If omitted, the first node in ``G.nodes()``
+        is used.
+    b_attr : str, default="B"
+        Edge attribute containing line susceptance.
+
     Returns
     -------
     ptdf : (m, n-1) np.ndarray
@@ -117,6 +163,11 @@ def compute_ptdf(
         Indices of non-slack buses (maps ptdf columns -> nodes[mask[c]]).
     slack_node : hashable
         The chosen slack node label.
+
+    Notes
+    -----
+    The returned PTDF has one column per non-slack bus. Column ``c``
+    corresponds to node ``nodes[mask[c]]``.
     """
     B, nodes, node_index = build_B_matrix(G, b_attr=b_attr)
 
@@ -152,6 +203,10 @@ def rent_weighted_dispatch_score(
     r"""
     Compute rent-weighted dispatch scores from a baseline dispatch.
 
+    This score rewards dispatched generators that earn a positive gross margin
+    at the baseline nodal price, then aggregates those generator-level scores
+    to nodes.
+
     Score definition:
 
     .. math::
@@ -163,7 +218,21 @@ def rent_weighted_dispatch_score(
     where :math:`d_g` is dispatch, :math:`c_g` is generator cost, and
     :math:`\lambda_{n(g)}` is the nodal price at the generator's node.
 
-    Returns `(node_scores, gen_scores)`.
+    Parameters
+    ----------
+    nodes : dict
+        Node data keyed by node label. Used to initialize the node-score map.
+    generators : dict
+        Generator data keyed by generator id. Each generator must provide at
+        least ``node`` and ``cost``.
+    baseline_result : dict
+        Baseline dispatch outputs containing ``dispatch`` and ``lambdas``.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float]]
+        ``(node_scores, gen_scores)`` with node-level and generator-level
+        rent-weighted dispatch scores.
     """
     dispatch = baseline_result["dispatch"]
     lambdas = baseline_result["lambdas"]
@@ -189,10 +258,27 @@ def dispatch_volume_score(
     r"""
     Compute node dispatch-volume scores from a baseline dispatch.
 
+    This score is the total dispatched generation connected to each node.
+
     Score definition:
 
     .. math::
        S_v = \sum_{g \in G(v)} d_g
+
+    Parameters
+    ----------
+    nodes : dict
+        Node data keyed by node label.
+    generators : dict
+        Generator data keyed by generator id. Each generator must provide a
+        ``node`` entry.
+    baseline_result : dict
+        Baseline dispatch outputs containing ``dispatch``.
+
+    Returns
+    -------
+    dict[str, float]
+        Node-level dispatch volume scores.
     """
     dispatch = baseline_result["dispatch"]
     node_scores: dict[str, float] = {str(v): 0.0 for v in nodes}
@@ -211,6 +297,10 @@ def gamma_capacity_score(
     r"""
     Compute gamma-capacity scores from a baseline dispatch.
 
+    This score combines the generator-capacity dual ``gamma`` with installed
+    capacity and then aggregates the resulting generator-level scarcity signal
+    to nodes.
+
     Score definition:
 
     .. math::
@@ -219,7 +309,21 @@ def gamma_capacity_score(
     .. math::
        S_v = \sum_{g \in G(v)} s_g
 
-    Returns `(node_scores, gen_scores)`.
+    Parameters
+    ----------
+    nodes : dict
+        Node data keyed by node label.
+    generators : dict
+        Generator data keyed by generator id. Each generator must provide
+        ``node`` and ``p_max``.
+    baseline_result : dict
+        Baseline dispatch outputs containing ``gamma``.
+
+    Returns
+    -------
+    tuple[dict[str, float], dict[str, float]]
+        ``(node_scores, gen_scores)`` with node-level and generator-level
+        gamma-capacity scores.
     """
     gamma = baseline_result["gamma"]
 
@@ -243,12 +347,33 @@ def gamma_capacity_congestion_score(
     r"""
     Compute gamma-capacity-congestion score (GCCS) per node.
 
+    This score adds two components at each node:
+
+    - a generator-scarcity term based on ``gamma_g P_g^{max}``
+    - a congestion term based on the dual values of incident line limits
+
     Score definition:
 
     .. math::
        S_v = \sum_{g \in G(v)} \gamma_g P_g^{\max} + \sum_{(v,w) \in \delta(v)} F_{vw}^{\max}\left(\mu_{vw}^{+} + \mu_{vw}^{-}\right)
 
-    Returns node-level scores.
+    Parameters
+    ----------
+    nodes : dict
+        Node data keyed by node label.
+    generators : dict
+        Generator data keyed by generator id.
+    lines : dict
+        Line data keyed by line id. Each line must provide ``ends`` and
+        ``capacity``.
+    baseline_result : dict
+        Baseline dispatch outputs containing ``gamma``, ``mu_plus``, and
+        ``mu_minus``.
+
+    Returns
+    -------
+    dict[str, float]
+        Node-level gamma-capacity-congestion scores.
     """
     gamma = baseline_result["gamma"]
     mu_plus = baseline_result["mu_plus"]
@@ -282,6 +407,9 @@ def load_weighted_lmp_score(
     r"""
     Compute load-weighted LMP scores from baseline nodal prices and load.
 
+    This score highlights nodes where high prices coincide with high load.
+    Optionally, nodal prices can be capped at ``VOLL`` before weighting.
+
     Score definition:
 
     .. math::
@@ -291,6 +419,22 @@ def load_weighted_lmp_score(
 
     .. math::
        S_v = \min(\lambda_v, \mathrm{VOLL}) L_v
+
+    Parameters
+    ----------
+    nodes : dict
+        Node data keyed by node label. Each node must provide ``load``.
+    baseline_result : dict
+        Baseline dispatch outputs containing ``lambdas``.
+    VOLL : float, default=500.0
+        Price cap applied when ``cap_lambda`` is enabled.
+    cap_lambda : bool, default=True
+        Whether to cap nodal prices at ``VOLL`` before scoring.
+
+    Returns
+    -------
+    dict[str, float]
+        Node-level load-weighted LMP scores.
     """
     lambdas = baseline_result["lambdas"]
 
@@ -315,6 +459,10 @@ def ptdf_stress_score(
     r"""
     Compute PTDF stress score (PTDFS) per node.
 
+    This score combines installed capacity at a node with the node's PTDF
+    exposure to lines that have little residual margin. Higher values indicate
+    nodes whose injections are both large and strongly coupled to tight lines.
+
     For each non-slack node :math:`v`:
 
     .. math::
@@ -324,6 +472,27 @@ def ptdf_stress_score(
     :math:`\varepsilon` avoids division by zero.
     Slack node score is set to 0 because PTDF is provided only for non-slack
     columns (given by `mask`).
+
+    Parameters
+    ----------
+    ptdf : np.ndarray
+        PTDF matrix with rows as lines and columns as non-slack buses.
+    nodes : list[hashable]
+        Node labels in the full network order.
+    mask : list[int]
+        Indices of non-slack buses corresponding to PTDF columns.
+    generators : dict
+        Generator data keyed by generator id. Each generator must provide
+        ``node`` and ``p_max``.
+    line_margins : np.ndarray or list[float]
+        Residual margin for each PTDF row / line.
+    epsilon : float, default=1e-6
+        Small positive stabilizer in the denominator.
+
+    Returns
+    -------
+    dict[hashable, float]
+        PTDF stress score for each node in the full node set.
     """
     margins = np.asarray(line_margins, dtype=float).reshape(-1)
     if margins.shape[0] != ptdf.shape[0]:
