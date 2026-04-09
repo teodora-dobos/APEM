@@ -2,6 +2,8 @@
 
 APIs for market allocation and power-flow-model solving in the unit-based workflow.
 
+Module: `apem.unit_based_model.allocation`
+
 ```{toctree}
 :maxdepth: 1
 :hidden:

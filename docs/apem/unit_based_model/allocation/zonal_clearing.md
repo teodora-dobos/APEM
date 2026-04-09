@@ -4,6 +4,7 @@ Zonal-clearing allocation algorithms and redispatch routines.
 
 ```{toctree}
 :maxdepth: 1
+:hidden:
 
 zonal_clearing/fbmc
 zonal_clearing/ntc_aggregated

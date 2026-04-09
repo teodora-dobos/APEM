@@ -4,6 +4,7 @@ Redispatch algorithms for zonal-clearing workflows.
 
 ```{toctree}
 :maxdepth: 1
+:hidden:
 
 redispatch/min_cost
 redispatch/min_abs_cost

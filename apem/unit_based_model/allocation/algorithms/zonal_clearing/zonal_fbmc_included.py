@@ -163,7 +163,18 @@ class Zonal_FBMC(PowerFlowModel):
               min_cost: Optional[bool] = False, min_vol: Optional[bool] = False,
               zonal_allocation: Optional[Allocation] = None) -> Union[Allocation, Error]:
         """
-        Formulates and solves the Zonal FBMC problem.
+        Formulate and solve the zonal FBMC workflow inside APEM.
+
+        :param scenario: Original nodal scenario used as input for FBMC aggregation and solving.
+        :param configuration: Optimizer configuration applied to the zonal FBMC model.
+        :param results_file: Optional CSV file path for writing variable values or solver status.
+        :param stats_file: Optional file path for writing summary statistics.
+        :param u_fixed: Unused placeholder kept for interface compatibility with other power-flow models.
+        :param redispatch: Unused flag kept for interface compatibility; redispatch is currently ignored here.
+        :param min_cost: Unused compatibility flag.
+        :param min_vol: Unused compatibility flag.
+        :param zonal_allocation: Unused compatibility parameter.
+        :return: Tuple ``(zonal_scenario, allocation)`` on success or an ``Error`` object otherwise.
         """
 
         try:
@@ -222,6 +233,9 @@ class Zonal_FBMC(PowerFlowModel):
     def _save_zonal_results(self, zonal_results, results_file):
         """
         Save zonal FBMC specific results to files.
+
+        :param zonal_results: Result dictionary returned by ``ZonalDispatchModel.solve``.
+        :param results_file: CSV file path for the serialized results.
         """
 
         try:
@@ -264,8 +278,16 @@ class Zonal_FBMC(PowerFlowModel):
 def create_allocation_from_zonal_results(zonal_results: dict, network: pypsa.Network,
                                          zonal_scenario: Scenario, power_flow_model: 'Zonal_FBMC') -> Allocation:
     """
-    Creates a purely ZONAL allocation object that matches the zonal_scenario.
-    It synthesizes inter-zonal flows by aggregating the solved FBMC line loadings.
+    Create a zonal ``Allocation`` object from solved FBMC results.
+
+    The function reconstructs accepted demand, generator schedules, prices, and synthesized interzonal
+    flows so the returned allocation matches the aggregated zonal scenario.
+
+    :param zonal_results: Result dictionary returned by ``ZonalDispatchModel.solve``.
+    :param network: Original nodal PyPSA network used for the FBMC solve.
+    :param zonal_scenario: Aggregated zonal scenario produced for the FBMC workflow.
+    :param power_flow_model: ``Zonal_FBMC`` instance that produced the results.
+    :return: Allocation object populated with zonal FBMC results.
     """
     model = zonal_results.get('model')
     if model is None or model.Status != GRB.OPTIMAL:

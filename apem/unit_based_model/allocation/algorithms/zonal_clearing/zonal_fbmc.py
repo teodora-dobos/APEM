@@ -22,6 +22,11 @@ C_DEV = 99999
 def get_zone_maps(network: pypsa.Network, node_zone_mapper: callable, zonal_configuration: str):
     """
     Creates mappings from nodes to zones and zones to nodes using the provided mapper function.
+
+    :param network: PyPSA network whose buses are assigned to zones.
+    :param node_zone_mapper: Function mapping ``(zonal_configuration, latitude, longitude)`` to a zone id.
+    :param zonal_configuration: Name of the zonal configuration to apply.
+    :return: Tuple ``(node_to_zone, zone_to_nodes)`` with a bus-to-zone series and reverse mapping.
     """
     node_to_zone = pd.Series(
         {bus: node_zone_mapper(zonal_configuration, network.buses.at[bus, 'y'], network.buses.at[bus, 'x'])
@@ -34,7 +39,14 @@ def get_zone_maps(network: pypsa.Network, node_zone_mapper: callable, zonal_conf
 
 
 def calculate_gsk(network: pypsa.Network, node_to_zone: pd.Series, zone_to_nodes: dict) -> pd.Series:
-    """Calculates Generation Shift Keys (GSK) based on generator p_nom."""
+    """
+    Calculate generation shift keys from installed generator capacities.
+
+    :param network: PyPSA network containing generator capacities and bus assignments.
+    :param node_to_zone: Mapping from buses to zones.
+    :param zone_to_nodes: Mapping from each zone to the buses it contains.
+    :return: Series indexed by bus with one shift-key value per bus.
+    """
     gen_p_nom = network.generators.groupby('bus')['p_nom'].sum()
     bus_p_nom = gen_p_nom.reindex(network.buses.index, fill_value=0)
     gsk = pd.Series(index=network.buses.index, dtype=float)
@@ -52,13 +64,31 @@ def calculate_gsk(network: pypsa.Network, node_to_zone: pd.Series, zone_to_nodes
 
 
 def calculate_zonal_ptdf(nodal_ptdf: pd.DataFrame, gsk: pd.Series, node_to_zone: pd.Series) -> pd.DataFrame:
-    """Calculates the Zonal PTDF matrix."""
+    """
+    Aggregate a nodal PTDF matrix to the zonal level.
+
+    :param nodal_ptdf: Nodal PTDF matrix with lines as rows and buses as columns.
+    :param gsk: Generation shift keys used for zonal aggregation.
+    :param node_to_zone: Mapping from buses to zones.
+    :return: Zonal PTDF matrix with lines as rows and zones as columns.
+    """
     return nodal_ptdf.mul(gsk, axis='columns').T.groupby(node_to_zone).sum().T
 
 
 def select_fb_lines(zonal_ptdf: pd.DataFrame, network: pypsa.Network, node_to_zone: pd.Series,
                     threshold: float = 0.05) -> list:
-    """Selects lines for the Flow-Based domain (interzonal + sensitive intrazonal)."""
+    """
+    Select the transmission lines included in the flow-based domain.
+
+    The returned set contains all interzonal lines plus intrazonal lines whose zonal PTDF spread
+    exceeds ``threshold``.
+
+    :param zonal_ptdf: Zonal PTDF matrix.
+    :param network: PyPSA network containing the transmission lines.
+    :param node_to_zone: Mapping from buses to zones.
+    :param threshold: Minimum PTDF spread required to keep an intrazonal line.
+    :return: Sorted list of selected line identifiers.
+    """
     interzonal_lines = {
         line for line, data in network.lines.iterrows()
         if node_to_zone.get(data.bus0) != node_to_zone.get(data.bus1)
@@ -69,13 +99,27 @@ def select_fb_lines(zonal_ptdf: pd.DataFrame, network: pypsa.Network, node_to_zo
 
 
 def aggregate_by_zone(df: pd.DataFrame, node_to_zone: pd.Series) -> pd.DataFrame:
-    """Aggregates a nodal DataFrame (like demand or net positions) to the zonal level."""
+    """
+    Aggregate a nodal time series table to the zonal level.
+
+    :param df: DataFrame indexed by time with buses as columns.
+    :param node_to_zone: Mapping from buses to zones.
+    :return: DataFrame indexed by time with zones as columns.
+    """
     return df.T.groupby(node_to_zone).sum().T
 
 
 class BaseCaseGenerator:
     def __init__(self, network: pypsa.Network, ptdf: pd.DataFrame,
                  node_zone_mapper: callable, zonal_configuration: str):
+        """
+        Initialize the base-case generator used by the zonal FBMC workflow.
+
+        :param network: PyPSA network representing the nodal system.
+        :param ptdf: Nodal PTDF matrix used by the base-case models.
+        :param node_zone_mapper: Function mapping buses to zones from coordinates.
+        :param zonal_configuration: Name of the zonal configuration to apply.
+        """
         self.network = network
         self.ptdf = ptdf
         self.node_to_zone, self.zone_to_nodes = get_zone_maps(network, node_zone_mapper, zonal_configuration)
@@ -154,6 +198,9 @@ class BaseCaseGenerator:
         - ``BC4``: Two-step approach:
           1) Relax intrazonal line capacities (x10), solve nodal model, and derive zonal reference net positions.
           2) Re-solve the original nodal model while fixing each zonal net position to that reference.
+
+        :param base_case_type: Identifier of the base-case construction to use.
+        :return: DataFrame of expected nodal injections by snapshot and bus, or ``None`` if the solve fails.
         """
         if base_case_type == 'BC1':  # Same as nodal solution
             model, p_bus = self._create_base_nodal_model(self.network)
@@ -204,6 +251,19 @@ class ZonalDispatchModel:
     def solve(self, network: pypsa.Network, nodal_ptdf: pd.DataFrame,
               p_bus_expected: pd.DataFrame, node_zone_mapper: callable,
               zonal_configuration: str, verbose: bool = True, configuration: Configuration = None):
+        """
+        Formulate and solve the zonal FBMC dispatch model.
+
+        :param network: PyPSA network of the original nodal system.
+        :param nodal_ptdf: Nodal PTDF matrix used to derive zonal constraints.
+        :param p_bus_expected: Expected nodal injections from the selected base case.
+        :param node_zone_mapper: Function mapping buses to zones from coordinates.
+        :param zonal_configuration: Name of the zonal configuration to apply.
+        :param verbose: Whether Gurobi logging should be shown.
+        :param configuration: Optional optimizer configuration wrapper applied to the model.
+        :return: Dictionary containing dispatch results, FBMC network data, duals, and raw model output,
+            or ``None`` if the optimization fails.
+        """
 
         if verbose:
             logging.info("--- Starting ZonalDispatchModel solve ---")
@@ -340,6 +400,18 @@ class RedispatchModel:
     def solve(self, network: pypsa.Network, ptdf: pd.DataFrame,
               zonal_results: dict, node_zone_mapper: callable,
               zonal_configuration: str, method: str, verbose: bool = True):
+        """
+        Solve the nodal redispatch problem after zonal FBMC clearing.
+
+        :param network: PyPSA network of the nodal system.
+        :param ptdf: Nodal PTDF matrix used for redispatch flow constraints.
+        :param zonal_results: Result dictionary returned by ``ZonalDispatchModel.solve``.
+        :param node_zone_mapper: Function mapping buses to zones from coordinates.
+        :param zonal_configuration: Name of the zonal configuration to apply.
+        :param method: Redispatch formulation identifier, either ``R1`` or ``R2``.
+        :param verbose: Whether Gurobi logging should be shown.
+        :return: Dictionary summarizing redispatch status, costs, and dispatch outputs.
+        """
 
         if verbose:
             logging.info(f"--- Starting RedispatchModel solve (Method: {method}) ---")
