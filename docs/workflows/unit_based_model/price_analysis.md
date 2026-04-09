@@ -6,8 +6,8 @@ Analyze and compare market prices for unit-based runs.
 
 ## Scripts
 
-- `scripts/unit_based_model/example_price_evaluation.py`
-- `scripts/unit_based_model/example_zonal_price_evaluation.py`
+- [`scripts/unit_based_model/example_price_evaluation.py`](https://github.com/teodora-dobos/APEM/blob/main/scripts/unit_based_model/example_price_evaluation.py)
+- [`scripts/unit_based_model/example_zonal_price_evaluation.py`](https://github.com/teodora-dobos/APEM/blob/main/scripts/unit_based_model/example_zonal_price_evaluation.py)
 
 ## Key Inputs
 
@@ -16,11 +16,10 @@ Analyze and compare market prices for unit-based runs.
 - Power-flow setup (`POWER_FLOW_MODEL`, `ZONAL_CONFIGURATION`, `NTC_FACTOR`, `FBMC_BASE_CASE`).
 - Plot statistic (`PLOT_STATISTIC_FN`).
 
-## Command Examples
+## Command Example
 
 ```bash
 python scripts/unit_based_model/example_price_evaluation.py
-python scripts/unit_based_model/example_zonal_price_evaluation.py
 ```
 
 ## Outputs
