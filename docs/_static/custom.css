@@ -1,25 +1,5 @@
 /* Keep custom styling minimal; extend as the docs grow. */
 
-/* Keep primary sidebar navigation structure fixed across pages.
-   We force toctree branches to stay expanded and hide expand/collapse toggles. */
-.bd-sidebar-primary .bd-sidenav .toctree-checkbox {
-  display: none !important;
-}
-
-.bd-sidebar-primary .bd-sidenav label.toctree-toggle {
-  display: none !important;
-}
-
-.bd-sidebar-primary .bd-sidenav .collapse,
-.bd-sidebar-primary .bd-sidenav .collapsing {
-  display: block !important;
-  height: auto !important;
-  visibility: visible !important;
-}
-
-.bd-sidebar-primary .bd-sidenav ul {
-  display: block !important;
-}
 /* Hidden toctrees still emit empty wrapper nodes; suppress them in page content. */
 .toctree-wrapper:empty {
   display: none;
