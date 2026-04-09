@@ -6,7 +6,7 @@ from gurobipy import GRB
 
 from apem.unit_based_model.allocation.allocation import Allocation
 from apem.unit_based_model.solver_configuration import SolverConfiguration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.algorithms.fbmc_support import (
     add_fbmc_price_coupling_constraints,

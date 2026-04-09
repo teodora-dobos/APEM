@@ -5,7 +5,7 @@ import networkx as nx
 from collections import defaultdict
 
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.enums.redispatch_algorithms import RedispatchAlgorithms
 
 

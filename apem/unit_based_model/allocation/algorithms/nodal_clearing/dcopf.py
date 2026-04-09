@@ -11,7 +11,7 @@ from gurobipy import GRB
 from apem.unit_based_model.allocation.allocation import Allocation, SellersAllocation
 from apem.unit_based_model.allocation.analysis.stats import compute_stats
 from apem.unit_based_model.solver_configuration import SolverConfiguration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.utils.extraction import preprocess_as_dict

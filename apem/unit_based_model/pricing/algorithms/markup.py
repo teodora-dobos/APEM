@@ -7,7 +7,7 @@ import pandas as pd
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.allocation import Allocation
 from apem.unit_based_model.solver_configuration import SolverConfiguration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.unit_based_model.pricing.analysis.pricing import Pricing

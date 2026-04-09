@@ -11,7 +11,7 @@ from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.analysis.stats import compute_stats
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 

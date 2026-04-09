@@ -14,7 +14,7 @@ from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggreg
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.unit_based_model.allocation.allocation import SellersAllocation, Allocation
 from apem.unit_based_model.solver_configuration import SolverConfiguration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.analysis.price_analysis import PriceAnalysis
 from apem.unit_based_model.pricing.analysis.pricing import Pricing

@@ -23,3 +23,13 @@ allocation/zonal_clearing
    :members:
    :show-inheritance:
 ```
+
+## Error
+
+Module: `apem.unit_based_model.error`
+
+```{eval-rst}
+.. autoclass:: apem.unit_based_model.error.Error
+   :members:
+   :show-inheritance:
+```
