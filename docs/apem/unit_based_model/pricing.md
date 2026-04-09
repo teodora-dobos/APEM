@@ -1,13 +1,41 @@
 # Pricing
 
-APIs for pricing algorithms in unit-based runs.
+APIs for pricing algorithms and utilities in unit-based runs.
 
-## Pricing Algorithm
+## Pricing Algorithms
 
 Module: `apem.unit_based_model.pricing.algorithms.pricing_algorithm`
 
 ```{eval-rst}
 .. automodule:: apem.unit_based_model.pricing.algorithms.pricing_algorithm
+   :members:
+   :show-inheritance:
+```
+
+## Pricing Results
+
+Module: `apem.unit_based_model.pricing.analysis.pricing`
+
+```{eval-rst}
+.. autoclass:: apem.unit_based_model.pricing.analysis.pricing.Pricing
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: apem.unit_based_model.pricing.analysis.pricing.GLOCS
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: apem.unit_based_model.pricing.analysis.pricing.LLOCS
+   :members:
+   :show-inheritance:
+```
+
+```{eval-rst}
+.. autoclass:: apem.unit_based_model.pricing.analysis.pricing.MWPS
    :members:
    :show-inheritance:
 ```
