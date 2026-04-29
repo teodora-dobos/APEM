@@ -4,20 +4,40 @@ APEM is a Python framework for electricity-market clearing, pricing, and analysi
 
 ![APEM framework overview](framework_overview.png)
 
-## What APEM Includes
+## Modules
 
-APEM is organized around two main market-modeling workflows and supporting analysis modules.
+APEM is organized into three main modules.
+
+### APEM Core
+
+APEM Core is the main market-modeling layer. It loads [config.json](config.json), selects the active market model, runs allocation/pricing workflows, and writes structured outputs under `results/...`.
+
+Core includes two market representations:
 
 - **Unit-based model**: models physical generation units, buyers, networks, allocation, pricing, and redispatch.
 - **Order-book-based model**: models Euphemia-style market clearing from buy and sell orders, including step orders, block orders, complex orders, scalable orders, cuts, and reinsertion logic.
-- **Node ranking**: scores network nodes using graph-based and market-based indicators.
-- **Power-flow relaxations**: groups alternative power-flow relaxation formulations for related studies.
 
-The power-flow-relaxations experiments require MOSEK and a valid MOSEK license. See [power_flow_relaxations/README.md](power_flow_relaxations/README.md).
+### APEM Node Ranking
+
+APEM Node Ranking provides tools for ranking network nodes by structural importance and market relevance. It combines topology-based scores, market-informed scores, PTDF-based indicators, and a DC economic-dispatch baseline.
+
+This module is useful for screening studies, vulnerability analysis, congestion analysis, and comparative scenario evaluation.
+
+### APEM PF Relaxations
+
+APEM PF Relaxations provides experiments for comparing DCOPF and ACOPF relaxation formulations on ARPA-derived subscenarios.
+
+Implemented formulations include:
+
+- `DCOPF`
+- `Shor SDP`
+- `Chordal SDP`
+- `Jabr SOCP`
+- `QC` variants
 
 ## Installation
 
-APEM requires Python 3.10 or newer and a valid Gurobi license for the main market-clearing optimization workflows. The separate power-flow-relaxations module also requires MOSEK and a valid MOSEK license.
+APEM requires Python 3.10 or newer. APEM Core uses Gurobi for the main market-clearing optimization workflows. APEM PF Relaxations uses MOSEK for the power-flow-relaxation experiments.
 
 ```bash
 git clone https://github.com/teodora-dobos/APEM.git
@@ -30,6 +50,8 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
+These commands install the base project dependencies. APEM PF Relaxations has additional MOSEK requirements listed below.
+
 On Windows PowerShell, activate the virtual environment with:
 
 ```powershell
@@ -38,9 +60,11 @@ On Windows PowerShell, activate the virtual environment with:
 
 For more setup details, see [docs/installation.md](docs/installation.md).
 
-## Gurobi
+## Solver Requirements
 
-Most APEM workflows require Gurobi through `gurobipy`. Make sure Gurobi is installed in the active Python environment and that your license is available on the machine.
+### Gurobi for APEM Core
+
+Most APEM Core workflows require Gurobi through `gurobipy`. Make sure Gurobi is installed in the active Python environment and that your license is available on the machine.
 
 If needed:
 
@@ -50,9 +74,9 @@ pip install gurobipy
 
 More information about academic and commercial licenses is available from [Gurobi](https://gurobi.com/unrestricted).
 
-## MOSEK For Power-Flow Relaxations
+### MOSEK for APEM PF Relaxations
 
-The `power_flow_relaxations` module uses MOSEK through its Fusion API for the DCOPF, Shor, chordal Shor, Jabr, and QC relaxation experiments. To run this module, install the extra requirements and configure a MOSEK license:
+APEM PF Relaxations uses MOSEK through its Fusion API. To run this module, install the extra requirements and configure a MOSEK license:
 
 ```bash
 pip install -r power_flow_relaxations/requirements.txt
@@ -66,9 +90,9 @@ export MOSEKLM_LICENSE_FILE=/path/to/mosek.lic
 
 See [power_flow_relaxations/README.md](power_flow_relaxations/README.md) and [docs/pf_relaxations/index.md](docs/pf_relaxations/index.md) for details.
 
-## Usage
+## APEM Core Usage
 
-APEM is configured through [config.json](config.json). The config has three main sections:
+APEM Core is configured through [config.json](config.json). The config has three main sections:
 
 - `run`: selects the active market model.
 - `unit_based_model`: settings for the unit-based workflow.
@@ -87,7 +111,7 @@ Outputs are written under:
 
 For the full configuration reference, see [docs/configuration.md](docs/configuration.md).
 
-## Available Workflows
+## Core Workflows
 
 ### Unit-Based Model
 
@@ -112,6 +136,26 @@ Common options include:
 - cut types: `price based`, `combinatorial benders`, `no good`
 
 For internals, order types, and run-output details, see [apem/order_book_based_model/euphemia/README.md](apem/order_book_based_model/euphemia/README.md).
+
+## Node Ranking Usage
+
+APEM Node Ranking is available through the `node_ranking` package. It includes helpers for network scores, market scores, ranking nodes, and solving baseline DC economic dispatch instances.
+
+See [docs/node_ranking/index.md](docs/node_ranking/index.md) for the module guide.
+
+## PF Relaxations Usage
+
+APEM PF Relaxations can be run from the repository root after installing the MOSEK requirements and configuring a license:
+
+```bash
+PYTHONPATH=. MPLCONFIGDIR=/tmp/mplcache ./.venv/bin/python -m power_flow_relaxations.run_relaxations
+```
+
+Results are written under:
+
+- `relaxation_results/<MODEL_TAG>_<SIZE>_results.csv`
+
+See [docs/pf_relaxations/index.md](docs/pf_relaxations/index.md) for model details and default run behavior.
 
 ## Custom Data
 
@@ -149,4 +193,6 @@ If you see `ModuleNotFoundError: No module named 'apem'`, run commands from the 
 pip install -e .
 ```
 
-If optimization runs fail, check that `gurobipy` is installed in the active environment and that your Gurobi license is configured.
+If APEM Core optimization runs fail, check that `gurobipy` is installed in the active environment and that your Gurobi license is configured.
+
+If PF relaxation runs fail, check that `mosek` is installed and that your MOSEK license is available at `~/.mosek/mosek.lic` or through `MOSEKLM_LICENSE_FILE`.
