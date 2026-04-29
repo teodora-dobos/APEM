@@ -7,8 +7,8 @@ import pandas as pd
 
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 from apem.unit_based_model.data.parsing.scenario import Scenario
@@ -129,7 +129,7 @@ class Zonal_NTC_multiedge(PowerFlowModel):
         return Scenario(f'{base_scenario.name}', df_buyers, df_sellers, aggregated_network, nodes_agents,
                         base_scenario.periods, base_scenario.blocks_buyers, base_scenario.blocks_sellers, r_star)
 
-    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+    def solve(self, scenario: Scenario, configuration: SolverConfiguration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None) \
             -> Tuple[Scenario, Union[Allocation, Error]]:
         # create a zonal NTC scenario with explicit lines

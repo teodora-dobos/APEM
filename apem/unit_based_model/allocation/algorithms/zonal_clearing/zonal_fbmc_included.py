@@ -9,9 +9,9 @@ from itertools import combinations
 
 from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.data.parsing.scenario import Scenario
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.analysis.stats import compute_stats
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 
@@ -40,9 +40,10 @@ class Zonal_FBMC(PowerFlowModel):
 
     def __init__(self, zonal_configuration: str, base_case_type: str = 'BC2'):
         """
-        Initializes the Zonal_FBMC model.
-        :param zonal_configuration: The name of the zonal configuration to use (e.g., 'zonal_DE4').
-        :param base_case_type: The type of base case to generate (e.g., 'BC1', 'BC4').
+        Initialize the zonal FBMC model.
+
+        :param zonal_configuration: Name of the zonal configuration to use, for example ``zonal_DE4``.
+        :param base_case_type: Type of base case to generate, for example ``BC1`` or ``BC4``.
             Base-case definitions are documented in ``BaseCaseGenerator.generate`` in ``zonal_fbmc.py``.
         """
         self.zonal_configuration = zonal_configuration
@@ -53,15 +54,13 @@ class Zonal_FBMC(PowerFlowModel):
     def create_zonal_scenario_FBMC(self, base_scenario: Scenario, results_root: Optional[str] = None) -> Scenario:
         """
         Create a zonal scenario from the base nodal scenario.
-        
+
         This creates a simplified zonal representation that can be used for DCOPF
         and integrates with the existing redispatch framework.
-        
-        Args:
-            base_scenario: The original nodal scenario
-            
-        Returns:
-            Scenario: A zonal scenario suitable for DCOPF solving
+
+        :param base_scenario: Original nodal scenario.
+        :param results_root: Optional output directory used by downstream workflow steps.
+        :return: Zonal scenario suitable for DCOPF solving.
         """
 
         # Convert to PyPSA network to get zone mappings
@@ -159,12 +158,23 @@ class Zonal_FBMC(PowerFlowModel):
             r_star=r_star
         )
 
-    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+    def solve(self, scenario: Scenario, configuration: SolverConfiguration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None, redispatch: Optional[bool] = False,
               min_cost: Optional[bool] = False, min_vol: Optional[bool] = False,
               zonal_allocation: Optional[Allocation] = None) -> Union[Allocation, Error]:
         """
-        Formulates and solves the Zonal FBMC problem.
+        Formulate and solve the zonal FBMC workflow inside APEM.
+
+        :param scenario: Original nodal scenario used as input for FBMC aggregation and solving.
+        :param configuration: Optimizer configuration applied to the zonal FBMC model.
+        :param results_file: Optional CSV file path for writing variable values or solver status.
+        :param stats_file: Optional file path for writing summary statistics.
+        :param u_fixed: Unused placeholder kept for interface compatibility with other power-flow models.
+        :param redispatch: Unused flag kept for interface compatibility; redispatch is currently ignored here.
+        :param min_cost: Unused compatibility flag.
+        :param min_vol: Unused compatibility flag.
+        :param zonal_allocation: Unused compatibility parameter.
+        :return: Tuple ``(zonal_scenario, allocation)`` on success or an ``Error`` object otherwise.
         """
 
         try:
@@ -223,6 +233,9 @@ class Zonal_FBMC(PowerFlowModel):
     def _save_zonal_results(self, zonal_results, results_file):
         """
         Save zonal FBMC specific results to files.
+
+        :param zonal_results: Result dictionary returned by ``ZonalDispatchModel.solve``.
+        :param results_file: CSV file path for the serialized results.
         """
 
         try:
@@ -265,8 +278,16 @@ class Zonal_FBMC(PowerFlowModel):
 def create_allocation_from_zonal_results(zonal_results: dict, network: pypsa.Network,
                                          zonal_scenario: Scenario, power_flow_model: 'Zonal_FBMC') -> Allocation:
     """
-    Creates a purely ZONAL allocation object that matches the zonal_scenario.
-    It synthesizes inter-zonal flows by aggregating the solved FBMC line loadings.
+    Create a zonal ``Allocation`` object from solved FBMC results.
+
+    The function reconstructs accepted demand, generator schedules, prices, and synthesized interzonal
+    flows so the returned allocation matches the aggregated zonal scenario.
+
+    :param zonal_results: Result dictionary returned by ``ZonalDispatchModel.solve``.
+    :param network: Original nodal PyPSA network used for the FBMC solve.
+    :param zonal_scenario: Aggregated zonal scenario produced for the FBMC workflow.
+    :param power_flow_model: ``Zonal_FBMC`` instance that produced the results.
+    :return: Allocation object populated with zonal FBMC results.
     """
     model = zonal_results.get('model')
     if model is None or model.Status != GRB.OPTIMAL:

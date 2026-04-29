@@ -51,7 +51,7 @@ from node_ranking.economic_dispatch import (
     build_dispatch_inputs,
     solve_economic_dispatch,
 )
-from node_ranking.market_metrics import compute_ptdf
+from node_ranking.market_scores import compute_ptdf
 from node_ranking.rank_nodes import (
     rank_nodes_by_dispatch_volume,
     rank_nodes_by_gamma_capacity_congestion_score,

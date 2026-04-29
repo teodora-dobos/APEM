@@ -7,7 +7,7 @@ from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_aggreg
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_ntc_multiedge import Zonal_NTC_multiedge
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_fbmc_included import Zonal_FBMC
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.data.analysis.plot import plot_supply_demand
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.algorithms.elmp import ELMP
@@ -23,7 +23,7 @@ class PriceAnalysis:
         scenario: Scenario,
         allocation: Allocation,
         pricing: Pricing,
-        configuration: Configuration,
+        configuration: SolverConfiguration,
         base_scenario: Optional[Scenario] = None,
     ):
         self.scenario = scenario

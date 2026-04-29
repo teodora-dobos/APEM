@@ -1,26 +1,10 @@
-﻿from pathlib import Path
-from apem.unit_based_model.data.parsing.parse_pypsa_eur_small import ParsePyPSAEurSmall
-from apem.unit_based_model.data.parsing.parse_pjm import ParsePJM
-from apem.unit_based_model.data.parsing.parse_pypsa_eur_large import ParsePyPSAEurLarge
-from apem.unit_based_model.data.parsing.parse_arpa import ParseARPA
-from apem.unit_based_model.data.parsing.parse_ieee_rts import ParseIEEERTS
+"""Utility exports for the Euphemia package."""
 
-# Root of EUPHEMIA package
-EUPHEMIA_ROOT = Path(__file__).resolve().parent.parent
+from apem.order_book_based_model.euphemia.utils.paths import (
+    CONVERTED_DATASET_PATH_MAP,
+    DATA_DIR,
+    EUPHEMIA_ROOT,
+    ensure_dir,
+)
 
-# Path to raw data inside EUPHEMIA
-DATA_DIR = EUPHEMIA_ROOT / "data" / "datasets"
-
-CONVERTED_DATASET_PATH_MAP = {
-    ParseIEEERTS: DATA_DIR / "ieee_rts",
-    ParsePJM: DATA_DIR / "pjm",
-    ParseARPA: DATA_DIR / "arpa",
-    ParsePyPSAEurLarge: DATA_DIR / "pypsa_large",
-    ParsePyPSAEurSmall: DATA_DIR / "pypsa_small",
-}
-
-
-def ensure_dir(path: Path):
-    """Ensure the given directory exists."""
-    path.mkdir(parents=True, exist_ok=True)
-
+__all__ = ["EUPHEMIA_ROOT", "DATA_DIR", "CONVERTED_DATASET_PATH_MAP", "ensure_dir"]

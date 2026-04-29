@@ -1,14 +1,17 @@
-﻿from apem.order_book_based_model.euphemia.enums.cut_types import CutTypes
+﻿from typing import Any, Mapping, Optional
+
+from apem.order_book_based_model.euphemia.data.parsing.zonal_scenario import ZonalScenario
+from apem.order_book_based_model.euphemia.enums.cut_types import CutTypes
 from apem.order_book_based_model.euphemia.enums.datasets import OrderBookBased_Datasets
 
 
 class EuphemiaConfig:
     """
-    Configuration object for Euphemia algorithm.
+    Configuration object and override validation for Euphemia algorithm.
     """
 
-    def __init__(self):
-        self.scenario = None
+    def __init__(self) -> None:
+        self.scenario: Optional[ZonalScenario] = None
         self.set_dataset(OrderBookBased_Datasets.GENERATED_SMALL)  # "Generated Small" as base dataset
 
         # Core Euphemia behavior
@@ -37,16 +40,16 @@ class EuphemiaConfig:
         self.threads = None
         self.seed = None
 
-    def set_dataset(self, dataset):
+    def set_dataset(self, dataset: OrderBookBased_Datasets) -> None:
         """
         Set the dataset to use.
         """
         self.dataset = dataset.name
         self.scenario = dataset.value.parse_data()
 
-    def apply_overrides(self, overrides):
+    def apply_overrides(self, overrides: Mapping[str, Any]) -> None:
         """
-        Apply validated configuration overrides from config.json.
+        Apply validated configuration overrides from ``config.json``.
         """
         if not overrides:
             return
@@ -86,4 +89,3 @@ class EuphemiaConfig:
         self.network_model = str(self.network_model).upper()
         if self.network_model not in {"ATC", "FBMC"}:
             raise ValueError("Invalid Euphemia configuration key value: network_model must be 'ATC' or 'FBMC'.")
-

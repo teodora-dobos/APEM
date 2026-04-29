@@ -13,35 +13,37 @@ def run_unit_based_to_order_based_conversion(
     reduce_linked_blocks: bool = True,
     use_contiguous_patterns: bool = True,
     compress_identical_blocks: bool = True,
-):
+ ) -> None:
     """
-    Run the conversion and compression of a US dataset to EU bidding language
+    Convert a unit-based dataset into order-book Euphemia CSV inputs.
 
-    - unit_based_data: the dataset that should be used
-    - generate_uptime_patterns: whether to generate commitment patterns for units with minimum uptime constraints.
-    Patterns are saved so only necessary for the initial run.
-    - reduce_linked_blocks: whether to merge linked blocks over several time periods connected to one exclusive block
-    to only one linked block to model additional capacity
-    - use_contiguous_patterns: restrict patterns to those with one contiguous on/off period
-    - compress_identical_blocks: comprise identical block orders from the same generator types in one order
+    :param unit_based_data: Parser class for the source unit-based dataset.
+    :param generate_uptime_patterns: Whether to generate and persist commitment
+        patterns for units with minimum-uptime constraints.
+    :param reduce_linked_blocks: Whether to merge linked child blocks across
+        multiple active periods when they share the same price segment.
+    :param use_contiguous_patterns: Whether to restrict commitment patterns to
+        contiguous on/off trajectories.
+    :param compress_identical_blocks: Whether to merge identical converted
+        block-order chains before writing the output CSV files.
     """
 
-    # Convert US market data
-    print("Loading US market data...")
+    # Load the source unit-based scenario.
+    print("Loading unit-based market data...")
     data = unit_based_data().parse_data()
 
     conversion = DataConversion(data)
 
-    print("Converting demand data...")
+    print("Converting demand-side data...")
     block_orders_buyers = conversion.compute_buyers_inelastic_bids()
     step_orders = conversion.compute_buyers_elastic_bids()
 
-    print("Converting no min uptime and no no-load cost demand data...")
+    print("Converting simple supply-side offers...")
     scalable_complex_orders, scalable_step_orders = conversion.generate_zero_no_load_cost_bids()
     if generate_uptime_patterns:
-        print("Generating patterns for min uptime demand data...")
+        print("Generating commitment patterns for supply-side conversion...")
         conversion.generate_write_patterns(use_contiguous_patterns=use_contiguous_patterns)
-    print("Converting min uptime or no-load cost demand data...")
+    print("Converting commitment-coupled supply-side offers...")
     block_orders_sellers = conversion.generate_positive_no_load_cost_bids(reduce_linked_blocks=reduce_linked_blocks)
 
     # Load empty datasets for data not filled
@@ -92,8 +94,8 @@ def run_unit_based_to_order_based_conversion(
         save_df(df, unit_based_data, name)
 
 
-def save_df(df, unit_based_data: ParseData, name: str):
-    """Persist one converted DataFrame into the mapped EU dataset folder."""
+def save_df(df: pd.DataFrame, unit_based_data: ParseData, name: str) -> None:
+    """Persist one converted dataframe into the mapped order-book dataset folder."""
 
     output_dir = CONVERTED_DATASET_PATH_MAP[unit_based_data]
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -104,7 +106,7 @@ def save_df(df, unit_based_data: ParseData, name: str):
 
 if __name__ == '__main__':
     """
-    Convert US market data into European market data.
+    Convert a unit-based dataset into order-book Euphemia inputs.
     """
     run_unit_based_to_order_based_conversion(
         ParseIEEERTS,
@@ -113,4 +115,3 @@ if __name__ == '__main__':
         reduce_linked_blocks=True,
         compress_identical_blocks=True,
     )
-

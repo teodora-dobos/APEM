@@ -1,17 +1,26 @@
-﻿import gurobipy as gp
-from gurobipy import GRB
+﻿from typing import TYPE_CHECKING, Any
+
+import gurobipy as gp
 import pandas as pd
+from gurobipy import GRB
 
 from apem.order_book_based_model.euphemia.enums.order_types import OrderType
 from apem.order_book_based_model.euphemia.utils.calculations import calculate_flexible_order_active_period
 
+if TYPE_CHECKING:
+    from apem.order_book_based_model.euphemia.master_problem.master_problem import MasterProblem
+
 
 class PriceSubproblem:
     """
-    Formulate and solve the Euphemia price determination subproblem.
+    Formulate and solve the Euphemia price-determination subproblem.
+
+    The pricing model takes the current incumbent allocation from :class:`MasterProblem`
+    and searches for market clearing prices that satisfy primal-dual consistency,
+    PAB restrictions, MIC or MP conditions, and network-price coupling.
     """
 
-    def __init__(self, master_problem):
+    def __init__(self, master_problem: "MasterProblem") -> None:
         self.master_problem = master_problem
         self.M = master_problem.M
         self.solution_dict_df = pd.DataFrame(self.master_problem.current_alloc_solution)
@@ -41,17 +50,19 @@ class PriceSubproblem:
                 vtype=GRB.CONTINUOUS,
             )
 
-    def _order_zone(self, order) -> str:
+    def _order_zone(self, order: pd.Series) -> str:
+        """Return the normalized zone for an order-like record."""
         if "zone" in order and pd.notna(order["zone"]):
             return self.master_problem.resolve_zone(order["zone"])
         return self.master_problem.default_zone
 
-    def _price_var(self, t: int, zone: str):
+    def _price_var(self, t: int, zone: str) -> Any:
+        """Return the MCP decision variable for a period and, when applicable, zone."""
         if self.zonal_pricing:
             return self.MCP[zone, t]
         return self.MCP[t]
 
-    def _master_solution_value(self, variable) -> float:
+    def _master_solution_value(self, variable: Any) -> float:
         """
         Return the incumbent value of a master variable from the callback solution.
         """
@@ -69,10 +80,11 @@ class PriceSubproblem:
         """
         Add ATC active-set price coupling constraints based on incumbent flows.
 
-        For each directed arc (i,j,t) with 0 <= f <= cap:
-        - f == 0      -> MCP[j,t] <= MCP[i,t]
-        - f == cap    -> MCP[j,t] >= MCP[i,t]
-        - 0 < f < cap -> MCP[j,t] == MCP[i,t]
+        For each directed arc ``(i, j, t)`` with ``0 <= f <= cap``::
+
+            f == 0      -> MCP[j,t] <= MCP[i,t]
+            f == cap    -> MCP[j,t] >= MCP[i,t]
+            0 < f < cap -> MCP[j,t] == MCP[i,t]
         """
         if (
             not self.zonal_pricing
@@ -107,17 +119,20 @@ class PriceSubproblem:
         """
         Add FBMC dual-consistent MCP/PTDF coupling based on incumbent net positions.
 
-        The formulation introduces one system price component per period and dual multipliers
-        on FBMC constraints:
-        - mu_up[c,t] >= 0 for PTDF * NP <= RAM
-        - mu_lo[c,t] >= 0 for PTDF * NP >= LB (when LB exists)
+        The formulation introduces one system price component per period and dual
+        multipliers on FBMC constraints::
 
-        Zonal prices are linked through stationarity:
+            mu_up[c,t] >= 0   for PTDF * NP <= RAM
+            mu_lo[c,t] >= 0   for PTDF * NP >= LB   (when LB exists)
+
+        Zonal prices are linked through stationarity::
+
             MCP[z,t] = lambda[t] - sum_c PTDF[c,t,z] * (mu_up[c,t] - mu_lo[c,t])
 
-        Active-set complementarity is enforced from the incumbent allocation:
-        - if upper slack > tol: mu_up[c,t] = 0
-        - if lower slack > tol: mu_lo[c,t] = 0
+        Active-set complementarity is enforced from the incumbent allocation::
+
+            if upper_slack > tol: mu_up[c,t] = 0
+            if lower_slack > tol: mu_lo[c,t] = 0
         """
         if (
             not self.zonal_pricing
@@ -187,7 +202,13 @@ class PriceSubproblem:
                     name=f"fbmc_mcp_stationarity_{zone}_{t}",
                 )
 
-    def extract_prices(self) -> dict:
+    def extract_prices(self) -> dict[Any, float]:
+        """
+        Extract the optimized market clearing prices from the pricing model.
+
+        :return: A mapping keyed by period ``t`` for uniform pricing, or by
+            ``(zone, t)`` for zonal pricing runs.
+        """
         if self.zonal_pricing:
             return {
                 (zone, t): self.MCP[zone, t].X
@@ -202,7 +223,11 @@ class PriceSubproblem:
 
     def solve_price_determination_subproblem(self) -> None:
         """
-        Core method of the price determination subproblem: formulate objective and constraints, optimize model.
+        Formulate and solve the full pricing model for the current allocation.
+
+        The objective keeps prices near the midpoint of the allowed price range while
+        the constraints enforce order acceptance consistency and, when enabled, network
+        price coupling and accepted-order revenue conditions.
         """
         self._emit("Formulating price determination subproblem...")
 
@@ -244,14 +269,17 @@ class PriceSubproblem:
 
     def add_step_order_constraints(self) -> None:
         """
-        Add constraints in order to avoid the paradoxical acceptance and rejection of step orders.
+        Add pricing constraints for all step orders in the incumbent allocation.
         """
         for _, order in self.master_problem.step_orders.iterrows():
             self.add_step_order_constraint(order, infix="normal")
 
-    def add_step_order_constraint(self, step_order, infix) -> None:
+    def add_step_order_constraint(self, step_order: pd.Series, infix: str) -> None:
         """
-        Formulate step order constraint.
+        Add price-consistency constraints for one step order.
+
+        Fully accepted step orders must be in the money, fully rejected step orders must
+        be out of the money, and partially accepted step orders must clear at the order price.
         """
         acceptance = step_order["acceptance"]
         q = step_order["q"]
@@ -289,7 +317,7 @@ class PriceSubproblem:
 
     def add_piecewise_linear_order_constraints(self) -> None:
         """
-        Add constraints in order to avoid the paradoxical acceptance and rejection of piecewise linear orders.
+        Add price-consistency constraints for all piecewise-linear orders.
         """
         for _, order in self.master_problem.piecewise_linear_orders.iterrows():
             order_id = order["id"]
@@ -323,7 +351,11 @@ class PriceSubproblem:
 
     def add_block_order_constraints(self) -> None:
         """
-        Add constraints in order to avoid the paradoxical acceptance of block orders (PABs).
+        Add surplus constraints for accepted block orders.
+
+        Standard accepted blocks must remain in the money, linked block families must
+        have non-negative total surplus, and accepted linked leaf blocks must not create
+        negative standalone surplus.
         """
         for _, block_order in self.master_problem.block_orders.iterrows():
             if block_order["acceptance"] <= self.epsilon:
@@ -376,9 +408,9 @@ class PriceSubproblem:
                 # Parent supports family surplus.
                 self.add_linked_block_order_constraints(parent_order=block_order)
 
-    def add_linked_block_order_constraints(self, parent_order) -> None:
+    def add_linked_block_order_constraints(self, parent_order: pd.Series) -> None:
         """
-        Add constraint so that linked block families have non-negative surplus.
+        Add a non-negative family-surplus constraint for one linked parent block.
         """
         parent_id = parent_order["id"]
         parent_zone = self._order_zone(parent_order)
@@ -401,9 +433,9 @@ class PriceSubproblem:
         )
         self.constraint_meta_data[f"linked_block_positive_family_parent_{parent_id}"] = (OrderType.BLOCK, parent_id)
 
-    def add_linked_leafs_positive_surplus(self, child_order) -> None:
+    def add_linked_leafs_positive_surplus(self, child_order: pd.Series) -> None:
         """
-        Add constraint so that linked leaf blocks have non-negative surplus.
+        Add a non-negative surplus constraint for one accepted linked child block.
         """
         parent_id = child_order["code_prm"]
         child_id = child_order["id"]
@@ -421,7 +453,7 @@ class PriceSubproblem:
 
     def add_complex_order_constraints(self) -> None:
         """
-        Add constraints to prevent the paradoxical acceptance of complex orders.
+        Add pricing constraints for accepted complex orders.
         """
         for _, order in self.master_problem.complex_orders.iterrows():
             if order["acceptance"] > self.epsilon and order["condition"] != "load gradient":
@@ -431,7 +463,7 @@ class PriceSubproblem:
 
     def add_scalable_complex_order_constraints(self) -> None:
         """
-        Add constraints to prevent the paradoxical acceptance of scalable complex orders.
+        Add pricing constraints for accepted scalable complex orders.
         """
         for _, order in self.master_problem.scalable_complex_orders.iterrows():
             if order["acceptance"] > self.epsilon and order["condition"] != "load gradient":
@@ -439,9 +471,13 @@ class PriceSubproblem:
             elif order["acceptance"] > self.epsilon and order["condition"] == "load gradient":
                 self.add_load_gradient_constraints(order, self.master_problem.scalable_step_orders, OrderType.SCALABLE_COMPLEX)
 
-    def add_MIC_MP_constraints(self, order, step_order_df, order_type: OrderType) -> None:
+    def add_MIC_MP_constraints(self, order: pd.Series, step_order_df: pd.DataFrame, order_type: OrderType) -> None:
         """
-        Constraints to make sure MIC/MP condition is met.
+        Add the MIC or MP revenue constraint for one accepted complex-style order.
+
+        :param order: Parent complex or scalable complex order.
+        :param step_order_df: Step-order dataframe containing the child bids.
+        :param order_type: Whether the parent order is complex or scalable complex.
         """
         order_id = order["id"]
         parent_column = "complex_order_id" if order_type == order_type.COMPLEX else "scalable_order_id"
@@ -471,9 +507,15 @@ class PriceSubproblem:
             self.pricing_model.addConstr(actual_value >= expected_value, label_MIC)
             self.constraint_meta_data[label_MIC] = (order_type, order_id)
 
-    def add_load_gradient_constraints(self, order, step_order_df, order_type: OrderType) -> None:
+    def add_load_gradient_constraints(
+        self, order: pd.Series, step_order_df: pd.DataFrame, order_type: OrderType
+    ) -> None:
         """
-        Constraints to make sure load gradient orders have a positive surplus.
+        Add a non-negative surplus constraint for one accepted load-gradient order.
+
+        :param order: Parent complex or scalable complex order.
+        :param step_order_df: Step-order dataframe containing the child bids.
+        :param order_type: Whether the parent order is complex or scalable complex.
         """
         order_id = order["id"]
         surplus_expr = gp.LinExpr()
@@ -496,4 +538,3 @@ class PriceSubproblem:
         )
         self.pricing_model.addConstr(surplus_expr >= 0.0, name=label)
         self.constraint_meta_data[label] = (order_type, order_id)
-

@@ -7,7 +7,7 @@ import time
 import csv
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 from uuid import uuid4
 
 import gurobipy as gp
@@ -52,7 +52,7 @@ class MasterProblem:
     Formulate and solve the Euphemia master problem.
     """
 
-    def __init__(self, config: EuphemiaConfig):
+    def __init__(self, config: EuphemiaConfig) -> None:
         if not config:
             config = EuphemiaConfig()
 
@@ -314,7 +314,8 @@ class MasterProblem:
         print(message)
         self.run_logger.log(level, message)
 
-    def _safe_model_status(self):
+    def _safe_model_status(self) -> Optional[int]:
+        """Return the current Gurobi status code when available."""
         try:
             return int(self.model.Status)
         except Exception:  # noqa: BLE001
@@ -326,6 +327,7 @@ class MasterProblem:
             json.dump(self.run_metadata, metadata_file, indent=2, sort_keys=True)
 
     def _finalize_run_metadata(self, status: str, error: Optional[str] = None) -> None:
+        """Persist final run metadata after optimization or failure."""
         elapsed_seconds = None
         if self.start_time:
             elapsed_seconds = time.time() - self.start_time
@@ -346,15 +348,25 @@ class MasterProblem:
             self.run_metadata["error"] = error
         self._write_run_metadata()
 
-    def resolve_zone(self, zone) -> str:
+    def resolve_zone(self, zone: object) -> str:
+        """Normalize a raw zone label and fall back to the default zone when needed."""
         return _normalize_zone(zone, self.default_zone)
 
-    def get_order_zone(self, df: pd.DataFrame, order_id) -> str:
+    def get_order_zone(self, df: pd.DataFrame, order_id: object) -> str:
+        """Return the normalized zone assigned to a specific order row."""
         if "zone" not in df.columns:
             return self.default_zone
         return self.resolve_zone(get(df, "zone", order_id))
 
     def get_price_value(self, t: int, zone: Optional[str] = None, reinsertion: Optional[bool] = False) -> float:
+        """
+        Return the clearing price for a period.
+
+        :param t: Market period.
+        :param zone: Optional zone label for zonal pricing runs.
+        :param reinsertion: Whether to use the reinsertion price map.
+        :return: Clearing price for the requested period and zone.
+        """
         prices = self.prices_reinsertion if reinsertion else self.prices
         if self.zonal_pricing_enabled:
             resolved_zone = self.resolve_zone(zone)
@@ -366,16 +378,11 @@ class MasterProblem:
 
     def run(self) -> None:
         """
-        Compute market clearing prices, matched volumes, selection of block and complex orders that will be executed,
-        accepted percentage for each curtailable block.
-        Determine the market clearing price for each zone while ensuring that no block and complex MIC orders are
-        paradoxically accepted and the primal-dual relations are satisfied.
-        Add cut to the master problem that renders the current solution infeasible if no prices were found.
-        The prices computed satisfy:
-            - complementary slackness conditions
-            - price bounds
-            - no PAB constraints
-            - MIC
+        Run the full Euphemia solve loop for the configured scenario.
+
+        The method formulates the master problem, solves it with lazy cuts, checks each
+        incumbent through the pricing subproblem, stores accepted allocations and prices,
+        and optionally launches reinsertion passes once a feasible market outcome is found.
         """
         self.start_time = time.time()
         self.started_at_utc = datetime.now(timezone.utc)
@@ -461,17 +468,17 @@ class MasterProblem:
 
     def solve_master_problem(self) -> None:
         """
-        Search for a selection of block and MIC orders that maximizes the economic surplus.
-        The callback function is called for each valid integer solution.
+        Optimize the master problem and evaluate incumbents through the callback.
         """
         self.model.optimize(callback=self.master_problem_callback)
 
-    def master_problem_callback(self, callback_model, where) -> None:
+    def master_problem_callback(self, callback_model: gp.Model, where: int) -> None:
         """
-        Callback function that is executed for each valid integer solution from the master problem.
+        Process incumbent integer solutions produced by the master problem.
 
-        Checks if pricing subproblem is feasible or not.
-        If infeasible a lazy cut is added to the master problem.
+        For each MIP solution, the callback updates the in-memory allocation tables,
+        solves the pricing subproblem, stores a new incumbent when prices are feasible,
+        or adds the configured lazy cut when the pricing problem is infeasible.
         """
 
         # when a MIP solution was found
@@ -560,7 +567,7 @@ class MasterProblem:
 
     def add_acceptance_variables_to_dataframe(self) -> None:
         """
-        Add reference to acceptance variable to each order in dataframe for further processing
+        Attach each Gurobi acceptance variable to the corresponding order dataframe row.
         """
 
         self.step_orders['acceptance_var'] = self.step_orders['id'].map(self.accept_step)
@@ -572,7 +579,7 @@ class MasterProblem:
 
     def update_order_dataframes(self) -> None:
         """
-        Add current acceptance value to order in dataframe for simplification of further processing.
+        Populate the order dataframes with acceptance values from the current incumbent.
         """
 
         solution_df = pd.DataFrame(self.current_alloc_solution)
@@ -614,8 +621,10 @@ class MasterProblem:
 
     def compute_block_overlaps(self) -> dict[int, set[int]]:
         """
-        Computes block orders that have at least one overlapping period with quantity unequal to 0.
-        Can be used for Price-based cuts
+        Compute block-order overlap sets for price-based cut generation.
+
+        Two block orders overlap when they both inject or withdraw non-zero volume in at
+        least one common period. The returned mapping is keyed by block order id.
         """
 
         period_cols = [f"q{t}" for t in self.periods]
@@ -645,11 +654,15 @@ class MasterProblem:
 
         return overlap
 
-    def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list:
+    def get_block_bids(self, threshold: bool, reinsertion: Optional[bool] = False) -> list[int]:
         """
-        Compute accepted block orders that satisfy a condition.
-        If threshold is True, compute block orders that are in-the-money by less than delta_PAB.
-        If threshold is False, compute block orders that are paradoxically accepted.
+        Return accepted block orders that violate or nearly violate the PAB condition.
+
+        :param threshold: When ``True``, return in-the-money block orders within
+            ``delta_PAB`` of becoming paradoxically accepted. When ``False``, return
+            currently paradoxically accepted block orders.
+        :param reinsertion: Whether to evaluate the reinsertion price map.
+        :return: Block order ids that satisfy the requested filter.
         """
         res = []
         for i in list(self.block_orders['id']):
@@ -744,8 +757,11 @@ class MasterProblem:
 
     def add_block_cut(self, single: Optional[bool] = False) -> bool:
         """
-        If single is False, reject all block orders that are in-the-money by less than delta_PAB.
-        If single is True, reject a single block order.
+        Add a cut that rejects one or more near-PAB block orders.
+
+        :param single: When ``True``, reject one randomly chosen candidate. When
+            ``False``, reject every candidate returned by :meth:`get_block_bids`.
+        :return: ``True`` when at least one cut was added, otherwise ``False``.
         """
         in_the_money_blocks = self.get_block_bids(threshold=True)
         if len(in_the_money_blocks) == 0:
@@ -760,10 +776,17 @@ class MasterProblem:
         self._emit("Block cut successfully added.")
         return True
 
-    def get_MIC_complex_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
+    def get_MIC_complex_orders(
+        self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False
+    ) -> list[int]:
         """
-        If threshold is False, return a list with complex orders that do not have the MIC/MP condition satisfied.
-        If threshold is True, return a list of complex orders that are out-of-the-money by at least beta_MIC * expected.
+        Return accepted complex orders that fail or nearly fail their MIC or MP condition.
+
+        :param threshold: When ``True``, apply the ``beta_MIC`` tolerance and return
+            marginally infeasible orders. When ``False``, return orders whose MIC or MP
+            condition is already violated at the current prices.
+        :param reinsertion: Whether to evaluate the reinsertion price map.
+        :return: Complex order ids that match the requested filter.
         """
         mic_complex_order_ids = self.complex_orders.loc[self.complex_orders['condition'] == 'MIC', 'id'].tolist()
         mp_complex_order_ids = self.complex_orders.loc[self.complex_orders['condition'] == 'MP', 'id'].tolist()
@@ -812,12 +835,17 @@ class MasterProblem:
 
         return res
 
-    def get_MIC_scalable_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False) -> list:
+    def get_MIC_scalable_orders(
+        self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False
+    ) -> list[int]:
         """
-        If threshold is False, return a list with scalable complex orders that do not have the MIC/MP condition
-        satisfied.
-        If threshold is True, return a list of scalable complex orders that are out-of-the-money by at least
-        beta_MIC * expected.
+        Return accepted scalable complex orders that fail or nearly fail MIC or MP.
+
+        :param threshold: When ``True``, apply the ``beta_MIC`` tolerance and return
+            marginally infeasible orders. When ``False``, return orders whose MIC or MP
+            condition is already violated at the current prices.
+        :param reinsertion: Whether to evaluate the reinsertion price map.
+        :return: Scalable complex order ids that match the requested filter.
         """
         mic_scalable_order_ids = self.scalable_complex_orders.loc[
             self.scalable_complex_orders['condition'] == 'MIC', 'id'].tolist()
@@ -868,19 +896,22 @@ class MasterProblem:
 
         return res
 
-    def get_load_gradient_orders(self, threshold: Optional[bool] = False, reinsertion: Optional[bool] = False,
-                                 complex: bool = True) -> list:
+    def get_load_gradient_orders(
+        self,
+        threshold: Optional[bool] = False,
+        reinsertion: Optional[bool] = False,
+        complex: bool = True,
+    ) -> list[int]:
         """
-        Returns a list of accepted load gradient orders (either complex or scalable complex, depending on `complex` flag)
-        that have a negative total surplus.
+        Return accepted load-gradient orders with negative surplus.
 
-        If `threshold=True`, only orders with total surplus < -delta_load_gradient are returned.
-        If `threshold=False`, all orders with surplus < 0 are returned (i.e., paradoxically accepted).
-
-        Parameters:
-            threshold: If True, apply margin (delta_load_gradient) to determine out-of-the-money.
-            reinsertion: If True, use prices from reinsertion subproblem.
-            complex: If True, evaluate complex orders; otherwise evaluate scalable complex orders.
+        :param threshold: When ``True``, only return orders whose surplus is below
+            ``-delta_load_gradient``. When ``False``, return all orders with negative
+            surplus.
+        :param reinsertion: Whether to evaluate the reinsertion price map.
+        :param complex: When ``True``, inspect complex orders. When ``False``, inspect
+            scalable complex orders.
+        :return: Order ids whose surplus violates the requested threshold.
         """
         # Select order and step dataframes depending on `complex` flag
         if complex:
@@ -918,10 +949,11 @@ class MasterProblem:
 
     def add_MIC_complex_cut(self, single: Optional[bool] = False) -> bool:
         """
-        --- Not used in current implementation ---
+        Add a cut that rejects one or more near-MIC complex orders.
 
-        If single is False, add cuts to reject complex orders that are in-the-money by less than delta_MIC.
-        If single is True, add a single cut.
+        :param single: When ``True``, reject one randomly chosen candidate. When
+            ``False``, reject every candidate returned by :meth:`get_MIC_complex_orders`.
+        :return: ``True`` when at least one cut was added, otherwise ``False``.
         """
         in_the_money_MIC_complex_orders = self.get_MIC_complex_orders(threshold=True)
         if len(in_the_money_MIC_complex_orders) == 0:
@@ -939,10 +971,12 @@ class MasterProblem:
 
     def add_MIC_scalable_cut(self, single: Optional[bool] = False) -> bool:
         """
-        --- Not used in current implementation ---
+        Add a cut that rejects one or more near-MIC scalable complex orders.
 
-        If single is False, add cuts to reject scalable complex orders that are in-the-money by less than delta_MIC.
-        If single is True, add a single cut.
+        :param single: When ``True``, reject one randomly chosen candidate. When
+            ``False``, reject every candidate returned by
+            :meth:`get_MIC_scalable_orders`.
+        :return: ``True`` when at least one cut was added, otherwise ``False``.
         """
         in_the_money_MIC_scalable_orders = self.get_MIC_scalable_orders(threshold=True)
         if len(in_the_money_MIC_scalable_orders) == 0:
@@ -958,19 +992,27 @@ class MasterProblem:
         self._emit("MIC scalable complex cut successfully added.")
         return True
 
-    def volume_indeterminacy_subproblem(self):
-        # later
+    def volume_indeterminacy_subproblem(self) -> None:
+        """Placeholder for a future volume-indeterminacy subproblem implementation."""
         pass
 
-    def set_prices(self, prices: dict, reinsertion: Optional[bool] = False) -> None:
+    def set_prices(self, prices: dict[Any, float], reinsertion: Optional[bool] = False) -> None:
+        """
+        Store clearing prices from the pricing subproblem.
+
+        :param prices: Mapping keyed either by period ``t`` or by ``(zone, t)`` for
+            zonal pricing runs.
+        :param reinsertion: Whether the prices belong to the reinsertion pass.
+        """
         if not reinsertion:
             self.prices = prices
         else:
             self.prices_reinsertion = prices
 
     def get_objective(self) -> float:
+        """Return the current master-problem objective value."""
         return self.model.getObjective().getValue()
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return a short human-readable model name."""
         return 'Euphemia'
-

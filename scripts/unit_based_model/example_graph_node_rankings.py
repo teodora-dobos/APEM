@@ -45,7 +45,7 @@ if str(ROOT) not in sys.path:
 
 from apem.unit_based_model.enums import UnitBased_Datasets
 from apem.unit_based_model.utils.paths import RAW_DATA_DIR
-from node_ranking.market_metrics import compute_ptdf
+from node_ranking.market_scores import compute_ptdf
 from node_ranking.rank_nodes import (
     rank_nodes_by_betweenness,
     rank_nodes_by_degree,

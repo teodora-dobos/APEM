@@ -13,7 +13,17 @@ from apem.unit_based_model.enums import FBMCBaseCases, PricingAlgorithms, Redisp
 
 
 class ConfigLoader:
+    """
+    Entry point for reading `config.json`. It normalizes the user-facing schema, 
+    validates allowed combinations (datasets, models, pricing, redispatch, 
+    solver options), and exposes typed getters used by the execution layer.
+    """
+
     def __init__(self, config_path: str = "config.json"):
+        """Initialize a configuration from disk.
+
+        :param config_path: Path to a JSON configuration file.
+        """
         self.config_path = config_path
         self.raw_config = self._normalize_config_format(self._load_raw_config())
         self._validate_config()
@@ -303,9 +313,11 @@ class ConfigLoader:
         return OrderBookBased_Datasets[self.config["scenario"]["order_book_based_dataset"]]
 
     def get_market_model(self) -> MarketModels:
+        """Return the selected high-level market model enum."""
         return MarketModels[self.config["scenario"]["market_model"]]
 
     def get_power_flow_model(self):
+        """Instantiate the configured power-flow model object."""
         model_type = self.config["scenario"]["power_flow_model"]["type"]
         if model_type == "Zonal_NTC_aggregated":
             zonal_config = self.config["zonal_configuration"]
@@ -342,12 +354,14 @@ class ConfigLoader:
         return self.config["scenario"]["alpha"]
 
     def get_unit_based_solver_congiruation(self) -> Dict[str, Any]:
+        """Return the normalized unit-based solver configuration object."""
         if "unit_based_solver_configuration" in self.config:
             return self.config["unit_based_solver_configuration"]
 
         raise ValueError("Missing unit-based solver configuration.")
 
     def get_euphemia_configuration(self) -> Dict[str, Any]:
+        """Return Euphemia-specific options for order-book runs."""
         return self.config.get("euphemia_configuration", {})
 
 

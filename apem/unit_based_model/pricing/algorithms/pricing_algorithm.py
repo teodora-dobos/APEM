@@ -2,7 +2,7 @@
 from typing import Optional
 
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
@@ -12,7 +12,8 @@ class PricingAlgorithm(ABC):
     """
 
     @abstractmethod
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None):
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: SolverConfiguration,
+                       file_prices: Optional[str] = None):
         pass
 
     @abstractmethod

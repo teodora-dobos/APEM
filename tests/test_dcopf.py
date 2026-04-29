@@ -5,7 +5,8 @@ import networkx as nx
 from collections import defaultdict
 
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.error import Error
+from apem.unit_based_model.enums.redispatch_algorithms import RedispatchAlgorithms
 
 
 # ---------- Minimal, valid scenario ----------
@@ -143,7 +144,7 @@ def test_add_redispatch_constraints_objective_minabsvol_uses_slack_penalty(mock_
 
     dcopf = DCOPF()
     updated = dcopf.add_redispatch_constraints_objective(
-        redispatch_type="MinAbsVolRD",
+        redispatch_type=RedispatchAlgorithms.MinAbsVolRD,
         model=model,
         scenario=dummy_scenario,
         y_stl={}, u_st={}, abs_slack=abs_slack,

@@ -10,15 +10,17 @@ def solve_euphemia(
     dataset: OrderBookBased_Datasets,
     cut_type: CutTypes,
     config_overrides: Optional[Dict[str, Any]] = None,
-):
+) -> str:
     """
-    Solves an Euphemia scenario.
-    Args:
-        dataset (Datasets): Used dataset.
-        cut_type (CutTypes): Cutting strategy to be used in the solver.
+    Solve a Euphemia scenario and return the run output directory.
+    Constructs a ``EuphemiaConfig`` object, applies configuration overrides, 
+    loads the selected dataset into a ``ZonalScenario``, and starts the ``MasterProblem`` solve loop.
 
-    Returns:
-
+    :param dataset: Order-book dataset to parse and solve.
+    :param cut_type: Cutting strategy used by the master problem.
+    :param config_overrides: Optional overrides applied to ``EuphemiaConfig``
+        before the solve starts.
+    :return: Absolute path to the created run directory.
     """
     config = EuphemiaConfig()
     config.apply_overrides(config_overrides or {})
@@ -27,4 +29,3 @@ def solve_euphemia(
     euphemia = MasterProblem(config)
     euphemia.run()
     return str(euphemia.run_root)
-

@@ -59,7 +59,7 @@
         "BC4"
     ],
     "run": {
-        "market_model": "order_book_based_model",
+        "market_model": "unit_based_model",
         "verbosity": true
     },
     "unit_based_model": {

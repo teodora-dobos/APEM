@@ -5,7 +5,7 @@ from gurobipy import GRB
 import re
 import numpy as np
 
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 
 # A large number to represent the cost of non-served energy (C^nse)
 C_NSE = 10000  
@@ -14,12 +14,13 @@ class NodalDispatchModel:
     """
     Implements the Nodal Dispatch model (BC1) from the paper:
     "Modeling flow-based market coupling: Base case, redispatch, and unit commitment matter"
-    by C. Byers and G. Hug.
+    (https://ieeexplore.ieee.org/document/9221922).
 
     Includes verification and logging logic.
     """
 
-    def solve(self, network: pypsa.Network, ptdf: pd.DataFrame, verbose: bool = True, configuration:Configuration=None):
+    def solve(self, network: pypsa.Network, ptdf: pd.DataFrame, verbose: bool = True,
+              configuration: SolverConfiguration = None):
         """
         Formulates and solves the nodal dispatch problem.
 

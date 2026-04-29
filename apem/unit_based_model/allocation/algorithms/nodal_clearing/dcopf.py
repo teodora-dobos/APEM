@@ -1,7 +1,7 @@
 ﻿import csv
 import os
 from pathlib import Path
-from typing import Optional, Union, Any, Dict
+from typing import Optional, Union, Any, Dict, TYPE_CHECKING
 import re
 
 import gurobipy as gp
@@ -10,37 +10,48 @@ from gurobipy import GRB
 
 from apem.unit_based_model.allocation.allocation import Allocation, SellersAllocation
 from apem.unit_based_model.allocation.analysis.stats import compute_stats
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.utils.extraction import preprocess_as_dict
 
+if TYPE_CHECKING:
+    from apem.unit_based_model.enums.redispatch_algorithms import RedispatchAlgorithms
+
 DEFAULT_SLACK_PENALTY = 10 ** 15
+
+
+def _redispatch_algorithm_name(redispatch_type: "RedispatchAlgorithms | None") -> str | None:
+    """Return the redispatch enum member name used in filenames and comparisons."""
+    if redispatch_type is None:
+        return None
+    return redispatch_type.name
 
 
 class DCOPF(PowerFlowModel):
     """
-    Implementation of the Direct Current Optimal Power Flow Model. The class is also used for computing redispatch.
+    Implementation of the Direct Current Optimal Power Flow Model.
+
+    The class is also used for computing redispatch.
     """
 
-    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+    def solve(self, scenario: Scenario, configuration: SolverConfiguration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None,
-              redispatch_type: Optional[str] = None, zonal_allocation: Optional[SellersAllocation] = None,
+              redispatch_type: Optional["RedispatchAlgorithms"] = None, zonal_allocation: Optional[SellersAllocation] = None,
               redispatch_constraint_units: bool = False, redispatch_threshold: float = 0.001,
               shadow_prices: bool = False, alpha: float = 0) -> Union[Allocation, Error]:
         """
-        Formulate and solve a DCOPF problem in Gurobi similar to the one from https://arxiv.org/pdf/2209.07386.pdf
-        (Appendix B).
+        Formulate and solve a DCOPF problem in Gurobi similar to the one from 
+        the paper "Pricing Optimal Outcomes in Coupled and Non-Convex Markets: 
+        Theory and Applications to Electricity Markets" (Appendix B, https://arxiv.org/abs/2209.07386).
 
         :param scenario: scenario for which DCOPF is computed
         :param configuration: values of some parameters to be set in the optimizer
         :param results_file: name of the file in which results are written
         :param stats_file: name of the file that contains the statistics
         :param u_fixed: values of the commitment decision variables to be fixed in the problem
-        :param redispatch_type: type if redispatch
-        :param constrain_units: whether only a subset of units can be used for redispatch
-        :param threshold: threshold for deciding what units are redispatchable
+        :param redispatch_type: redispatch algorithm enum used when solving a redispatch problem
         :param zonal_allocation: zonal allocation for which a redispatch solution should be computed
         :param redispatch_constraint_units: True if all units can be used for redispatch, False otherwise
         :param redispatch_threshold: production threshold for filtering what units can be redispatched
@@ -53,6 +64,7 @@ class DCOPF(PowerFlowModel):
         else:
             model = gp.Model(f'DCOPF-MILP-Scenario-{scenario}')
         slack_penalty = getattr(configuration, "slack_penalty", DEFAULT_SLACK_PENALTY)
+        redispatch_type_name = _redispatch_algorithm_name(redispatch_type)
 
         # apply Gurobi configuration parameters
         configuration.apply_to_model(model)
@@ -125,7 +137,7 @@ class DCOPF(PowerFlowModel):
         abs_slack = model.addVars([(v, t) for v in nodes for t in periods], lb=0, ub=GRB.INFINITY,
                                   name='abs_slack_vt')
 
-        if not redispatch_type:
+        if redispatch_type is None:
             model.setObjective(
                 gp.quicksum(
                     buyer_val_dict[lb][b, t] * x_btl[b, t, lb]
@@ -330,7 +342,7 @@ class DCOPF(PowerFlowModel):
                                     num_cont_vars=model.NumVars - model.NumBinVars, num_bin_vars=model.NumBinVars,
                                     dataset=scenario, f_vwkt=f_vwkt if is_multigraph else None)
             if stats_file:
-                if not redispatch_type:
+                if redispatch_type is None:
                     compute_stats(stats_file, scenario, configuration, allocation, model)
 
                     root, _ = os.path.splitext(results_file)
@@ -377,13 +389,13 @@ class DCOPF(PowerFlowModel):
                     f.close()
 
                     alloc_comparison_file = Path(stats_file).with_name(
-                        f"{redispatch_type}_{redispatch_constraint_units}_{redispatch_threshold}_zonal_final_alloc_comparison.csv")
+                        f"{redispatch_type_name}_{redispatch_constraint_units}_{redispatch_threshold}_zonal_final_alloc_comparison.csv")
 
                     redispatch_costs_file = Path(stats_file).with_name(
-                        f"{redispatch_type}_{redispatch_constraint_units}_{redispatch_threshold}_redispatch_costs.csv")
+                        f"{redispatch_type_name}_{redispatch_constraint_units}_{redispatch_threshold}_redispatch_costs.csv")
 
                     redispatch_vols_file = Path(stats_file).with_name(
-                        f"{redispatch_type}_{redispatch_constraint_units}_{redispatch_threshold}_redispatch_vols.csv")
+                        f"{redispatch_type_name}_{redispatch_constraint_units}_{redispatch_threshold}_redispatch_vols.csv")
 
                     self.compare_zonal_vs_final_allocation(zonal_allocation=zonal_allocation,
                                                            final_allocation=allocation.SellersAllocation,
@@ -426,7 +438,7 @@ class DCOPF(PowerFlowModel):
             error = Error(status)
             return error
 
-    def add_redispatch_constraints_objective(self, redispatch_type: str, model: Any, scenario: Scenario,
+    def add_redispatch_constraints_objective(self, redispatch_type: "RedispatchAlgorithms", model: Any, scenario: Scenario,
                                              y_stl: Dict, u_st: Dict, abs_slack: Any, seller_cost_dict: Dict,
                                              seller_no_load_cost_dict: Dict, zonal_allocation: SellersAllocation,
                                              redispatch_constraint_units: bool = False,
@@ -435,7 +447,7 @@ class DCOPF(PowerFlowModel):
         """
         Include redispatch constraints and objective in the DCOPF model.
 
-        :param redispatch_type: {"MinAbsCostRD", "MinAbsVolRD", "MinCostRD"}.
+        :param redispatch_type: member of RedispatchAlgorithms.
             - MinAbsCostRD: minimize absolute cost deviations relative to zonal_allocation
             - MinAbsVolRD: minimize absolute volume deviations relative to zonal_allocation
             - MinCostRD: minimize (signed) redispatch cost relative to zonal_allocation
@@ -458,7 +470,9 @@ class DCOPF(PowerFlowModel):
         blocks_sellers = scenario.blocks_sellers
         sellers = df_sellers['seller'].unique().tolist()
 
-        if redispatch_type in ['MinAbsCostRD', 'MinAbsVolRD']:
+        redispatch_type_name = redispatch_type.name
+
+        if redispatch_type_name in ['MinAbsCostRD', 'MinAbsVolRD']:
             diff_stl = model.addVars(sellers, periods, blocks_sellers, lb=0, name='diff_y_stl')
             u_diff_st = model.addVars(sellers, periods, lb=0, name=f'diff_u_st')
 
@@ -471,7 +485,7 @@ class DCOPF(PowerFlowModel):
                 y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls] <= diff_stl[s, t, ls]
                 for s in sellers for t in periods for ls in blocks_sellers)
 
-            if redispatch_type == 'MinAbsCostRD':
+            if redispatch_type_name == 'MinAbsCostRD':
                 model.setObjective(
                     gp.quicksum(
                         seller_cost_dict[ls][s, t] * diff_stl[s, t, ls]
@@ -493,7 +507,7 @@ class DCOPF(PowerFlowModel):
                     u_st[s, t] - zonal_allocation.u_st[s, t] <= u_diff_st[s, t] for s in sellers for t in periods
                 )
 
-            elif redispatch_type == 'MinAbsVolRD':
+            elif redispatch_type_name == 'MinAbsVolRD':
                 model.setObjective(
                     gp.quicksum(
                         diff_stl[s, t, ls]
@@ -503,7 +517,7 @@ class DCOPF(PowerFlowModel):
                     GRB.MINIMIZE
                 )
 
-        elif redispatch_type == 'MinCostRD':
+        elif redispatch_type_name == 'MinCostRD':
             if redispatch_constraint_units:
                 seller_period_max_prod = {
                     (row.seller, row.period): row.max_prod
@@ -586,7 +600,8 @@ class DCOPF(PowerFlowModel):
         """
         Compute the total redispatch volume as the L1 norm of dispatch changes between the zonal solution and
         the post-redispatch solution.
-        For each seller s, period t, and seller block l, the redispatch volume is | y_stl(final) - y_stl(zonal) |.
+        For each seller s, period t, and seller block l, the redispatch contribution equals the absolute
+        dispatch difference between the final and zonal allocations.
         """
         redispatch_volumes = sum(
             abs(final_allocation.y_stl[s, t, ls] - zonal_allocation.y_stl[s, t, ls])

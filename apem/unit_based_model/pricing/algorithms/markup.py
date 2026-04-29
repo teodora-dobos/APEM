@@ -6,16 +6,43 @@ import pandas as pd
 
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.algorithms.pricing_algorithm import PricingAlgorithm
 from apem.unit_based_model.pricing.analysis.pricing import Pricing
 
 
 class Markup(PricingAlgorithm):
-    def compute_prices(self, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None,
+    """
+    Implementation of Markup Pricing.
+    """
+
+    def compute_prices(self, scenario: Scenario, configuration: SolverConfiguration, file_prices: Optional[str] = None,
                        alpha: Optional[float] = 0) -> Union[Tuple[Allocation, Pricing], Error]:
+        """
+        Compute prices and a feasible allocation using a two-stage markup procedure.
+
+        Stages:
+
+        - **Stage 1 (price computation):** scale buyer valuation blocks by
+          ``1 / (1 + alpha)``, solve a relaxed DCOPF, and extract nodal prices
+          from the relaxed run.
+        - **Stage 2 (feasibility search):** try several commitment thresholds on
+          first-stage unit commitment, re-solve the non-relaxed problem for each
+          threshold, and return the best feasible allocation by welfare together
+          with stage-1 prices.
+
+        Reference: Solving large-scale electricity market pricing problems in polynomial time
+        (https://www.sciencedirect.com/science/article/pii/S0377221724003576).
+
+        :param scenario: scenario for which prices are computed
+        :param configuration: configuration object containing model/solver parameters
+        :param file_prices: base output path used to derive intermediate result files
+        :param alpha: valuation markdown parameter used in stage 1
+        :return: tuple ``(Allocation, Pricing)`` if a feasible second-stage solution is found,
+                 otherwise ``Error``
+        """
         # first stage -> compute prices
         dcopf = DCOPF()
 
@@ -101,4 +128,3 @@ class Markup(PricingAlgorithm):
 
     def __str__(self):
         return 'Markup'
-

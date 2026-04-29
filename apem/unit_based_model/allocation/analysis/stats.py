@@ -1,12 +1,12 @@
 ﻿import gurobipy as gp
 
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.utils.extraction import preprocess_as_dict
 
 
-def compute_stats(stats_file: str, scenario: Scenario, configuration: Configuration, allocation: Allocation,
+def compute_stats(stats_file: str, scenario: Scenario, configuration: SolverConfiguration, allocation: Allocation,
                   model: gp.Model) -> None:
     """
     Creates a file with allocation statistics.

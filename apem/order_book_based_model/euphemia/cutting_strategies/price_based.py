@@ -1,21 +1,36 @@
-﻿from gurobipy import GRB
+﻿from typing import TYPE_CHECKING
+
+import pandas as pd
 import gurobipy as gp
+from gurobipy import GRB
 
 from apem.order_book_based_model.euphemia.pricing.price_determination_subproblem import PriceSubproblem
 import apem.order_book_based_model.euphemia.cutting_strategies.no_good as no_good_cutting
 
+if TYPE_CHECKING:
+    from apem.order_book_based_model.euphemia.master_problem.master_problem import MasterProblem
 
-def _log(self, message: str) -> None:
+
+def _log(self: "MasterProblem", message: str) -> None:
     if hasattr(self, "run_logger"):
         self.run_logger.info(message)
     elif hasattr(self, "_emit"):
         self._emit(message)
 
 
-def handle_price_based_cutting(self, callback_model) -> None:
-    """
-    Solve a price subproblem without any block order, complex order and scalable complex order constraints.
-    Only step order and piecewise linear order constraints are included.
+def handle_price_based_cutting(self: "MasterProblem", callback_model: gp.Model) -> None:
+    """Build and post a price-based cut from the current incumbent solution.
+
+    The routine solves an unconstrained pricing subproblem that only includes
+    step-order and piecewise-linear-order constraints. If prices are found, it
+    updates provisional prices, identifies paradoxically accepted or rejected
+    orders, and posts lazy cuts that deactivate the current infeasible economic
+    pattern. If no informative price-based cut can be generated, it falls back
+    to a no-good cut.
+
+    :param self: Active Euphemia master-problem instance.
+    :param callback_model: Gurobi callback model used to post lazy cuts.
+    :return: ``None``.
     """
     _log(self, "Creating unconstrained subproblem")
     price_subproblem = PriceSubproblem(master_problem=self)
@@ -66,12 +81,21 @@ def handle_price_based_cutting(self, callback_model) -> None:
         no_good_cutting.add_no_good_cut(self=self, callback_model=callback_model)
 
 
-def add_price_based_cut_to_block(self, callback_model, block_order) -> None:
-    """
-    Add a lazy price-based combinatorial cut for one paradoxically accepted block.
+def add_price_based_cut_to_block(
+    self: "MasterProblem",
+    callback_model: gp.Model,
+    block_order: pd.Series,
+) -> None:
+    """Post a lazy price-based cut for one paradoxically accepted block order.
 
-    The cut is built from the target block plus accepted/rejected overlapping
-    blocks according to buy/sell direction, then posted via ``cbLazy``.
+    The cut combines the target block with accepted or rejected overlapping
+    block orders, depending on whether the target block is a buy or sell order,
+    and forces at least one of those binary acceptance decisions to change.
+
+    :param self: Active Euphemia master-problem instance.
+    :param callback_model: Gurobi callback model used to post the lazy cut.
+    :param block_order: Row describing the paradoxically accepted block order.
+    :return: ``None``.
     """
     terms = [1 - self.MAR_aux[block_order['id']]]  # (1 - ACCEPT_hat)
 
@@ -92,4 +116,3 @@ def add_price_based_cut_to_block(self, callback_model, block_order) -> None:
 
     callback_model.cbLazy(gp.quicksum(terms) >= 1)
     _log(self, f"Added {gp.quicksum(terms)} >= 1")
-

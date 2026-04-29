@@ -1,8 +1,8 @@
 ﻿from typing import Union
 
 from apem.unit_based_model.allocation.allocation import Allocation, SellersAllocation
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from abc import ABC, abstractmethod
 
@@ -14,7 +14,7 @@ class RedispatchAlgorithm(ABC):
 
     @abstractmethod
     def compute_redispatch(self, nodal_scenario: Scenario, zonal_allocation: SellersAllocation,
-                           configuration: Configuration, path: str, redispatch_constraint_units: bool,
+                           configuration: SolverConfiguration, path: str, redispatch_constraint_units: bool,
                            redispatch_threshold: float) -> Union[Allocation, Error]:
         """
         Computes a redispatch solution for a given zonal solution. The redispatch solution satisfies the constraints

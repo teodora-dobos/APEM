@@ -5,8 +5,8 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.data.parsing.scenario import Scenario
 from apem.unit_based_model.pricing.algorithms.fbmc_support import (
     add_fbmc_price_coupling_constraints,
@@ -22,11 +22,14 @@ class MinMWP(PricingAlgorithm):
     """Implementation of Minimum Make-Whole Payments Pricing.
     """
 
-    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: Configuration, file_prices: Optional[str] = None,
+    def compute_prices(self, allocation: Allocation, scenario: Scenario, configuration: SolverConfiguration,
+                       file_prices: Optional[str] = None,
                        fixed_prices: Optional[Pricing] = None) -> Union[Pricing, Error]:
         """
-        Formulates and solves a Min-MWP problem similar to the one from https://arxiv.org/pdf/2209.07386.pdf
-        (Appendix E). The method can also be used to compute the MWPs for an allocation-prices pair.
+        Formulates and solves a Min-MWP problem similar to the one from
+        "Pricing Optimal Outcomes in Coupled and Non-Convex Markets: Theory and Applications to Electricity
+        Markets" (Appendix E, https://arxiv.org/abs/2209.07386). The method can also be used to compute the
+        MWPs for an allocation-prices pair.
 
         :param allocation: allocation for which supporting prices are computed
         :param scenario: scenario for which prices are computed
@@ -285,4 +288,3 @@ class MinMWP(PricingAlgorithm):
 
     def __str__(self):
         return 'Min_MWP'
-

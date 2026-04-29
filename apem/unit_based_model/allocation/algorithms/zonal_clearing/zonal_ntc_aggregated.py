@@ -7,8 +7,8 @@ import pandas as pd
 
 from apem.unit_based_model.allocation.algorithms.nodal_clearing.dcopf import DCOPF
 from apem.unit_based_model.allocation.allocation import Allocation
-from apem.unit_based_model.allocation.configuration import Configuration
-from apem.unit_based_model.allocation.error import Error
+from apem.unit_based_model.solver_configuration import SolverConfiguration
+from apem.unit_based_model.error import Error
 from apem.unit_based_model.allocation.power_flow_model import PowerFlowModel
 from apem.unit_based_model.allocation.algorithms.zonal_clearing.zonal_configuration import node_zone_mapper
 from apem.unit_based_model.data.parsing.scenario import Scenario
@@ -22,12 +22,25 @@ class Zonal_NTC_aggregated(PowerFlowModel):
     """
 
     def __init__(self, zonal_configuration: str = 'zonal_DE3', factor: float = 0.8):
+        """
+        Initialize the aggregated zonal NTC model.
+
+        :param zonal_configuration: Name of the zonal configuration used to map nodes to zones.
+        :param factor: Scaling factor applied to aggregated cross-zonal transfer capacities.
+        """
         self.zonal_configuration = zonal_configuration
         self.factor = factor
 
     def create_zonal_scenario_NTC(self, base_scenario: Scenario, results_root: Optional[str] = None) -> Scenario:
         """
         Construct a zonal scenario based on a given nodal base scenario.
+
+        The nodal network is aggregated so that each zone is represented by a single node and each
+        pair of connected zones is represented by at most one interzonal edge.
+
+        :param base_scenario: Original nodal scenario to aggregate.
+        :param results_root: Optional directory where the node-to-zone mapping CSV is written.
+        :return: Aggregated zonal scenario suitable for DCOPF solving.
         """
         # Work on copies to avoid mutating the input nodal scenario in place.
         df_sellers = base_scenario.df_sellers.copy()
@@ -123,9 +136,19 @@ class Zonal_NTC_aggregated(PowerFlowModel):
         return Scenario(f'{base_scenario.name}', df_buyers, df_sellers, aggregated_network, nodes_agents,
                         base_scenario.periods, base_scenario.blocks_buyers, base_scenario.blocks_sellers, r_star)
 
-    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+    def solve(self, scenario: Scenario, configuration: SolverConfiguration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None) \
             -> Tuple[Scenario, Union[Allocation, Error]]:
+        """
+        Create the aggregated zonal scenario and solve the resulting DCOPF problem.
+
+        :param scenario: Original nodal scenario to convert and solve.
+        :param configuration: Optimizer configuration applied to the zonal DCOPF solve.
+        :param results_file: Optional CSV file path for writing optimization results.
+        :param stats_file: Optional file path for writing allocation statistics.
+        :param u_fixed: Unused placeholder kept for interface compatibility with other power-flow models.
+        :return: Tuple ``(zonal_scenario, allocation_or_error)``.
+        """
         # create a zonal NTC scenario
         zone_results_root = os.path.dirname(os.path.dirname(results_file)) if results_file else None
         if zone_results_root:

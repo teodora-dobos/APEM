@@ -1,7 +1,7 @@
 ﻿from abc import ABC, abstractmethod
 from typing import Optional
 
-from apem.unit_based_model.allocation.configuration import Configuration
+from apem.unit_based_model.solver_configuration import SolverConfiguration
 from apem.unit_based_model.data.parsing.scenario import Scenario
 
 
@@ -11,7 +11,7 @@ class PowerFlowModel(ABC):
     """
 
     @abstractmethod
-    def solve(self, scenario: Scenario, configuration: Configuration, results_file: Optional[str] = None,
+    def solve(self, scenario: Scenario, configuration: SolverConfiguration, results_file: Optional[str] = None,
               stats_file: Optional[str] = None, u_fixed: Optional[dict] = None):
         pass
 

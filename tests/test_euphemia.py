@@ -6,7 +6,7 @@ import pandas as pd
 import pytest
 
 from apem.order_book_based_model.euphemia.data.conversion.data_conversion import DataConversion
-from apem.order_book_based_model.euphemia.data.parsing.parse_eu import (
+from apem.order_book_based_model.euphemia.data.parsing.parse_order_book import (
     ParseOrderBook,
     parse_fb_constraints,
     parse_fb_ptdf,
@@ -431,4 +431,3 @@ def test_resolve_zone_strips_quote_characters():
     assert MasterProblem.resolve_zone(master, " 'Z2' ") == "Z2"
     assert MasterProblem.resolve_zone(master, '"Z3"') == "Z3"
     assert MasterProblem.resolve_zone(master, None) == "Z1"
-

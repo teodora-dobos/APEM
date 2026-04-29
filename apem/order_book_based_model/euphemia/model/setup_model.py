@@ -1,12 +1,26 @@
-﻿import gurobipy as gp
+﻿from typing import TYPE_CHECKING
+
+import gurobipy as gp
 from gurobipy import GRB
 
 from apem.order_book_based_model.euphemia.utils.extraction import get
 
+if TYPE_CHECKING:
+    from apem.order_book_based_model.euphemia.master_problem.master_problem import MasterProblem
 
-def add_objective(self) -> None:
-    """
-    Set the objective of the Euphemia master problem for a given model.
+
+def add_objective(self: "MasterProblem") -> None:
+    """Define the surplus-maximizing objective of the master problem.
+
+    The objective aggregates the contribution of every supported order family:
+    step orders, block orders, complex-order step rows, scalable-complex step
+    rows, and piecewise-linear orders. The final model objective is posted as a
+    maximization of total economic surplus using the sign conventions already
+    encoded in the parsed bid tables.
+
+    :param self: Active Euphemia master-problem instance whose Gurobi model is
+        being populated.
+    :return: ``None``.
     """
 
     # 1) step orders
@@ -46,30 +60,28 @@ def add_objective(self) -> None:
         GRB.MAXIMIZE)
 
 
-def add_market_constraints(self) -> None:
-    """
-    Formulate the market-clearing constraints.
+def add_market_constraints(self: "MasterProblem") -> None:
+    """Add market-clearing and order-linking constraints to the master problem.
 
-    Let I_{z,t} denote zonal net injection in zone z and period t, computed as the
-    accepted sum of all bid families assigned to (z,t):
-    - step orders
-    - block orders (including flexible blocks through flex_period)
-    - complex/scalable complex step orders
-    - piecewise-linear orders
+    This routine builds the core allocation structure of the Euphemia master
+    problem. It enforces:
 
-    Depending on the selected network model:
+    - market balance for the active network representation
+    - block-order acceptance logic including MAR, exclusive, linked, and
+      flexible blocks
+    - linkage between parent complex/scalable-complex orders and their step
+      rows
+    - load-gradient and MAP restrictions for complex-order variants
 
-    1) No active network constraints (single-zone fallback):
-       sum(all accepted quantities at t) = 0
+    Balance is formulated differently depending on the current network mode:
 
-    2) ATC:
-       I_{z,t} - sum_j f_{z,j,t} + sum_i f_{i,z,t} = 0
-       where f_{i,j,t} is directed ATC flow.
+    - no network constraints: one global balance equation per period
+    - ``ATC``: zonal injection balanced with directed interconnector flows
+    - ``FBMC``: zonal net-position definitions plus global balance
 
-    3) FBMC:
-       NP_{z,t} = I_{z,t}
-       sum_z NP_{z,t} = 0
-       where NP_{z,t} is the zonal net position variable.
+    :param self: Active Euphemia master-problem instance whose Gurobi model is
+        being populated.
+    :return: ``None``.
     """
 
     def order_zone(df, order_id):
@@ -268,25 +280,21 @@ def add_market_constraints(self) -> None:
                 periods_orders[t] >= get(self.scalable_complex_orders, f'MAP{t}', i) * self.accept_scalable[i]
                 for t in self.periods)
 
-def add_network_constraints(self) -> None:
-    """
-    Formulate network constraints for the selected model.
+def add_network_constraints(self: "MasterProblem") -> None:
+    """Add network feasibility constraints for the selected network model.
 
-    This function is skipped when ``network_constraints_enabled`` is False.
+    The function is a no-op when ``network_constraints_enabled`` is ``False``.
+    Otherwise it complements :func:`add_market_constraints` with the physical
+    transmission limits implied by the configured network representation:
 
-    ATC model:
-    - Capacity limits on directed interconnectors:
-        f_{i,j,t} <= CAP_{i,j,t}
-      (non-negativity f_{i,j,t} >= 0 comes from variable bounds)
-    - Optional directional ramping between consecutive periods:
-        f_{i,j,t} - f_{i,j,t-1} <= RAMP_UP_{i,j}
-        f_{i,j,t-1} - f_{i,j,t} <= RAMP_DOWN_{i,j}
+    - ``ATC``: capacity bounds on directed interconnectors plus optional
+      ramp-up and ramp-down limits between consecutive periods
+    - ``FBMC``: PTDF-based upper RAM limits and optional lower-bound limits on
+      zonal net positions
 
-    FBMC model:
-    - For each CNEC c and period t:
-        sum_z PTDF_{c,t,z} * NP_{z,t} <= RAM_{c,t}
-    - Optional lower bound (if provided in input):
-        sum_z PTDF_{c,t,z} * NP_{z,t} >= LB_{c,t}
+    :param self: Active Euphemia master-problem instance whose Gurobi model is
+        being populated.
+    :return: ``None``.
     """
     if not self.network_constraints_enabled:
         return
@@ -337,4 +345,3 @@ def add_network_constraints(self) -> None:
             ),
             name="fbmc_lb",
         )
-

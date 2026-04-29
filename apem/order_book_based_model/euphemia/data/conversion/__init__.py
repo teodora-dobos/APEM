@@ -15,15 +15,21 @@ def run_unit_based_to_order_based_conversion(
     compress_identical_blocks: bool = True,
 ):
     """
-    Run the conversion and compression of a US dataset to EU bidding language
+    Convert a unit-based dataset into order-book Euphemia CSV inputs.
 
-    - unit_based_data: the dataset that should be used
-    - generate_uptime_patterns: whether to generate commitment patterns for units with minimum uptime constraints.
-    Patterns are saved so only necessary for the initial run.
-    - reduce_linked_blocks: whether to merge linked blocks over several time periods connected to one exclusive block
-    to only one linked block to model additional capacity
-    - use_contiguous_patterns: restrict patterns to those with one contiguous on/off period
-    - compress_identical_blocks: comprise identical block orders from the same generator types in one order
+    Parameters
+    ----------
+    unit_based_data:
+        Parser class for the unit-based dataset to convert.
+    generate_uptime_patterns:
+        Generate commitment patterns for units with minimum uptime constraints.
+        Pattern files are persisted and usually needed only on the first run.
+    reduce_linked_blocks:
+        Merge linked blocks over multiple periods into a reduced representation.
+    use_contiguous_patterns:
+        Restrict generated patterns to one contiguous on/off segment.
+    compress_identical_blocks:
+        Merge identical block orders from the same generator types.
     """
 
     # Convert US market data
@@ -113,4 +119,3 @@ if __name__ == '__main__':
         reduce_linked_blocks=True,
         compress_identical_blocks=True,
     )
-

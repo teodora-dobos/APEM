@@ -1,0 +1,6 @@
+/* Keep custom styling minimal; extend as the docs grow. */
+
+/* Hidden toctrees still emit empty wrapper nodes; suppress them in page content. */
+.toctree-wrapper:empty {
+  display: none;
+}

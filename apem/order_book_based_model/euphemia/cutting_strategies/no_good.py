@@ -1,18 +1,29 @@
+from typing import TYPE_CHECKING
+
 from gurobipy import GRB
 import gurobipy as gp
 
+if TYPE_CHECKING:
+    from apem.order_book_based_model.euphemia.master_problem.master_problem import MasterProblem
 
-def _log(self, message: str) -> None:
+
+def _log(self: "MasterProblem", message: str) -> None:
     if hasattr(self, "run_logger"):
         self.run_logger.info(message)
     elif hasattr(self, "_emit"):
         self._emit(message)
 
 
-def add_no_good_cut(self, callback_model) -> None:
-    """
-    Add a "no-good cut" to exclude the current solution from future consideration.
-    Force at least one binary variable to change value.
+def add_no_good_cut(self: "MasterProblem", callback_model: gp.Model) -> None:
+    """Post a generic no-good cut for the current master-problem incumbent.
+
+    The cut inspects all binary master variables in the callback model and
+    constructs an exclusion constraint requiring at least one of them to flip
+    value in future incumbents.
+
+    :param self: Active Euphemia master-problem instance.
+    :param callback_model: Gurobi callback model used to post the lazy cut.
+    :return: ``None``.
     """
     terms = []
     # match variable from current solution with Gurobi variable from model

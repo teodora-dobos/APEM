@@ -12,7 +12,16 @@ REQUIRED_COLUMNS = ("algorithm", "price")
 
 
 def validate_price_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate and normalize the generic price-analysis input table."""
+    """
+    Validate and normalize a generic price-analysis input table.
+
+    :param df: input table containing at least ``algorithm`` and ``price``
+               columns; additional columns are preserved
+    :return: normalized copy with trimmed column names, normalized algorithm
+             labels, and numeric ``price`` values
+    :raises ValueError: if required columns are missing, algorithm labels are
+                        empty, or no numeric prices are available
+    """
     normalized = df.copy()
     normalized.columns = [str(column).strip() for column in normalized.columns]
 
@@ -37,7 +46,15 @@ def summarize_prices(
     *,
     group_by: Sequence[str] = ("algorithm",),
 ) -> pd.DataFrame:
-    """Compute generic descriptive statistics for market prices."""
+    """
+    Compute descriptive statistics for prices grouped by one or more columns.
+
+    :param df: input price table
+    :param group_by: grouping columns to summarize by; defaults to
+                     ``("algorithm",)``
+    :return: one row per group with counts, central moments, quantiles, spread,
+             and additional quality metrics
+    """
     validated = validate_price_table(df)
     group_columns = _normalize_group_columns(validated, group_by)
 
@@ -93,7 +110,22 @@ def compare_price_algorithms(
     align_on: Sequence[str] | None = None,
     baseline: str | None = None,
 ) -> pd.DataFrame:
-    """Compare algorithm price series on aligned observations."""
+    """
+    Compare algorithm price series on aligned observations.
+
+    :param df: input price table with one ``algorithm`` and ``price`` value per
+               aligned observation
+    :param align_on: explicit alignment key columns; when omitted, all
+                     non-required columns are used, or an inferred row index if
+                     none are available
+    :param baseline: optional algorithm name; if provided, only pairs including
+                     this baseline are returned
+    :return: pairwise comparison table with mean levels, mean differences,
+             absolute differences, and correlation per algorithm pair
+    :raises ValueError: if duplicates exist for the same alignment key and
+                        algorithm, if fewer than two algorithms are present, or
+                        if ``baseline`` is not present
+    """
     validated = validate_price_table(df)
     alignment_columns, prepared = _prepare_alignment(validated, align_on)
 
@@ -143,7 +175,13 @@ def compare_price_algorithms(
 
 
 def round_numeric_columns(df: pd.DataFrame, digits: int = 2) -> pd.DataFrame:
-    """Round all numeric columns to a fixed number of decimal places."""
+    """
+    Round all numeric columns to a fixed number of decimal places.
+
+    :param df: input table
+    :param digits: number of decimals used for rounding numeric columns
+    :return: copy of ``df`` with rounded numeric columns
+    """
     rounded = df.copy()
     numeric_columns = rounded.select_dtypes(include="number").columns
     rounded.loc[:, numeric_columns] = rounded.loc[:, numeric_columns].round(digits)

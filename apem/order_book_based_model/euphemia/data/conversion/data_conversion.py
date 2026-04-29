@@ -14,7 +14,11 @@ from apem.order_book_based_model.euphemia.utils.paths import EUPHEMIA_ROOT
 
 class DataConversion:
     """
-    Convert bids following the US bidding language to bids expected in the Euphemia implementation.
+    Convert a unit-based market scenario into order-book Euphemia inputs.
+
+    The source scenario uses the unit-based APEM data model with buyer-side demand
+    tables and seller-side supply tables. This helper maps those tables into the
+    order-book structures expected by the Euphemia workflow.
     """
 
     def __init__(self, scenario: Scenario):
@@ -27,9 +31,12 @@ class DataConversion:
 
     def compute_buyers_inelastic_bids(self) -> pd.DataFrame:
         """
-        Generate block orders to encode price-inelastic demand.
-        Create a block order for each buyer and set the volume for period t to the price-inelastic demand for period t.
-        Set MAR to 1 and the limit price to a very large value which guarantees that the block will always be accepted.
+        Convert price-inelastic demand into order-book block orders.
+
+        One block order is created per demand entity. For each period ``t``, the
+        block quantity equals the inelastic demand in that period. The resulting
+        order is assigned ``MAR = 1`` and a very large bid price so that it behaves
+        as must-serve demand in the order-book model.
         """
         info = defaultdict(dict)
 
@@ -51,7 +58,7 @@ class DataConversion:
 
     def compute_buyers_elastic_bids(self) -> pd.DataFrame:
         """
-        Generate step orders to encode price-elastic demand.
+        Convert price-elastic demand segments into order-book step orders.
         """
         elastic_dem = [f'val{i}' for i in self.blocks_buyers] + [f'size{i}' for i in self.blocks_buyers]
         info = self.df_buyers[['buyer', 'period'] + elastic_dem]
@@ -80,15 +87,13 @@ class DataConversion:
 
     def generate_zero_no_load_cost_bids(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """
-        Generate scalable complex orders and associated sub-orders to encode the bids of the sellers that fulfill
-        the following criteria:
-            - minimum uptime = 0
-            - minimum production level >= 0
-            - no-load cost = 0
-        Assume cost1 is the smallest marginal cost.
-        Create a scalable complex order for each seller.
-        For all periods t, set MAP_t to the minimum production level in period t.
-        Create associated step orders based on the supply curves.
+        Convert simple unit-based supply offers into scalable complex Euphemia orders.
+
+        This routine targets supply units with zero no-load cost and no meaningful
+        minimum-uptime restriction. Each qualifying unit is mapped to one scalable
+        complex order plus its associated step orders. The ``MAP_t`` parameters are
+        taken from the unit's minimum production profile, while the step orders are
+        derived from the period-wise supply curve segments.
         """
         sellers = self.df_sellers[(self.df_sellers['min_uptime'].isin([0, 1])) &
                                   (self.df_sellers['no_load_cost'] == 0)]['seller'].unique().tolist()
@@ -154,12 +159,17 @@ class DataConversion:
 
     def generate_positive_no_load_cost_bids(self, reduce_linked_blocks: bool) -> pd.DataFrame:
         """
-        Generate block orders to encode the bids of the sellers that fulfill the following criteria:
-            - minimum uptime > 1  OR no-load cost >= 0
-            (Note only contiguous patterns supported for min uptime in [0,1])
-            - minimum production level >= 0
+        Convert commitment-coupled unit offers into order-book block-order families.
 
-        Assume cost1 is the smallest marginal cost.
+        This routine targets supply units whose behavior cannot be represented by a
+        simple scalable complex order, for example because they have a non-trivial
+        minimum-uptime requirement or a positive no-load cost. Each such unit is
+        translated into one exclusive parent block per commitment pattern together
+        with linked child blocks that represent additional dispatch segments.
+
+        :param reduce_linked_blocks: When ``True``, merge same-price linked child
+            segments across active periods into one linked block per segment.
+        :return: Block-order dataframe for the converted commitment-coupled offers.
         """
         sellers = self.df_sellers[(self.df_sellers['min_uptime'] > 1) |
                                   (self.df_sellers['no_load_cost'] > 1)]['seller'].unique().tolist()
@@ -267,7 +277,7 @@ class DataConversion:
 
     def generate_patterns(self, min_uptime: int) -> List[List[int]]:
         """
-        Generate all possible patterns that encode in which periods a seller with minimum uptime min_uptime is committed.
+        Generate all commitment patterns for a unit with a given minimum uptime.
         """
         T = len(self.periods)
         M = [1] + list(range(min_uptime, T + 1))
@@ -285,8 +295,10 @@ class DataConversion:
 
     def generate_contiguous_patterns(self, min_uptime: int) -> List[List[int]]:
         """
-        Generate all possible patterns that encode in which periods a seller with minimum uptime min_uptime is committed
-        given there is only one start and one stop of the production unit.
+        Generate contiguous commitment patterns for a unit with a given minimum uptime.
+
+        The returned patterns assume at most one start and one stop event across the
+        modeled horizon.
         """
         T = len(self.periods)
         patterns: List[List[int]] = []
@@ -303,7 +315,19 @@ class DataConversion:
 
         return patterns
 
-    def add_linked_block_orders(self, time_commitment, s, count, block_bids, reduce_orders: bool):
+    def add_linked_block_orders(
+        self, time_commitment: list[int], s: int, count: int, block_bids: list[dict], reduce_orders: bool
+    ) -> None:
+        """
+        Add linked child blocks for one commitment pattern of one supply unit.
+
+        :param time_commitment: Binary commitment profile over the modeled periods.
+        :param s: Unit identifier from the source unit-based scenario.
+        :param count: Running index used to build stable order identifiers.
+        :param block_bids: Output list to which linked block rows are appended.
+        :param reduce_orders: Whether to merge same-price linked segments across
+            active periods.
+        """
         # --- reduce orders by putting all time periods in one linked block instead of multiple linked blocks with each one q != 0 ---
         if reduce_orders:
             for block in self.blocks_sellers:
@@ -373,7 +397,10 @@ class DataConversion:
 
     def generate_write_patterns(self, use_contiguous_patterns: bool) -> None:
         """
-        Generate and write all patterns in .txt files.
+        Generate commitment-pattern files used for block-order conversion.
+
+        :param use_contiguous_patterns: Whether to restrict the generated patterns
+            to contiguous on/off trajectories.
         """
         min_uptimes = range(2, 25)
         path = EUPHEMIA_ROOT / "data" / "conversion" / "patterns"
@@ -388,12 +415,11 @@ class DataConversion:
 
     def block_signature(self, row: pd.Series) -> str:
         """
-        Generate a stable hash for a single block
+        Generate a stable signature for one block order.
 
-        The hash must uniquely identify a block by the attributes that
-        are relevant: block type, the 24-hour
-        quantity vector, price and MAR. Seller/buyer IDs are not part
-        of the hash because they do not influence the market clearing.
+        The signature uses the block type, quantity profile, price, and MAR. Source
+        unit or demand identifiers are intentionally ignored so that economically
+        identical converted block orders can be merged later.
         """
 
         qty_cols = [c for c in row.index if c.startswith("q")]
@@ -409,18 +435,15 @@ class DataConversion:
 
     def compress_blocks(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Lossless aggregation of identical linked-block chains
+        Losslessly merge identical converted block-order chains.
 
-        A linked chain is a rooted tree: one exclusive parent order plus
-        zero or more linked children. Two chains are considered identical
-        (and thus mergeable) if every node (block) in both trees has an
-        identical signature and the tree topology is the same.
+        A linked chain consists of one exclusive parent block and zero or more linked
+        child blocks. Two chains are mergeable when they have the same block
+        signatures and the same tree structure.
 
-        After merging we:
-        - sum the quantities of identical blocks,
-        - set the MAR of the parent (MAR=1),
-        - concatenate the original IDs so that we can still trace them,
-        - update the children so their `code_prm` points to the new parent ID.
+        After merging, identical quantities are summed, the parent keeps ``MAR = 1``,
+        original ids are concatenated for traceability, and child ``code_prm`` values
+        are rewired to the merged parent id.
         """
 
         qty_cols = [c for c in df.columns if c.startswith("q")]
@@ -488,7 +511,9 @@ class DataConversion:
             return pd.DataFrame(merged_rows)
 
     def set_block_bids(self) -> None:
+        """Placeholder for a future block-order assembly helper."""
         pass
 
     def set_step_orders(self) -> None:
+        """Placeholder for a future step-order assembly helper."""
         pass

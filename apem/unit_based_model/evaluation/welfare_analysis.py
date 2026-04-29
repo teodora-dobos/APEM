@@ -19,7 +19,23 @@ def load_welfare_table(
     welfare_column: str = "welfare",
     sheet_name: str = "Sheet1",
 ) -> pd.DataFrame:
-    """Load a welfare table from disk and normalize the core columns."""
+    """
+    Load a welfare table from disk and normalize core columns.
+
+    Supported file types are ``.txt``, ``.csv``, ``.parquet``, ``.xlsx``,
+    and ``.xls``.
+
+    :param path: file path to load
+    :param power_flow_model_name: model name override used when the loaded file
+                                  does not include ``power_flow_model``
+    :param welfare_scope_column: source column name mapped to ``welfare_scope``
+    :param period_column: source column name mapped to ``period``
+    :param welfare_column: source column name mapped to ``welfare``
+    :param sheet_name: Excel sheet name when loading ``.xlsx``/``.xls``
+    :return: validated normalized welfare table
+    :raises ValueError: if file type is unsupported or parsed data fails
+                        validation
+    """
     file_path = Path(path)
     suffix = file_path.suffix.lower()
     supported_suffixes = {".txt", ".csv", ".parquet", ".xlsx", ".xls"}
@@ -56,7 +72,17 @@ def load_welfare_table(
 
 
 def validate_welfare_table(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate and normalize the generic welfare-analysis input table."""
+    """
+    Validate and normalize a generic welfare-analysis input table.
+
+    :param df: input table expected to contain ``power_flow_model``,
+               ``welfare_scope``, ``period``, and ``welfare``
+    :return: normalized copy with lowercase scope labels, integer-like periods,
+             and numeric welfare values
+    :raises ValueError: if required columns are missing, scope values are
+                        unsupported, model labels are empty, or period/scope
+                        combinations are inconsistent
+    """
     normalized = df.copy()
     normalized.columns = [str(column).strip() for column in normalized.columns]
 
