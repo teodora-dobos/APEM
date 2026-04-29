@@ -19,6 +19,7 @@ custom_datasets
 
 apem/index
 node_ranking/index
+pf_relaxations/index
 ```
 
 ```{toctree}
@@ -85,8 +86,13 @@ The order-book workflow is useful when you want to study:
 
 Beyond the two main market models included in APEM Core, APEM includes two analysis-focused modules.
 
-- **Node Ranking** combines structural network metrics such as degree centrality, betweenness centrality, and PTDF contribution with market-oriented scores such as rent-weighted dispatch, dispatch volume, gamma-capacity, load-weighted LMP, and PTDF stress.
-- **PF Relaxations** groups alternative relaxations including quadratic convex, semidefinite programming, and second-order cone programming approaches for power-flow-related studies.
+### APEM Node Ranking
+
+Combines structural network metrics such as degree centrality, betweenness centrality, and PTDF contribution with market-oriented scores such as rent-weighted dispatch, dispatch volume, gamma-capacity, load-weighted LMP, and PTDF stress.
+
+### APEM PF Relaxations
+
+Groups alternative relaxations including quadratic convex, semidefinite programming, and second-order cone programming approaches for power-flow-related studies.
 
 ## How To Read This Documentation
 

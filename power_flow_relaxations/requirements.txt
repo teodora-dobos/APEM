@@ -1,0 +1,9 @@
+mosek
+numpy
+pandas
+scipy
+networkx
+tqdm
+psutil
+matplotlib
+memory_profiler

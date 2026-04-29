@@ -58,6 +58,9 @@ autodoc_default_options = {
 # Keep docs builds working in environments without solver/geospatial stacks.
 autodoc_mock_imports = [
     "gurobipy",
+    "mosek",
+    "mosek.fusion",
+    "mosek.fusion.pythonic",
     "pypsa",
     "geopandas",
     "shapely",

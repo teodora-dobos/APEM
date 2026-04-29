@@ -5,6 +5,7 @@
 apem-venv/
 !requirements.txt
 results/
+relaxation_results/
 stats/
 launch.json
 
