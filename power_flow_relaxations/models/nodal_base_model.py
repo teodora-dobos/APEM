@@ -33,21 +33,11 @@ class NodalBaseModel(PowerFlowModel):
 
     def read_scenario(self, scenario):
         """
-        Normalize and ingest scenario data into model-ready structures.
+        Normalize and ingest a scenario into model-ready structures.
 
-        Parameters
-        ----------
-        scenario:
-            Parsed scenario containing buyers, sellers, network, and period/block
-            metadata.
-
-        Notes
-        -----
-        This method:
-        - harmonizes expected column names for real/reactive bounds,
-        - builds index maps for buyers/sellers/nodes/periods/blocks,
-        - prepares node-agent membership and neighbor lists,
-        - precomputes dictionary lookups for bids, capacities, and costs.
+        Harmonizes expected buyer/seller columns, creates index mappings for
+        entities and periods, builds node-neighbor and node-agent mappings, and
+        precomputes dictionary lookups for bids, capacities, and costs.
         """
         # Normalize required columns for this model
         if "max_real_dem" not in scenario.df_buyers.columns and "max_dem" in scenario.df_buyers.columns:
@@ -248,16 +238,12 @@ class NodalBaseModel(PowerFlowModel):
 
     def initialize_model(self, configuration):
         """
-        Create MOSEK model and declare common decision variables.
+        Create the MOSEK model and declare common decision variables.
 
-        Parameters
-        ----------
-        configuration:
-            Solver configuration. Determines whether commitment variables are
-            relaxed (`u_st in [0,1]`) or binary.
-
-        Variables include buyer/seller dispatch blocks, unit commitment/start-up,
-        branch active/reactive flows, nodal imbalances, and current-limit slack.
+        Includes buyer and seller block-dispatch variables, commitment/start-up
+        variables, branch active/reactive flows, nodal imbalance slacks, and
+        current-limit violation variables. Commitment is relaxed or binary based
+        on `configuration.relaxation`.
         """
         self.model = Model()
 
@@ -355,9 +341,8 @@ class NodalBaseModel(PowerFlowModel):
         tolerances:
             Optional overrides for line/balance tolerance and penalty weights.
 
-        Initialization order is:
-        scenario parsing -> parameter tensors -> variable creation ->
-        network arrays -> tolerance setup.
+        Initialization order is: scenario parsing -> parameter tensors -> 
+        variable creation -> network arrays -> tolerance setup.
         """
         # PowerFlowModel has no __init__; avoid passing args to object.__init__
         super().__init__()
@@ -397,27 +382,13 @@ class NodalBaseModel(PowerFlowModel):
         min_vol: Optional[bool] = False,
     ) -> tuple:
         """
-        Build the optimization objective for welfare or tracking formulations.
+        Build the objective expression and objective sense.
 
-        Parameters
-        ----------
-        zonal_allocation:
-            Optional target allocation used for redispatch-style tracking.
-        min_vol:
-            When tracking a zonal allocation, minimize dispatch-volume deviation
-            (`True`) or cost-weighted deviation plus commitment mismatch (`False`).
-
-        Returns
-        -------
-        tuple
-            `(ObjectiveSense, expression)` compatible with `Model.objective(...)`.
-
-        Modes
-        -----
-        - `zonal_allocation is None`: maximize market welfare minus imbalance and
-          thermal penalties.
-        - `zonal_allocation provided`: minimize deviation from zonal dispatch, with
-          optional minimum-volume or cost-weighted formulation.
+        If `zonal_allocation` is not provided, returns a welfare-maximization
+        objective with imbalance and thermal-violation penalties. If
+        `zonal_allocation` is provided, returns a deviation-minimization objective:
+        either minimum-volume deviation (`min_vol=True`) or cost-weighted deviation
+        plus commitment mismatch (`min_vol=False`).
         """
 
         if isinstance(zonal_allocation, SellersAllocation):
@@ -514,14 +485,9 @@ class NodalBaseModel(PowerFlowModel):
         """
         Add buyer/seller bid, capacity, and unit-commitment constraints.
 
-        Parameters
-        ----------
-        u_fixed:
-            Optional `(seller, period) -> {0,1}` map used to fix commitment
-            variables, typically during integrality-forcing re-solves.
-
         Enforces block limits, aggregate dispatch identities, real/reactive bounds,
-        minimum uptime relations, and `u_st in [0,1]`.
+        and minimum-uptime relations. If `u_fixed` is provided, commitment values
+        are fixed per seller and period before constraint assembly.
         """
 
         if isinstance(u_fixed, dict):
@@ -944,21 +910,14 @@ class NodalBaseModel(PowerFlowModel):
 
     def get_allocation(self):
         """
-        Materialize a lightweight allocation wrapper from solved model values.
+        Build a lightweight allocation object from the solved model values.
 
-        Returns
-        -------
-        object
-            `RelaxAllocation` instance exposing:
-            - `BuyersAllocation`, `SellersAllocation`, `TransmissionNetworkAllocation`
-            - `stats` with welfare/runtime/MIP gap
-            - `compute_welfare()` and `compute_feasibility_violations(...)`
-            - reconstructed voltage components `V_vt`.
+        Returns a `RelaxAllocation` object with buyer, seller, and network
+        allocations, summary stats, helper methods for welfare and feasibility
+        checks, and reconstructed voltage components `V_vt`.
 
-        Raises
-        ------
-        ValueError
-            If solve status is missing or not feasible/optimal.
+        Raises `ValueError` if solve status is missing or the solution is not
+        feasible/optimal.
         """
         if self.model is not None and self.problem_status is not None and self.solution_status is not None:
             if self.solution_status not in [SolutionStatus.Feasible, SolutionStatus.Optimal]:

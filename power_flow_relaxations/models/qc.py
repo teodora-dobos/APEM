@@ -206,12 +206,10 @@ class QC(Jabr):
     
     def mccormick_envelope(self, t, x, y, xL, xU, yL, yU):
         """
-        Adds McCormick convex envelope for w = x*y.
-        
-        t : cvxpy.Variable
-        x, y : cvxpy.Variable or expression
-        xL, xU : lower/upper bounds for x
-        yL, yU : lower/upper bounds for y
+        Add McCormick envelope constraints for the bilinear term `t = x * y`.
+
+        Uses variable bounds `(xL, xU)` and `(yL, yU)` to add the four linear
+        inequalities that define the convex hull relaxation.
         """
         self.model.constraint(t >= xL * y + yL * x - xL * yL)
         self.model.constraint(t >= xU * y + yU * x - xU * yU)
@@ -220,22 +218,20 @@ class QC(Jabr):
 
     def square_envelope(self, t, x, xL, xU):
         """
-        Adds a convex envelope for w = x^2.
+        Add convex-envelope constraints for the quadratic term `t = x^2`.
 
-        t : cvxpy.Variable
-        x : cvxpy.Variable or expression
-        xL, xU : lower/upper bounds for x
+        Uses an upper linear secant bound on `[xL, xU]` and a rotated-cone lower
+        bound to keep `t` as a convex relaxation of `x^2`.
         """
         self.model.constraint(t <= (xL + xU) * x - xL * xU)
         self.model.constraint(Expr.vstack([t, Expr.constTerm(0.5), x]) == Domain.inRotatedQCone())
 
     def sin_envelope(self, t, x, xL, xU):
         """
-        Adds a convex envelope for w = sin(x).
+        Add convex relaxation bounds for the nonlinear term `t = sin(x)`.
 
-        t : cvxpy.Variable
-        x : cvxpy.Variable or expression
-        xL, xU : lower/upper bounds for x
+        Builds tangent/chord-based bounds over `[xL, xU]` to approximate the sine
+        graph with linear constraints.
         """
         xM = max(abs(xL), abs(xU))
         self.model.constraint(t <= np.cos(xM / 2) * (x - xM / 2) + np.sin(xM / 2))
@@ -252,11 +248,10 @@ class QC(Jabr):
 
     def cos_envelope(self, t, x, xL, xU):
         """
-        Adds a convex envelope for w = cos(x).
+        Add convex relaxation bounds for the nonlinear term `t = cos(x)`.
 
-        t : cvxpy.Variable
-        x : cvxpy.Variable or expression
-        xL, xU : lower/upper bounds for x
+        Uses a quadratic-cone-supported upper bound and a chord lower bound over
+        `[xL, xU]` to approximate the cosine graph.
         """
         xM = max(abs(xL), abs(xU))
         if xM != 0:

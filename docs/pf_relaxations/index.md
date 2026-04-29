@@ -2,6 +2,11 @@
 
 The `power_flow_relaxations` module provides a runner for comparing power-flow relaxation formulations on ARPA-derived subscenarios.
 
+## Requirements
+
+- A working MOSEK installation is required to run this module.
+- A valid MOSEK license must be available in your environment.
+
 ## Scope
 
 - Run DCOPF and ACOPF relaxation models on connected network subgraphs.
@@ -10,24 +15,23 @@ The `power_flow_relaxations` module provides a runner for comparing power-flow r
 
 ## Implemented Relaxations
 
-- `DCOPF`
-- `Shor SDP`
-- `Chordal SDP`
-- `Jabr SOCP`
-- `QC` variants (local and global sampling modes)
-- `NodalBaseModel` base class used by nodal relaxation formulations
-
-## Models
+- `NodalBaseModel`: shared nodal optimization scaffold with common variables, bid constraints, and network-balance handling.
+- `DCOPF`: linear DC approximation using voltage angles and active-power flow constraints.
+- `Shor SDP`: semidefinite relaxation of AC power flow with a stronger but more expensive convex envelope.
+- `Chordal SDP`: chordal decomposition of the SDP model to reduce computational cost on larger networks.
+- `Jabr SOCP`: second-order-cone relaxation based on Jabr-type formulations, typically lighter than full SDP.
+- `QC` variants: quadratic-convex relaxations with different approximation degrees and sampling modes (local/global).
 
 ```{toctree}
 :maxdepth: 1
+:hidden:
 
+models/nodal_base_model
 models/dcopf
 Shor SDP <models/shor>
 Chordal SDP <models/chordal_shor>
 Jabr SOCP <models/jabr>
 models/qc
-models/nodal_base_model
 ```
 
 ## Default Run Behavior
@@ -44,5 +48,5 @@ Results are written under:
 
 ## Entrypoints
 
-- module runner: `power_flow_relaxations.run_relaxations`
-- plotting helper: `power_flow_relaxations.create_figures`
+- `power_flow_relaxations.run_relaxations`: runs the relaxation experiments, builds subscenarios, solves selected models, and writes per-model CSV results.
+- `power_flow_relaxations.create_figures`: reads the generated result CSV files and creates comparison plots (runtime, memory, welfare, and feasibility metrics).

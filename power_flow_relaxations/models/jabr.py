@@ -108,17 +108,11 @@ class Jabr(NodalBaseModel):
 
     def get_V_vt_values(self) -> dict:
         """
-        Recover approximate complex voltages from `(c_vw, s_vw)` solutions.
+        Recover approximate bus voltages from solved `(c_vw, s_vw)` values.
 
-        Returns
-        -------
-        dict
-            Mapping `(node, period) -> (V_d, V_q)`.
-
-        Method
-        ------
-        Starting from the reference bus `(1, 0)`, performs a graph traversal and
-        reconstructs neighboring voltages using solved `c_vw`/`s_vw` relations.
+        Starts from the reference bus voltage, traverses the network graph, and
+        reconstructs neighboring complex voltages using local `c_vw`/`s_vw`
+        relationships. Returns `(V_d, V_q)` per node and period.
         """
         c_vwt_values = [self.c_vwt[t].level().reshape((len(self.nodes), len(self.nodes))) for t, _ in self.periods]
         s_vwt_values = [self.s_vwt[t].level().reshape((len(self.nodes), len(self.nodes))) for t, _ in self.periods]

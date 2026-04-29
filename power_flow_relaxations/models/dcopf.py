@@ -9,6 +9,8 @@ class DCOPF(NodalBaseModel):
     This model keeps only active-power network physics with voltage-angle variables
     and branch susceptances. Reactive-power AC relations are omitted, yielding a
     fast linear approximation commonly used as a baseline.
+    
+    Note: this is the relaxation-benchmark DCOPF variant (MOSEK-based), not the APEM market-clearing Gurobi DCOPF.
     """
 
     def __init__(self, scenario, configuration, **kwargs) -> None:
@@ -37,12 +39,9 @@ class DCOPF(NodalBaseModel):
         """
         Add DC branch-flow and thermal-limit constraints.
 
-        For each directed branch `(v, w)` and period `t`, the model enforces:
-        - symmetric active-power flow bounds with optional slack via `I_viol`,
-        - linear DC flow relation:
-          `p_vwt ~= B_vw * (theta_v - theta_w)` within tolerance `p_vwt_line_tol`.
-
-        This defines the network transport part of the DCOPF approximation.
+        For each directed branch and period, enforce symmetric active-power flow
+        limits and a linear DC flow relation between phase-angle differences and
+        active power flow, with tolerance band `p_vwt_line_tol`.
         """
         for t, _ in self.periods:
             for i_v, v in self.nodes: 

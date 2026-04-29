@@ -8,40 +8,18 @@ class ChordalShor(NodalBaseModel):
     """
     Chordal-decomposed Shor SDP relaxation for ACOPF.
 
-    This model replaces one large global PSD matrix with a set of PSD matrices over
-    maximal cliques of a chordal extension of the network graph. Overlapping clique
-    entries are tied together by consistency constraints so the local matrices behave
-    like a coherent global lift of the AC power-flow equations.
-
-    Compared with a dense Shor SDP, this typically improves scalability on sparse
-    transmission networks while preserving the same relaxation structure on shared
-    entries.
+    Uses clique-wise PSD matrices from a chordal extension of the network graph,
+    plus overlap-consistency constraints, to approximate the dense Shor SDP with
+    improved scalability on sparse grids.
     """
 
     def __init__(self, scenario, configuration, clique_reduction: float = 0.2, **kwargs):
         """
-        Build the chordal Shor model and its clique-wise PSD variables.
+        Build the chordal Shor model and clique-wise PSD variables.
 
-        Parameters
-        ----------
-        scenario:
-            Unit-based market scenario containing network and bids.
-        configuration:
-            Solver configuration. Relaxation mode is forced on.
-        clique_reduction:
-            Heuristic reduction factor for clique generation. Higher values tend to
-            produce fewer/smaller cliques (faster, potentially weaker numerically).
-        **kwargs:
-            Forwarded to :class:`NodalBaseModel` (for tolerances and model options).
-
-        Notes
-        -----
-        The constructor:
-        1. Builds a chordal extension of the network.
-        2. Extracts reduced cliques.
-        3. Creates one PSD matrix per clique and period.
-        4. Precomputes a mapping from each directed edge `(v, w, t)` to a clique
-           matrix block where its lifted variables are represented.
+        Forces relaxation mode, computes a chordal extension, extracts reduced
+        cliques, creates one PSD matrix per clique and period, and precomputes
+        edge-to-clique mappings used by the flow constraints.
         """
         if configuration is not None:
             configuration.relaxation = True
@@ -102,15 +80,9 @@ class ChordalShor(NodalBaseModel):
         """
         Add AC power-flow relaxation constraints in clique-matrix form.
 
-        For each period and node:
-        - Enforces symmetry of each clique PSD matrix block for the period.
-        - Enforces voltage magnitude bounds via diagonal lifted terms.
-        - Links active/reactive branch flows to lifted voltage products with
-          tolerance bands (`p_vwt_line_tol`, `q_vwt_line_tol`).
-
-        After local flow/voltage constraints, this method also adds:
-        - branch current rating constraints (from base model), and
-        - inter-clique consistency constraints.
+        Enforces PSD-block symmetry, voltage-magnitude bounds, and active/reactive
+        flow equations with tolerance bands, then adds current-rating and
+        inter-clique consistency constraints.
         """
         for t, _ in self.periods:
             for W in self.clique_matrices:
@@ -156,14 +128,10 @@ class ChordalShor(NodalBaseModel):
 
     def reference_constraints(self):
         """
-        Anchor the voltage angle reference bus in the lifted space.
+        Anchor the voltage-angle reference bus in the lifted space.
 
-        Constraints enforce:
-        - unit magnitude on the reference-bus diagonal lifted term,
-        - zero quadrature cross terms between reference bus and neighbors,
-          corresponding to a fixed phase reference.
-
-        This removes rotational degree-of-freedom ambiguity in AC voltages.
+        Enforces unit reference magnitude and zero quadrature cross terms so the
+        global angle reference is fixed.
         """
         for t, _ in self.periods:
             (W_rrt, idx_r, _) = self.edge_to_clique_matrix[self.reference_bus[1], self.reference_bus[1], t]
@@ -192,22 +160,12 @@ class ChordalShor(NodalBaseModel):
 
     def get_V_vt_values(self) -> dict:
         """
-        Recover approximate complex voltages from clique PSD solutions.
+        Recover approximate bus voltages from clique-based SDP matrices.
 
-        Returns
-        -------
-        dict
-            Mapping `(node, period) -> (V_d, V_q)` with real and imaginary voltage
-            components.
-
-        Method
-        ------
-        1. Assemble a global lifted matrix by averaging repeated entries coming
-           from different cliques.
-        2. Symmetrize and apply PSD completion on the chordal extension.
-        3. Extract the rank-1 approximation using the dominant eigenpair.
-        4. Reconstruct complex voltages and rotate them so the reference-bus angle
-           is zero.
+        For each period, aggregates clique matrix entries into a global lifted
+        matrix, symmetrizes and PSD-completes it, extracts a rank-1 approximation
+        from the dominant eigenpair, rotates the result to the reference angle, and
+        returns `(V_d, V_q)` per node and period.
         """
 
         voltages = []

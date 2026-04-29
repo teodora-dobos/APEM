@@ -114,18 +114,11 @@ class Shor(NodalBaseModel):
 
     def get_V_vt_values(self) -> dict:
         """
-        Recover approximate complex voltages from the solved lifted matrix.
+        Recover approximate bus voltages from the solved Shor SDP matrices.
 
-        Returns
-        -------
-        dict
-            Mapping `(node, period) -> (V_d, V_q)`.
-
-        Method
-        ------
-        Symmetrizes each solved `W[t]`, takes its dominant eigenpair as a rank-1
-        approximation, reconstructs complex bus voltages, and rotates phase so the
-        reference-bus angle is zero.
+        For each period, symmetrizes `W[t]`, extracts a rank-1 approximation from
+        the dominant eigenpair, reconstructs complex voltages, rotates them so the
+        reference-bus angle is zero, and returns `(V_d, V_q)` per node and period.
         """
 
         voltages = []
