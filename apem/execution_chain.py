@@ -529,5 +529,3 @@ def solve_and_analyse_scenario(
     )
     _announce_results_path(run_root)
     return analysis
-
-

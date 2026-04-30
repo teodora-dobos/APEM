@@ -16,6 +16,9 @@ from apem.unit_based_model.pricing.analysis.pricing import Pricing
 class Markup(PricingAlgorithm):
     """
     Implementation of Markup Pricing.
+
+    This pricing method is currently supported only for the unit-based
+    `IEEE_RTS`, `PJM`, and `ARPA` datasets, since only these have buyers' valuations.
     """
 
     def compute_prices(self, scenario: Scenario, configuration: SolverConfiguration, file_prices: Optional[str] = None,
