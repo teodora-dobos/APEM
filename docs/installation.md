@@ -60,6 +60,11 @@ pip install gurobipy
 
 Then verify that your license is active before running larger workflows.
 
+For local named-user licenses, Gurobi usually looks for `gurobi.lic` in the
+user home directory. For WLS licenses, create or download the license
+credentials from the Gurobi license manager and make sure they are available in
+the environment where APEM is run.
+
 ## 5. Verify The Installation
 
 From the repository root, run:
