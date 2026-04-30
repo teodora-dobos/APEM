@@ -83,3 +83,9 @@ API path: `node_ranking.market_scores`
    :members:
    :show-inheritance:
 ```
+
+## Reference
+
+M. Bichler and T. Dobos. A market-based analysis of critical nodes in power
+systems. In International Conference on the European Energy Market, EEM 2026,
+June 2026.

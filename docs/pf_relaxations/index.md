@@ -21,12 +21,12 @@ The `power_flow_relaxations` module provides a runner for comparing power-flow r
 
 ## Implemented Relaxations
 
-- `NodalBaseModel`: shared nodal optimization scaffold with common variables, bid constraints, and network-balance handling.
-- `DCOPF`: linear DC approximation using voltage angles and active-power flow constraints.
-- `Shor SDP`: semidefinite relaxation of AC power flow with a stronger but more expensive convex envelope.
-- `Chordal SDP`: chordal decomposition of the SDP model to reduce computational cost on larger networks.
-- `Jabr SOCP`: second-order-cone relaxation based on Jabr-type formulations, typically lighter than full SDP.
-- `QC` variants: quadratic-convex relaxations with different approximation degrees and sampling modes (local/global).
+- [NodalBaseModel](models/nodal_base_model): shared nodal optimization scaffold with common variables, bid constraints, and network-balance handling.
+- [DCOPF](models/dcopf): linear DC approximation using voltage angles and active-power flow constraints.
+- [Shor SDP](models/shor): semidefinite relaxation of AC power flow with a stronger but more expensive convex envelope.
+- [Chordal SDP](models/chordal_shor): chordal decomposition of the SDP model to reduce computational cost on larger networks.
+- [Jabr SOCP](models/jabr): second-order-cone relaxation based on Jabr-type formulations, typically lighter than full SDP.
+- [QC variants](models/qc): quadratic-convex relaxations with different approximation degrees and sampling modes (local/global).
 
 ```{toctree}
 :maxdepth: 1

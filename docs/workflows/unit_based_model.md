@@ -10,11 +10,14 @@ Task-oriented entry points for unit-based runs and evaluations.
 
 ## Workflow Map
 
-- `Price Analysis`: compare pricing outcomes across pricing algorithms or zonal
-  models.
-- `Cost Analysis`: compare welfare-derived costs and related metrics.
-- `Redispatch Analysis`: compare redispatch algorithms and redispatch costs.
-- `Node Ranking`: compute graph-based and market-metric-based node rankings.
+- [Price Analysis](unit_based_model/price_analysis): compare pricing outcomes
+  across pricing algorithms or zonal models.
+- [Cost Analysis](unit_based_model/cost_analysis): compare welfare-derived costs
+  and related metrics.
+- [Redispatch Analysis](unit_based_model/redispatch_analysis): compare
+  redispatch algorithms and redispatch costs.
+- [Node Ranking](unit_based_model/node_ranking): compute graph-based and
+  market-metric-based node rankings.
 
 ## Results Location
 
