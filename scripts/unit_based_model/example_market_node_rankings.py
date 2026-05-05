@@ -420,7 +420,7 @@ def main() -> None:
     with (output_dir / "metadata.json").open("w", encoding="utf-8") as handle:
         json.dump(metadata, handle, indent=2)
 
-    print(f"\nSaved ranking outputs to: {output_dir}")
+    print(f"\nOutputs written to: {output_dir}")
 
 
 if __name__ == "__main__":

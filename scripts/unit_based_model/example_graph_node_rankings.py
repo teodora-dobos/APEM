@@ -356,7 +356,7 @@ def main() -> None:
 
     print(f"Scenario: {scenario_name}")
     print(f"Slack node: {slack_node}")
-    print(f"Output dir: {output_dir}")
+    print(f"Outputs written to: {output_dir}")
 
     for method in PTDF_METHODS:
         print(f"\nTop {TOP_K_PRINT} nodes by PTDF ({method}):")
