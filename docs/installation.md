@@ -6,7 +6,7 @@ This page shows the recommended local setup for APEM. The goal is to get a clean
 
 You will need:
 
-- Python 3.10 or newer
+- Python 3.10, 3.11, or 3.12. Python 3.11 is recommended.
 - `git`
 - a virtual environment tool (`venv` is enough)
 - a valid [Gurobi](https://www.gurobi.com/) license for optimization runs
