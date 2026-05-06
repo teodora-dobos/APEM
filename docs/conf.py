@@ -68,6 +68,11 @@ autodoc_mock_imports = [
     "matplotlib.pyplot",
     "openpyxl",
     "OMIEData",
+    "scipy",
+    "scipy.stats",
+    "tqdm",
+    "psutil",
+    "memory_profiler",
 ]
 
 myst_enable_extensions = [
