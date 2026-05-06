@@ -1,0 +1,35 @@
+name: Validate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install validation tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Lint (ruff, bug-focused)
+        run: ruff check . --select E9,F63,F7,F82
+
+      - name: Validate config.json
+        run: python -c "import json, pathlib; json.loads(pathlib.Path('config.json').read_text(encoding='utf-8-sig'))"
+
+      - name: Compile Python files
+        run: python -m compileall -q apem scripts tests main.py

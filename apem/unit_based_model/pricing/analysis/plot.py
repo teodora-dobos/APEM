@@ -38,10 +38,6 @@ def plot_price_heatmap(
     results_directory = os.path.join(base_dir, pf_model)
     os.makedirs(results_directory, exist_ok=True)
 
-    # Load average prices, if not provided
-    if avg_prices is None:
-        avg_prices = PriceAnalysis.avg_node_prices()
-
     # Store zonal price information for plotting purposes
     avg_prices_copy = avg_prices.copy()
 
