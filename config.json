@@ -93,7 +93,7 @@
         }
     },
     "order_book_based_model": {
-        "dataset": "TEST_3NODE",
+        "dataset": "GME",
         "cut_type": "price based",
         "euphemia_configuration": {
             "network_model": "FBMC",
