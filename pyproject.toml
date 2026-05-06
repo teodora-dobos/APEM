@@ -1,10 +1,10 @@
 [build-system]
- requires = ["setuptools>=42"]
- build-backend = "setuptools.build_meta"
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
  
 [project]
 name = "APEM"
-version = "0.1.0"     # convention: major.minor.patch
+version = "1.0.0"     # convention: major.minor.patch
 dependencies = [
   "numpy==1.26.4",
   "pandas==2.2.3",
@@ -18,10 +18,23 @@ dependencies = [
   "pyarrow==17.0.0",
  ]
 requires-python = ">=3.10"
- description = "Allocation and Pricing in Electricity Markets"
- readme = "README.md"
- license = {file = "LICENSE.txt"}
-keywords = ["day-ahead market", "zonal pricing", "nodal pricing", "electricity market"]
+description = "Allocation and Pricing in Electricity Markets"
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+keywords = [
+  "day-ahead-auction",
+  "electricity-market",
+  "electricity-pricing",
+  "euphemia",
+  "nodal-pricing",
+  "zonal-pricing",
+]
 
 [project.optional-dependencies]
 test = [
@@ -31,11 +44,11 @@ omie = [
   "OMIEData",
 ]
 
- [tool.setuptools.packages.find]      # ensures that all directories and files under `apem` are included in the package distribution
+[tool.setuptools.packages.find]      # ensures that all directories and files under `apem` are included in the package distribution
 where = ["."]
 include = ["apem*"]
 
- [tool.setuptools]
+[tool.setuptools]
 include-package-data = true
 
 [tool.setuptools.package-data]

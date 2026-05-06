@@ -12,9 +12,16 @@ APEM is a framework for electricity-market clearing, pricing, and analysis. It b
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.10, 3.11, or 3.12. Python 3.11 is recommended.
 - Gurobi + valid license for APEM Core optimization workflows
 - MOSEK + valid license for APEM PF Relaxations
+
+APEM has been tested on Windows and macOS. Linux is expected to work with the same Python and solver setup.
+
+Gurobi must be installed and licensed before running APEM Core workflows. For a
+local named-user license, place `gurobi.lic` in your home directory. For WLS
+licenses, configure the license credentials according to the Gurobi license
+manager.
 
 MOSEK licenses can be placed at `~/.mosek/mosek.lic` or configured with `MOSEKLM_LICENSE_FILE`.
 

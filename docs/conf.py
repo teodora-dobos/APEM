@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 project = "APEM"
 author = "APEM Contributors"
 copyright = "APEM Contributors"
-release = "0.1.0"
+release = "1.0.0"
 
 if PROJECT_TOML.exists():
     try:

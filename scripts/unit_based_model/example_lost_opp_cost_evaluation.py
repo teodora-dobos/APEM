@@ -165,6 +165,7 @@ def main() -> None:
     }
     with open(dataset_output_dir / "metadata.json", "w", encoding="utf-8") as handle:
         json.dump(metadata, handle, indent=2)
+    print(f"Outputs written to: {dataset_output_dir}")
 
 
 if __name__ == "__main__":

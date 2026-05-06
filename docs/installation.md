@@ -6,7 +6,7 @@ This page shows the recommended local setup for APEM. The goal is to get a clean
 
 You will need:
 
-- Python 3.10 or newer
+- Python 3.10, 3.11, or 3.12. Python 3.11 is recommended.
 - `git`
 - a virtual environment tool (`venv` is enough)
 - a valid [Gurobi](https://www.gurobi.com/) license for optimization runs
@@ -59,6 +59,11 @@ pip install gurobipy
 ```
 
 Then verify that your license is active before running larger workflows.
+
+For local named-user licenses, Gurobi usually looks for `gurobi.lic` in the
+user home directory. For WLS licenses, create or download the license
+credentials from the Gurobi license manager and make sure they are available in
+the environment where APEM is run.
 
 ## 5. Verify The Installation
 
