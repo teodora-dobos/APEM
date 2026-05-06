@@ -1,5 +1,10 @@
 # APEM: Allocation and Pricing in Electricity Markets
 
+[![Tests](https://github.com/teodora-dobos/APEM/actions/workflows/tests.yml/badge.svg)](https://github.com/teodora-dobos/APEM/actions/workflows/tests.yml)
+[![Validate](https://github.com/teodora-dobos/APEM/actions/workflows/validate.yaml/badge.svg)](https://github.com/teodora-dobos/APEM/actions/workflows/validate.yaml)
+[![Docs CI](https://github.com/teodora-dobos/APEM/actions/workflows/docs-pages.yml/badge.svg)](https://github.com/teodora-dobos/APEM/actions/workflows/docs-pages.yml)
+[![Docs](https://img.shields.io/website?url=https%3A%2F%2Fteodora-dobos.github.io%2FAPEM%2F&label=docs)](https://teodora-dobos.github.io/APEM/)
+
 APEM is a framework for electricity-market clearing, pricing, and analysis. It brings together optimization-based market models, pricing methods, network-aware post-processing, and supporting evaluation tools in a single codebase.
 
 ![APEM framework overview](framework_overview.png)
@@ -63,7 +68,7 @@ Core outputs are written under:
 - `results/unit_based_model/...`
 - `results/order_book_based_model/...`
 
-Configuration details: [docs/configuration.md](docs/configuration.md)
+Configuration details: [Online Configuration Guide](https://teodora-dobos.github.io/APEM/configuration.html)
 
 ## Run PF Relaxations
 
@@ -75,7 +80,7 @@ PYTHONPATH=. MPLCONFIGDIR=/tmp/mplcache ./.venv/bin/python -m power_flow_relaxat
 
 Results are written under `relaxation_results/...`.
 
-PF relaxation details: [docs/pf_relaxations/index.md](docs/pf_relaxations/index.md)
+PF relaxation details: [Online PF Relaxations Guide](https://teodora-dobos.github.io/APEM/pf_relaxations/index.html)
 
 ## Documentation
 
