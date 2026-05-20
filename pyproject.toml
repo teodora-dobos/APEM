@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
  
 [project]
 name = "APEM"
-version = "1.0.1"     # convention: major.minor.patch
+version = "1.0.2"     # convention: major.minor.patch
 dependencies = [
   "numpy==1.26.4",
   "pandas==2.2.3",
